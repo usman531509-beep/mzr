@@ -41,7 +41,7 @@ export function StatusPieChart({ data }: { data: { status: string; count: number
             borderRadius: 6,
             fontSize: 12,
           }}
-          formatter={(v: number, name: string) => [v, name]}
+          formatter={(value, name) => [Number(value ?? 0), String(name)]}
         />
         <Legend
           iconType="circle"

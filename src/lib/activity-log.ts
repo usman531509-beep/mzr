@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 import type { Session } from "next-auth";
 
 type LogInput = {
@@ -33,7 +34,7 @@ export async function logActivity(
         moduleKey: input.moduleKey,
         target: input.target ?? null,
         targetId: input.targetId ?? null,
-        meta: input.meta ?? undefined,
+        meta: (input.meta ?? undefined) as Prisma.InputJsonValue | undefined,
       },
     });
   } catch (e) {

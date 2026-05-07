@@ -42,9 +42,10 @@ export function RevenueLineChart({ data }: { data: Point[] }) {
             borderRadius: 6,
             fontSize: 12,
           }}
-          formatter={(v: number, key: string) =>
-            key === "revenue" ? [fmt(v), "Revenue"] : [v, "Orders"]
-          }
+          formatter={(value, key) => {
+            const v = Number(value ?? 0);
+            return key === "revenue" ? [fmt(v), "Revenue"] : [v, "Orders"];
+          }}
           labelStyle={{ color: "rgba(255,255,255,0.6)" }}
         />
         <Area

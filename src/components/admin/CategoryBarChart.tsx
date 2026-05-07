@@ -52,10 +52,10 @@ export function CategoryBarChart({
             borderRadius: 6,
             fontSize: 12,
           }}
-          formatter={(v: number) => [
-            v >= 1000 ? `£${(v / 1000).toFixed(1)}k` : `£${v.toFixed(0)}`,
-            "Revenue",
-          ]}
+          formatter={(value) => {
+            const v = Number(value ?? 0);
+            return [v >= 1000 ? `£${(v / 1000).toFixed(1)}k` : `£${v.toFixed(0)}`, "Revenue"];
+          }}
         />
         <Bar dataKey="revenue" radius={[0, 4, 4, 0]}>
           {data.map((_, i) => (

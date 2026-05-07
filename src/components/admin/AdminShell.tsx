@@ -87,7 +87,7 @@ const HREF_TO_KEY: Record<string, ModuleKey> = {
 function filterNav(role?: string, permissions: string[] = []) {
   return NAV
     .map((g) => {
-      const items = (g.items as NavItem[]).flatMap((it) => {
+      const items = (g.items as NavItem[]).flatMap<NavItem>((it) => {
         if (isParent(it)) {
           const visible = it.children.filter((c) => {
             const key = HREF_TO_KEY[c.href];
@@ -227,13 +227,15 @@ function SidebarHeader({ collapsed }: { collapsed: boolean }) {
   );
 }
 
+type NavGroup = { group: string; items: NavItem[] };
+
 function SidebarNav({
   collapsed, pathname, onNavigate, nav,
 }: {
   collapsed: boolean;
   pathname: string;
   onNavigate?: () => void;
-  nav: typeof NAV;
+  nav: NavGroup[];
 }) {
   return (
     <nav className="min-h-0 flex-1 space-y-4 overflow-y-auto px-2 py-2">
