@@ -44,9 +44,11 @@ export function MegaMenu({
       >
         {columns.map((col, i) => (
           <div key={i} className={i > 0 ? "border-l border-white/10 pl-5 pr-3" : "pr-5"}>
-            <h4 className="mb-3 flex items-center gap-2 border-b border-red/20 pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-red">
-              {col.heading}
-            </h4>
+            {col.heading && (
+              <h4 className="mb-3 flex items-center gap-2 border-b border-red/20 pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-red">
+                {col.heading}
+              </h4>
+            )}
             <ul className="flex flex-col gap-0.5">
               {col.items.map((it) => (
                 <li key={it.label}>

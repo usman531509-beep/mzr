@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { slugify } from "@/lib/format";
 import { auth } from "@/auth";
 import { logActivity } from "@/lib/activity-log";
+import { NAV_CACHE_TAG } from "@/lib/nav-cache";
 
 const schema = z.object({ name: z.string().min(1), logoUrl: z.string().url().optional().nullable() });
 
@@ -14,6 +16,7 @@ export async function POST(req: Request) {
   const brand = await prisma.brand.create({
     data: { name: parsed.data.name, slug: slugify(parsed.data.name), logoUrl: parsed.data.logoUrl || null },
   });
+  revalidateTag(NAV_CACHE_TAG);
   await logActivity(await auth(), {
     action: "created",
     moduleKey: "brand",
@@ -28,6 +31,7 @@ export async function DELETE(req: Request) {
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
   const before = await prisma.brand.findUnique({ where: { id }, select: { name: true } });
   await prisma.brand.delete({ where: { id } });
+  revalidateTag(NAV_CACHE_TAG);
   await logActivity(await auth(), {
     action: "deleted",
     moduleKey: "brand",

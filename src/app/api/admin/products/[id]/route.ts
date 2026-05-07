@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import { logActivity } from "@/lib/activity-log";
+import { NAV_CACHE_TAG } from "@/lib/nav-cache";
 
 const schema = z.object({
   name: z.string().min(2).optional(),
@@ -82,6 +83,7 @@ export async function PATCH(
   revalidatePath("/");
   revalidatePath("/products");
   if (product.slug) revalidatePath(`/products/${product.slug}`);
+  revalidateTag(NAV_CACHE_TAG);
 
   // Build a from/to record only for fields that actually changed. We diff
   // scalar fields directly; nested fields (brand, category) are surfaced as
@@ -154,6 +156,7 @@ export async function DELETE(
   await prisma.product.delete({ where: { id } });
   revalidatePath("/");
   revalidatePath("/products");
+  revalidateTag(NAV_CACHE_TAG);
   await logActivity(await auth(), {
     action: "deleted",
     moduleKey: "product",

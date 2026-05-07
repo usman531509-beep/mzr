@@ -262,16 +262,15 @@ function toBrandItem(b: NavBrand) {
 
 function chunk<T>(arr: T[], cols: number): MegaColumn[] {
   if (arr.length === 0) return [];
-  // Split items roughly evenly across N columns, alphabetically.
+  // Split items roughly evenly across N columns, alphabetically. No per-column
+  // heading — the items are self-explanatory and per-letter groupings just
+  // add visual noise.
   const perCol = Math.ceil(arr.length / cols);
   const out: MegaColumn[] = [];
   for (let i = 0; i < cols; i++) {
     const items = arr.slice(i * perCol, (i + 1) * perCol);
     if (items.length === 0) continue;
-    const first = String((items[0] as { label: string }).label).charAt(0).toUpperCase();
-    const last = String((items[items.length - 1] as { label: string }).label).charAt(0).toUpperCase();
-    const heading = first === last ? first : `${first}–${last}`;
-    out.push({ heading, items: items as { label: string; href: string }[] });
+    out.push({ heading: "", items: items as { label: string; href: string }[] });
   }
   return out;
 }

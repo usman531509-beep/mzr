@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { slugify } from "@/lib/format";
 import { auth } from "@/auth";
 import { logActivity } from "@/lib/activity-log";
+import { NAV_CACHE_TAG } from "@/lib/nav-cache";
 
 const schema = z.object({
   name: z.string().min(1),
@@ -23,6 +25,7 @@ export async function POST(req: Request) {
       imageUrl: parsed.data.imageUrl || null,
     },
   });
+  revalidateTag(NAV_CACHE_TAG);
   await logActivity(await auth(), {
     action: "created",
     moduleKey: "category",
@@ -37,6 +40,7 @@ export async function DELETE(req: Request) {
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
   const before = await prisma.category.findUnique({ where: { id }, select: { name: true } });
   await prisma.category.delete({ where: { id } });
+  revalidateTag(NAV_CACHE_TAG);
   await logActivity(await auth(), {
     action: "deleted",
     moduleKey: "category",

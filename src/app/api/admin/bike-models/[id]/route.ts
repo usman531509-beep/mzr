@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { slugify } from "@/lib/format";
 import { auth } from "@/auth";
 import { logActivity } from "@/lib/activity-log";
 import { diffFields } from "@/lib/diff";
+import { NAV_CACHE_TAG } from "@/lib/nav-cache";
 
 const schema = z.object({
   name: z.string().min(1).optional(),
@@ -48,6 +50,7 @@ export async function PATCH(
     where: { id }, data,
     include: { brand: { select: { name: true } } },
   });
+  revalidateTag(NAV_CACHE_TAG);
 
   // Build a friendly diff: surface brand by name, not id.
   const changes = diffFields(before, updated, ["name", "yearStart", "yearEnd", "imageUrl"] as const);

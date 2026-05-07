@@ -3,7 +3,7 @@ import { Barlow, Barlow_Condensed, Rajdhani } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
+import { getNavData } from "@/lib/nav-cache";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { GlobalOverlays } from "@/components/GlobalOverlays";
@@ -39,28 +39,10 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [session, brands, models, categories] = await Promise.all([
-    auth(),
-    prisma.brand.findMany({
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, slug: true },
-    }),
-    prisma.bikeModel.findMany({
-      orderBy: [{ brandId: "asc" }, { name: "asc" }],
-      select: { id: true, name: true, brandId: true, yearStart: true, yearEnd: true },
-    }),
-    prisma.category.findMany({
-      orderBy: { name: "asc" },
-      select: {
-        id: true, name: true, slug: true,
-        _count: { select: { products: { where: { active: true } } } },
-      },
-    }),
-  ]);
+  const [session, nav] = await Promise.all([auth(), getNavData()]);
+  const { brands, models, categories } = nav;
   const navCategories = categories.map((c) => ({
-    name: c.name,
-    slug: c.slug,
-    count: c._count.products,
+    name: c.name, slug: c.slug, count: c.productCount,
   }));
   const navBrands = brands.map((b) => ({ name: b.name, slug: b.slug }));
 

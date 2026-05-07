@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { slugify } from "@/lib/format";
 import { auth } from "@/auth";
 import { logActivity } from "@/lib/activity-log";
 import { diffFields } from "@/lib/diff";
+import { NAV_CACHE_TAG } from "@/lib/nav-cache";
 
 const schema = z.object({
   name: z.string().min(1).optional(),
@@ -30,6 +32,7 @@ export async function PATCH(
 
   const before = await prisma.category.findUnique({ where: { id } });
   const updated = await prisma.category.update({ where: { id }, data });
+  revalidateTag(NAV_CACHE_TAG);
   const changes = diffFields(before, updated, ["name", "description", "imageUrl"] as const);
   await logActivity(await auth(), {
     action: "updated",

@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { slugify } from "@/lib/format";
 import { auth } from "@/auth";
 import { logActivity } from "@/lib/activity-log";
+import { NAV_CACHE_TAG } from "@/lib/nav-cache";
 
 const compatibilitySchema = z.object({
   bikeModelId: z.string(),
@@ -74,6 +75,7 @@ export async function POST(req: Request) {
   revalidatePath("/");
   revalidatePath("/products");
   if (product.slug) revalidatePath(`/products/${product.slug}`);
+  revalidateTag(NAV_CACHE_TAG);
   await logActivity(await auth(), {
     action: "created",
     moduleKey: "product",
