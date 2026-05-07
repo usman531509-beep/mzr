@@ -1,0 +1,316 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  // Pooled connection (PgBouncer) for runtime queries.
+  url       = env("DATABASE_URL")
+  // Direct connection used by `prisma migrate` and introspection.
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  USER
+  STAFF
+  MANAGER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum TradeRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  password      String
+  role          Role      @default(USER)
+  phone         String?
+  address       String?
+  city          String?
+  country       String?
+  orders        Order[]   @relation("UserOrders")
+  ordersCreatedAsAdmin Order[] @relation("AdminCreatedOrders")
+  expensesCreated      Expense[] @relation("AdminCreatedExpenses")
+  activityLogs         ActivityLog[]
+  cart          Cart?
+  wishlist      Wishlist?
+  tradeApproved Boolean   @default(false)
+  tradeApprovedAt DateTime?
+  mustChangePassword Boolean @default(false)
+  active        Boolean   @default(true)
+  // Module keys this user can access in the admin panel. ADMIN role has
+  // implicit full access regardless of this list.
+  permissions   String[]  @default([])
+  tradeRequests TradeAccountRequest[] @relation("UserTradeRequests")
+  tradeDecisions TradeAccountRequest[] @relation("AdminTradeDecisions")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Brand {
+  id        String      @id @default(cuid())
+  name      String      @unique
+  slug      String      @unique
+  logoUrl   String?
+  products  Product[]
+  bikeModels BikeModel[]
+  createdAt DateTime    @default(now())
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  imageUrl    String?
+  products    Product[]
+  tradeDiscount TradeDiscount?
+  createdAt   DateTime  @default(now())
+}
+
+model BikeModel {
+  id            String                 @id @default(cuid())
+  name          String
+  slug          String                 @unique
+  brandId       String
+  brand         Brand                  @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  yearStart     Int
+  yearEnd       Int
+  imageUrl      String?
+  compatibilities ProductCompatibility[]
+  createdAt     DateTime               @default(now())
+
+  @@unique([brandId, name])
+  @@index([brandId])
+}
+
+model Product {
+  id              String                 @id @default(cuid())
+  name            String
+  slug            String                 @unique
+  description     String
+  price           Decimal                @db.Decimal(10, 2)
+  costPrice       Decimal?               @db.Decimal(10, 2)
+  stock           Int                    @default(0)
+  lowStockThreshold Int                  @default(5)
+  images          String[]
+  sku             String?                @unique
+  oemNumber       String?                @db.VarChar(64)
+  featured        Boolean                @default(false)
+  active          Boolean                @default(true)
+  brandId         String
+  brand           Brand                  @relation(fields: [brandId], references: [id])
+  categoryId      String
+  category        Category               @relation(fields: [categoryId], references: [id])
+  compatibilities ProductCompatibility[]
+  orderItems      OrderItem[]
+  cartItems       CartItem[]
+  wishlistItems   WishlistItem[]
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  @@index([brandId])
+  @@index([categoryId])
+  @@index([featured])
+}
+
+model ProductCompatibility {
+  id          String    @id @default(cuid())
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  bikeModelId String
+  bikeModel   BikeModel @relation(fields: [bikeModelId], references: [id], onDelete: Cascade)
+  yearFrom    Int
+  yearTo      Int
+  notes       String?
+
+  @@unique([productId, bikeModelId, yearFrom, yearTo])
+  @@index([bikeModelId, yearFrom, yearTo])
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  userId          String?
+  user            User?       @relation("UserOrders", fields: [userId], references: [id])
+  createdByAdminId String?
+  createdByAdmin  User?       @relation("AdminCreatedOrders", fields: [createdByAdminId], references: [id], onDelete: SetNull)
+  status      OrderStatus @default(PENDING)
+  total       Decimal     @db.Decimal(10, 2)
+  customerName  String
+  customerEmail String
+  customerPhone String
+  shippingAddress String
+  shippingCity    String
+  shippingCountry String
+  notes       String?
+  // True once stock has been deducted for this order's items. Stock is
+  // deducted on transition to DELIVERED and restored on transition away
+  // from DELIVERED. Lets us avoid double-deduction if status flips back.
+  stockDeducted Boolean   @default(false)
+  items       OrderItem[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model TradeDiscount {
+  id         String   @id @default(cuid())
+  categoryId String   @unique
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  percent    Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Wishlist {
+  id        String         @id @default(cuid())
+  userId    String         @unique
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     WishlistItem[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+// WishlistItem keeps a snapshot of the product at add-time so the entry
+// survives even if the underlying product is later removed from the
+// catalogue. The product FK uses SetNull for the same reason.
+model WishlistItem {
+  id           String   @id @default(cuid())
+  wishlistId   String
+  wishlist     Wishlist @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+  productId    String?
+  product      Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productName  String
+  productSlug  String
+  productPrice Decimal  @db.Decimal(10, 2)
+  productImage String?
+  productBrand String?
+  createdAt    DateTime @default(now())
+
+  @@unique([wishlistId, productId])
+  @@index([productId])
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cartId, productId])
+  @@index([productId])
+}
+
+model TradeAccountRequest {
+  id              String             @id @default(cuid())
+  userId          String?
+  user            User?              @relation("UserTradeRequests", fields: [userId], references: [id], onDelete: SetNull)
+  // Applicant contact info (captured at submit time; safe to keep even if
+  // user deletes their account).
+  contactName     String
+  email           String
+  phone           String
+  // Business info
+  companyName     String
+  companyWebsite  String?
+  vatNumber       String?
+  businessType    String?
+  monthlyVolume   String?
+  address         String
+  city            String?
+  country         String?
+  notes           String?
+  // Decision
+  status          TradeRequestStatus @default(PENDING)
+  decidedAt       DateTime?
+  decidedById     String?
+  decidedBy       User?              @relation("AdminTradeDecisions", fields: [decidedById], references: [id], onDelete: SetNull)
+  decisionNote    String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([status])
+  @@index([userId])
+}
+
+model Expense {
+  id              String   @id @default(cuid())
+  title           String
+  category        String
+  amount          Decimal  @db.Decimal(10, 2)
+  paidOn          DateTime
+  vendor          String?
+  paymentMethod   String?
+  notes           String?
+  createdByAdminId String?
+  createdByAdmin  User?    @relation("AdminCreatedExpenses", fields: [createdByAdminId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([paidOn])
+  @@index([category])
+}
+
+// Audit trail of all admin/staff/manager actions. We snapshot user name/role
+// onto the row so the entry stays readable even if the user is deleted.
+model ActivityLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userName   String
+  userEmail  String
+  userRole   String
+  action     String   // "created" | "updated" | "deleted" | "status-changed" | "approved" | …
+  moduleKey  String   // "product" | "order" | "expense" | …
+  target     String?  // human-readable summary, e.g. "Brake Pads CBR-150"
+  targetId   String?
+  meta       Json?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId])
+  @@index([moduleKey])
+}
+
+model OrderItem {
+  id            String  @id @default(cuid())
+  orderId       String
+  order         Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product @relation(fields: [productId], references: [id])
+  name          String
+  // Actual price billed (after any trade discount).
+  price         Decimal @db.Decimal(10, 2)
+  // Pre-discount product price snapshotted at order time. Equal to `price`
+  // when no discount was applied.
+  originalPrice Decimal @db.Decimal(10, 2) @default(0)
+  quantity      Int
+}

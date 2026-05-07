@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mzr-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mzr
+      POSTGRES_PASSWORD: mzr
+      POSTGRES_DB: mzr_parts
+    ports:
+      - "5432:5432"
+    volumes:
+      - mzr_pgdata:/var/lib/postgresql/data
+
+volumes:
+  mzr_pgdata:
