@@ -7,21 +7,43 @@ import { MobileMenu } from "@/components/MobileMenu";
 import { FinderSheet } from "@/components/FinderSheet";
 import { CartSheet } from "@/components/CartSheet";
 import { WishlistSheet } from "@/components/WishlistSheet";
-import { mobileGroups } from "@/lib/menu-data";
 
 type Brand = { id: string; name: string; slug: string };
 type Model = { id: string; name: string; brandId: string; yearStart: number; yearEnd: number };
+type Category = { name: string; slug: string; count: number };
 
 // Renders the three overlay-style UIs in one place, driven by the global
 // store. Header (desktop) and MobileBottomBar both dispatch open events
 // against the same store, so a single instance of each overlay is enough.
 
 export function GlobalOverlays({
-  brands, models,
+  brands, models, categories = [],
 }: {
   brands: Brand[];
   models: Model[];
+  categories?: Category[];
 }) {
+  // Build the mobile menu groups from the live catalogue: one group per
+  // category that has products, plus a "Brands" group at the bottom. Each
+  // category links to /products?category=<slug>.
+  const mobileGroups = [
+    ...(categories
+      .filter((c) => c.count > 0)
+      .map((c) => ({
+        icon: "📦",
+        title: c.name,
+        items: [
+          { label: `Browse ${c.name}`, href: `/products?category=${c.slug}` },
+        ],
+      }))),
+    ...(brands.length > 0
+      ? [{
+          icon: "🏷️",
+          title: "Brands",
+          items: brands.map((b) => ({ label: b.name, href: `/products?brand=${b.slug}` })),
+        }]
+      : []),
+  ];
   const {
     searchOpen, menuOpen, finderOpen,
     openSearch, closeSearch, closeMenu, closeFinder,

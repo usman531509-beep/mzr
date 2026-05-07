@@ -7,14 +7,22 @@ import { useCart } from "@/lib/cart-store";
 import { useWishlist } from "@/lib/wishlist-store";
 import { useOverlays } from "@/lib/overlays-store";
 import { Topbar } from "@/components/Topbar";
-import { MegaMenu } from "@/components/MegaMenu";
-import { partsMega, accessoriesMega } from "@/lib/menu-data";
+import { MegaMenu, type MegaColumn } from "@/components/MegaMenu";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 
-export function Header() {
+type NavCategory = { name: string; slug: string; count: number };
+type NavBrand = { name: string; slug: string };
+
+export function Header({
+  categories = [],
+  brands = [],
+}: {
+  categories?: NavCategory[];
+  brands?: NavBrand[];
+}) {
   const { data: session } = useSession();
   const items = useCart((s) => s.items);
   const cartCount = items.reduce((s, i) => s + i.quantity, 0);
@@ -22,6 +30,12 @@ export function Header() {
   const openSearch   = useOverlays((s) => s.openSearch);
   const openCart     = useOverlays((s) => s.openCart);
   const openWishlist = useOverlays((s) => s.openWishlist);
+
+  // Build live mega menus from the catalogue. The "Parts" mega groups all
+  // categories that actually have products, split into 3 columns by name so
+  // the dropdown stays balanced. The "Brands" mega lists every brand by name.
+  const partsCols  = chunk(categories.filter((c) => c.count > 0).map(toCatItem), 3);
+  const brandsCols = chunk(brands.map(toBrandItem), 2);
 
   return (
     <>
@@ -41,34 +55,20 @@ export function Header() {
 
           {/* Desktop nav */}
           <nav className="flex h-full flex-1 items-stretch">
-            <NavItem label="Parts">
-              <MegaMenu
-                columns={partsMega}
-                promo={{
-                  tag: "🔥 Today's Deal",
-                  title: "Body Kits From £49",
-                  sub: "Full fairing sets for popular models. All colours in stock.",
-                  cta: { label: "Shop now", href: "/products?category=body" },
-                  tone: "red",
-                }}
-              />
-            </NavItem>
-            <NavItem label="Accessories">
-              <MegaMenu
-                columns={accessoriesMega}
-                width="narrow"
-                promo={{
-                  tag: "🛵 Delivery rider",
-                  title: "Full Setup Bundle",
-                  sub: "Top box + mount + USB + lock. From £74.99",
-                  cta: { label: "Shop bundle", href: "/products" },
-                  tone: "gold",
-                }}
-              />
-            </NavItem>
+            {partsCols.length > 0 ? (
+              <NavItem label="Parts">
+                <MegaMenu columns={partsCols} />
+              </NavItem>
+            ) : (
+              <SimpleLink href="/products" label="Parts" />
+            )}
+            {brandsCols.length > 0 ? (
+              <NavItem label="Brands">
+                <MegaMenu columns={brandsCols} width="narrow" />
+              </NavItem>
+            ) : null}
             <SimpleLink href="/products?sort=new" label="New In" />
-            <SimpleLink href="/products" label="Best Deals" />
-            <SimpleLink href="#brands" label="Brands" />
+            <SimpleLink href="/products" label="All Products" />
             <SimpleLink href="/trade-account" label="Trade" />
           </nav>
 
@@ -245,4 +245,33 @@ function ActionBtn({
       <span className="font-mono text-[10px] font-bold uppercase tracking-wider">{label}</span>
     </button>
   );
+}
+
+// ---- Mega-menu helpers (real catalogue → MegaColumn[]) -------------------
+
+function toCatItem(c: NavCategory) {
+  return {
+    label: c.count > 0 ? `${c.name}` : c.name,
+    href: `/products?category=${c.slug}`,
+  };
+}
+
+function toBrandItem(b: NavBrand) {
+  return { label: b.name, href: `/products?brand=${b.slug}` };
+}
+
+function chunk<T>(arr: T[], cols: number): MegaColumn[] {
+  if (arr.length === 0) return [];
+  // Split items roughly evenly across N columns, alphabetically.
+  const perCol = Math.ceil(arr.length / cols);
+  const out: MegaColumn[] = [];
+  for (let i = 0; i < cols; i++) {
+    const items = arr.slice(i * perCol, (i + 1) * perCol);
+    if (items.length === 0) continue;
+    const first = String((items[0] as { label: string }).label).charAt(0).toUpperCase();
+    const last = String((items[items.length - 1] as { label: string }).label).charAt(0).toUpperCase();
+    const heading = first === last ? first : `${first}–${last}`;
+    out.push({ heading, items: items as { label: string; href: string }[] });
+  }
+  return out;
 }

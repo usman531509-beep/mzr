@@ -39,7 +39,7 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [session, brands, models] = await Promise.all([
+  const [session, brands, models, categories] = await Promise.all([
     auth(),
     prisma.brand.findMany({
       orderBy: { name: "asc" },
@@ -49,7 +49,20 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       orderBy: [{ brandId: "asc" }, { name: "asc" }],
       select: { id: true, name: true, brandId: true, yearStart: true, yearEnd: true },
     }),
+    prisma.category.findMany({
+      orderBy: { name: "asc" },
+      select: {
+        id: true, name: true, slug: true,
+        _count: { select: { products: { where: { active: true } } } },
+      },
+    }),
   ]);
+  const navCategories = categories.map((c) => ({
+    name: c.name,
+    slug: c.slug,
+    count: c._count.products,
+  }));
+  const navBrands = brands.map((b) => ({ name: b.name, slug: b.slug }));
 
   return (
     <html lang="en" className={`${body.variable} ${head.variable} ${monoUi.variable}`}>
@@ -58,10 +71,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <CartScope />
           <WishlistScope />
           <ForcePasswordChange />
-          <Header />
+          <Header categories={navCategories} brands={navBrands} />
           <main className="flex-1">{children}</main>
           <Footer />
-          <GlobalOverlays brands={brands} models={models} />
+          <GlobalOverlays brands={brands} models={models} categories={navCategories} />
           <MobileBottomBar />
         </SessionProvider>
       </body>
