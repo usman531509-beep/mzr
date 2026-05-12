@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity-log";
+import { nextOrderNumber } from "@/lib/order-number";
 
 export const dynamic = "force-dynamic";
 
@@ -72,8 +73,10 @@ export async function POST(req: Request) {
 
   try {
     const order = await prisma.$transaction(async (tx) => {
+      const orderNumber = await nextOrderNumber(tx);
       const created = await tx.order.create({
         data: {
+          orderNumber,
           userId: data.userId,
           createdByAdminId: session.user.id,
           status: data.status ?? "PENDING",
@@ -109,7 +112,7 @@ export async function POST(req: Request) {
     await logActivity(session, {
       action: "created",
       moduleKey: "order",
-      target: `Order #${order.id.slice(0, 8)} for ${data.customerName}`,
+      target: `Order ${order.orderNumber ?? `#${order.id.slice(0, 8)}`} for ${data.customerName}`,
       targetId: order.id,
       meta: { onBehalfOf: data.userId, status: order.status },
     });

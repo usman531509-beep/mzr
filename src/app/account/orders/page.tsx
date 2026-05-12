@@ -41,7 +41,7 @@ export default async function OrdersPage() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <div className="font-mono text-[11px] text-muted-foreground">Order {o.id}</div>
+                      <div className="font-mono text-[11px] text-muted-foreground">Order {o.orderNumber ?? o.id}</div>
                       {o.createdByAdmin && (
                         <Badge className="gap-1 bg-blue-500/15 text-blue-300 ring-1 ring-inset ring-blue-500/30 hover:bg-blue-500/15">
                           <ShieldCheck className="h-3 w-3" /> Created by admin

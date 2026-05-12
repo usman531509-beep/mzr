@@ -66,7 +66,7 @@ export async function PATCH(
       await logActivity(await auth(), {
         action: "status-changed",
         moduleKey: "order",
-        target: `Order #${updated.id.slice(0, 8)}`,
+        target: `Order ${updated.orderNumber ?? `#${updated.id.slice(0, 8)}`}`,
         targetId: updated.id,
         meta: { changes: { status: { from: prevStatus, to: updated.status } } },
       });

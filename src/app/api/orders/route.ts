@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { getTradeContext, tradePrice } from "@/lib/trade-pricing";
+import { nextOrderNumber } from "@/lib/order-number";
 
 const schema = z.object({
   customerName: z.string().min(2),
@@ -98,8 +99,10 @@ export async function POST(req: Request) {
 
   try {
     const order = await prisma.$transaction(async (tx) => {
+      const orderNumber = await nextOrderNumber(tx);
       const created = await tx.order.create({
         data: {
+          orderNumber,
           userId: isAdminPlacingForCustomer ? data.forUserId! : (session?.user?.id ?? null),
           createdByAdminId: isAdminPlacingForCustomer ? session!.user.id : null,
           status: "PENDING",

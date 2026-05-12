@@ -74,7 +74,7 @@ export default async function AccountOverview() {
               {orders.map((o) => (
                 <li key={o.id} className="flex items-center gap-3 rounded-md border border-border p-3">
                   <div className="min-w-0 flex-1">
-                    <div className="font-mono text-[11px] text-muted-foreground">{o.id.slice(0, 12)}…</div>
+                    <div className="font-mono text-[11px] text-muted-foreground">{o.orderNumber ?? `${o.id.slice(0, 12)}…`}</div>
                     <div className="text-sm">
                       {o.items.length} item{o.items.length === 1 ? "" : "s"} · {new Date(o.createdAt).toLocaleDateString()}
                     </div>

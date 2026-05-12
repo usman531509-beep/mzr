@@ -143,6 +143,10 @@ model ProductCompatibility {
 
 model Order {
   id              String      @id @default(cuid())
+  // Human-readable order number in the form "MZR4000001". Set on creation
+  // via a transactional sequence so admins / customers see a sane reference
+  // instead of the cuid. Stays unique once assigned.
+  orderNumber     String?     @unique
   userId          String?
   user            User?       @relation("UserOrders", fields: [userId], references: [id])
   createdByAdminId String?

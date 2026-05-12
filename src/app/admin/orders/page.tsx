@@ -15,12 +15,17 @@ export default async function AdminOrders() {
     <OrdersClient
       initial={orders.map((o) => ({
         id: o.id,
+        orderNumber: o.orderNumber,
         status: o.status,
         total: Number(o.total),
         customer: o.customerName,
         email: o.customerEmail,
         phone: o.customerPhone,
         address: `${o.shippingAddress}, ${o.shippingCity}, ${o.shippingCountry}`,
+        shippingAddress: o.shippingAddress,
+        shippingCity: o.shippingCity,
+        shippingCountry: o.shippingCountry,
+        notes: o.notes ?? "",
         items: o.items.map((i) => ({ name: i.name, qty: i.quantity, price: Number(i.price) })),
         createdAt: o.createdAt.toISOString(),
         createdByAdmin: o.createdByAdmin

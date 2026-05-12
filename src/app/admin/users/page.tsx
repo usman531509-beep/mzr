@@ -56,7 +56,7 @@ export default async function UsersPage({ searchParams }: { searchParams: SP }) 
         orders: {
           orderBy: { createdAt: "desc" },
           select: {
-            id: true, status: true, total: true, createdAt: true,
+            id: true, orderNumber: true, status: true, total: true, createdAt: true,
             createdByAdminId: true,
             customerName: true, customerPhone: true, customerEmail: true,
             shippingAddress: true, shippingCity: true, shippingCountry: true,
@@ -169,6 +169,7 @@ export default async function UsersPage({ searchParams }: { searchParams: SP }) 
                         userName={u.name ?? u.email}
                         orders={u.orders.map((o) => ({
                           id: o.id,
+                          orderNumber: o.orderNumber,
                           status: o.status,
                           total: Number(o.total),
                           createdAt: o.createdAt.toISOString(),

@@ -496,7 +496,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
                   <TableRow><TableCell colSpan={4} className="text-center text-sm text-muted-foreground">No orders yet.</TableCell></TableRow>
                 ) : recentOrders.map((o) => (
                   <TableRow key={o.id}>
-                    <TableCell className="font-mono text-xs">{o.id.slice(0, 8)}…</TableCell>
+                    <TableCell className="font-mono text-xs">{o.orderNumber ?? `${o.id.slice(0, 8)}…`}</TableCell>
                     <TableCell>{o.customerName}</TableCell>
                     <TableCell><StatusBadge status={o.status} /></TableCell>
                     <TableCell className="text-right font-medium">{fmtMoney(Number(o.total))}</TableCell>

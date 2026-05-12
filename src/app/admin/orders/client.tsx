@@ -4,17 +4,22 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Eye, Plus, Search, ShieldCheck, X } from "lucide-react";
+import { Eye, FileText, Pencil, Plus, Printer, Search, ShieldCheck, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { Separator } from "@/components/ui/separator";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
@@ -25,12 +30,17 @@ import { fmtMoney } from "@/lib/format";
 
 type OrderRow = {
   id: string;
+  orderNumber: string | null;
   status: string;
   total: number;
   customer: string;
   email: string;
   phone: string;
   address: string;
+  shippingAddress: string;
+  shippingCity: string;
+  shippingCountry: string;
+  notes: string;
   items: { name: string; qty: number; price: number }[];
   createdAt: string;
   createdByAdmin: string | null;
@@ -49,6 +59,7 @@ const STATUS_TRIGGER: Record<string, string> = {
 export function OrdersClient({ initial }: { initial: OrderRow[] }) {
   const router = useRouter();
   const [open, setOpen] = useState<OrderRow | null>(null);
+  const [amending, setAmending] = useState<OrderRow | null>(null);
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
@@ -143,7 +154,7 @@ export function OrdersClient({ initial }: { initial: OrderRow[] }) {
                 </TableCell></TableRow>
               ) : filtered.map((o) => (
                 <TableRow key={o.id}>
-                  <TableCell className="font-mono text-xs">{o.id.slice(0, 8)}…</TableCell>
+                  <TableCell className="font-mono text-xs">{o.orderNumber ?? `${o.id.slice(0, 8)}…`}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span className="font-medium">{o.customer}</span>
@@ -187,9 +198,25 @@ export function OrdersClient({ initial }: { initial: OrderRow[] }) {
           {open && (
             <>
               <SheetHeader>
-                <SheetTitle>Order #{open.id.slice(0, 8)}</SheetTitle>
+                <SheetTitle>Order {open.orderNumber ?? `#${open.id.slice(0, 8)}`}</SheetTitle>
                 <SheetDescription>{new Date(open.createdAt).toLocaleString("en-GB")}</SheetDescription>
               </SheetHeader>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button asChild size="sm" variant="outline">
+                  <Link href={`/admin/orders/${open.id}/invoice`} target="_blank">
+                    <FileText className="h-3.5 w-3.5" /> View invoice
+                  </Link>
+                </Button>
+                <Button asChild size="sm" variant="outline">
+                  <Link href={`/admin/orders/${open.id}/invoice?autoprint=1`} target="_blank">
+                    <Printer className="h-3.5 w-3.5" /> Print invoice
+                  </Link>
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setAmending(open)}>
+                  <Pencil className="h-3.5 w-3.5" /> Amend
+                </Button>
+              </div>
 
               <div className="mt-5 space-y-5">
                 <div className="flex items-center justify-between">
@@ -239,6 +266,101 @@ export function OrdersClient({ initial }: { initial: OrderRow[] }) {
           )}
         </SheetContent>
       </Sheet>
+
+      <AmendDialog
+        order={amending}
+        onClose={() => setAmending(null)}
+        onSaved={() => { setAmending(null); router.refresh(); }}
+      />
+    </div>
+  );
+}
+
+function AmendDialog({
+  order, onClose, onSaved,
+}: {
+  order: OrderRow | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [form, setForm] = useState({
+    customerName: "", customerEmail: "", customerPhone: "",
+    shippingAddress: "", shippingCity: "", shippingCountry: "",
+    notes: "",
+  });
+  const [busy, setBusy] = useState(false);
+
+  // Re-seed when a different order is opened.
+  useMemo(() => {
+    if (order) {
+      setForm({
+        customerName: order.customer,
+        customerEmail: order.email,
+        customerPhone: order.phone,
+        shippingAddress: order.shippingAddress,
+        shippingCity: order.shippingCity,
+        shippingCountry: order.shippingCountry,
+        notes: order.notes,
+      });
+    }
+  }, [order]);
+
+  if (!order) return null;
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}/amend`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        toast.error(data.error ?? "Could not amend the order");
+        return;
+      }
+      toast.success("Order amended");
+      onSaved();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Amend order {order.orderNumber ?? `#${order.id.slice(0, 8)}`}</DialogTitle>
+          <DialogDescription>
+            Update the customer or shipping details. Line items are locked once an
+            order is placed.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="grid grid-cols-2 gap-3">
+          <Field label="Customer name" full><Input value={form.customerName} onChange={(e) => setForm({ ...form, customerName: e.target.value })} required /></Field>
+          <Field label="Email"><Input type="email" value={form.customerEmail} onChange={(e) => setForm({ ...form, customerEmail: e.target.value })} required /></Field>
+          <Field label="Phone"><Input value={form.customerPhone} onChange={(e) => setForm({ ...form, customerPhone: e.target.value })} required /></Field>
+          <Field label="Address" full><Input value={form.shippingAddress} onChange={(e) => setForm({ ...form, shippingAddress: e.target.value })} required /></Field>
+          <Field label="City"><Input value={form.shippingCity} onChange={(e) => setForm({ ...form, shippingCity: e.target.value })} required /></Field>
+          <Field label="Country"><Input value={form.shippingCountry} onChange={(e) => setForm({ ...form, shippingCountry: e.target.value })} required /></Field>
+          <Field label="Notes" full><Textarea rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></Field>
+          <DialogFooter className="col-span-2">
+            <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={busy}>Save changes</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Field({ label, children, full }: { label: string; children: React.ReactNode; full?: boolean }) {
+  return (
+    <div className={full ? "col-span-2 space-y-1.5" : "space-y-1.5"}>
+      <Label className="text-xs">{label}</Label>
+      {children}
     </div>
   );
 }

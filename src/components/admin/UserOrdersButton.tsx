@@ -21,6 +21,7 @@ export type UserOrderItem = {
 
 export type UserOrderRow = {
   id: string;
+  orderNumber?: string | null;
   status: "PENDING" | "PAID" | "SHIPPED" | "DELIVERED" | "CANCELLED" | string;
   total: number;
   createdAt: string;
@@ -119,7 +120,7 @@ export function UserOrdersButton({
               return (
                 <div key={o.id} className="rounded-lg border border-border bg-card/40">
                   <div className="flex flex-wrap items-center gap-2 border-b border-border/60 px-4 py-2.5">
-                    <span className="font-mono text-[11px] text-muted-foreground">#{o.id.slice(0, 8)}</span>
+                    <span className="font-mono text-[11px] text-muted-foreground">{o.orderNumber ?? `#${o.id.slice(0, 8)}`}</span>
                     <OrderStatusBadge status={o.status} />
                     {o.byAdmin && (
                       <Badge className="gap-1 bg-blue-500/15 text-blue-300 ring-1 ring-inset ring-blue-500/30 hover:bg-blue-500/15">
