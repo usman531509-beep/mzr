@@ -9,6 +9,10 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink, ShieldCheck, Truck } from "lucide-react";
 
+// Per-request render so each customer sees their own orders (and any tracking
+// info added since their last visit) without stale cached HTML.
+export const dynamic = "force-dynamic";
+
 export default async function OrdersPage() {
   const session = await auth();
   if (!session?.user) return null;
