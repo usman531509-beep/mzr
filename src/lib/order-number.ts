@@ -8,7 +8,7 @@ const START = 4000001;
 // same number.
 const LOCK_KEY = 7723184501;
 
-type Tx = Pick<typeof prisma, "order" | "$queryRaw">;
+type Tx = Pick<typeof prisma, "order" | "$executeRaw">;
 
 /**
  * Allocates the next human-readable order number ("MZR4000001"). Must be
@@ -16,8 +16,9 @@ type Tx = Pick<typeof prisma, "order" | "$queryRaw">;
  * can't both read the same MAX(seq).
  */
 export async function nextOrderNumber(tx: Tx): Promise<string> {
-  // Lock for the duration of the surrounding transaction.
-  await tx.$queryRaw`SELECT pg_advisory_xact_lock(${LOCK_KEY})`;
+  // Lock for the duration of the surrounding transaction. Use $executeRaw —
+  // pg_advisory_xact_lock returns void, which $queryRaw can't deserialize.
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${LOCK_KEY})`;
 
   const last = await tx.order.findFirst({
     where: { orderNumber: { startsWith: PREFIX } },
