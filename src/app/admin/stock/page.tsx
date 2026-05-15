@@ -28,14 +28,17 @@ export default async function StockPage({ searchParams }: { searchParams: SP }) 
   if (brandId) where.brandId = brandId;
   if (categoryId) where.categoryId = categoryId;
 
-  const [products, brands, categories, oosCount, lowList] = await Promise.all([
+  const [products, brands, categories, oosCount, lowList, totalProducts] = await Promise.all([
     prisma.product.findMany({
       where,
       orderBy: [{ stock: "asc" }, { name: "asc" }],
-      include: { brand: true, category: true },
+      include: {
+        brand:    { select: { name: true } },
+        category: { select: { name: true } },
+      },
     }),
-    prisma.brand.findMany({ orderBy: { name: "asc" } }),
-    prisma.category.findMany({ orderBy: { name: "asc" } }),
+    prisma.brand.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
     prisma.product.count({ where: { active: true, stock: 0 } }),
     // Low-stock count is computed from a comparison against another column,
     // which Prisma can't express directly; fetch the small set and count.
@@ -43,10 +46,10 @@ export default async function StockPage({ searchParams }: { searchParams: SP }) 
       where: { active: true, stock: { gt: 0 } },
       select: { id: true, stock: true, lowStockThreshold: true, price: true, costPrice: true },
     }),
+    prisma.product.count({ where: { active: true } }),
   ]);
 
   const lowCount = lowList.filter((p) => p.stock <= p.lowStockThreshold).length;
-  const totalProducts = await prisma.product.count({ where: { active: true } });
   const stockValueRetail = products.reduce((s, p) => s + Number(p.price) * p.stock, 0);
   const stockValueCost = products.reduce(
     (s, p) => s + (p.costPrice ? Number(p.costPrice) : 0) * p.stock,

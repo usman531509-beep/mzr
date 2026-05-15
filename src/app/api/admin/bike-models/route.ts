@@ -21,16 +21,33 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid" }, { status: 400 });
   const brand = await prisma.brand.findUnique({ where: { id: parsed.data.brandId } });
   if (!brand) return NextResponse.json({ error: "Brand not found" }, { status: 404 });
-  const model = await prisma.bikeModel.create({
-    data: {
-      name: parsed.data.name,
-      slug: slugify(`${brand.name}-${parsed.data.name}`),
-      brandId: parsed.data.brandId,
-      yearStart: parsed.data.yearStart,
-      yearEnd: parsed.data.yearEnd,
-      imageUrl: parsed.data.imageUrl || null,
-    },
-  });
+  // Include the year range in the slug so two models that share the same
+  // brand + name but cover different years don't collide on the unique
+  // `slug` column.
+  const slug = slugify(
+    `${brand.name}-${parsed.data.name}-${parsed.data.yearStart}-${parsed.data.yearEnd}`,
+  );
+  let model;
+  try {
+    model = await prisma.bikeModel.create({
+      data: {
+        name: parsed.data.name,
+        slug,
+        brandId: parsed.data.brandId,
+        yearStart: parsed.data.yearStart,
+        yearEnd: parsed.data.yearEnd,
+        imageUrl: parsed.data.imageUrl || null,
+      },
+    });
+  } catch (e) {
+    // P2002 = unique constraint violation. The constraint covers
+    // (brandId, name, yearStart, yearEnd) and (slug), so a duplicate trips
+    // it whenever the exact same model + year range already exists.
+    const msg = e instanceof Error && e.message.includes("Unique")
+      ? `A ${brand.name} ${parsed.data.name} already exists for ${parsed.data.yearStart}–${parsed.data.yearEnd}. Use a different year range.`
+      : "Could not create bike model";
+    return NextResponse.json({ error: msg }, { status: 409 });
+  }
   revalidateTag(NAV_CACHE_TAG);
   await logActivity(await auth(), {
     action: "created",

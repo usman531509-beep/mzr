@@ -41,8 +41,14 @@ export async function POST(req: Request) {
 
   let discounts = new Map<string, number>();
   if (target.tradeApproved) {
-    const rows = await prisma.tradeDiscount.findMany();
-    discounts = new Map(rows.map((r) => [r.categoryId, r.percent]));
+    const categoryIds = [...new Set(products.map((p) => p.categoryId))];
+    if (categoryIds.length > 0) {
+      const rows = await prisma.tradeDiscount.findMany({
+        where: { categoryId: { in: categoryIds } },
+        select: { categoryId: true, percent: true },
+      });
+      discounts = new Map(rows.map((r) => [r.categoryId, r.percent]));
+    }
   }
 
   const lines = items.map((i) => {

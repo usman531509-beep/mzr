@@ -4,7 +4,7 @@ import { CreateOrderForm } from "@/components/admin/CreateOrderForm";
 export const dynamic = "force-dynamic";
 
 export default async function AdminCreateOrderPage() {
-  const [users, products, brands, categories] = await Promise.all([
+  const [users, products, brands, categories, models, tradeRows] = await Promise.all([
     prisma.user.findMany({
       where: { active: true },
       orderBy: { name: "asc" },
@@ -23,13 +23,17 @@ export default async function AdminCreateOrderPage() {
         brandId: true, categoryId: true,
         brand: { select: { name: true } },
         category: { select: { name: true } },
+        compatibilities: { select: { bikeModelId: true, yearFrom: true, yearTo: true } },
       },
     }),
     prisma.brand.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
     prisma.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.bikeModel.findMany({
+      orderBy: [{ brandId: "asc" }, { name: "asc" }],
+      select: { id: true, name: true, brandId: true, yearStart: true, yearEnd: true },
+    }),
+    prisma.tradeDiscount.findMany({ select: { categoryId: true, percent: true } }),
   ]);
-
-  const tradeRows = await prisma.tradeDiscount.findMany();
   const discountByCategory = Object.fromEntries(tradeRows.map((r) => [r.categoryId, r.percent]));
 
   return (
@@ -65,9 +69,11 @@ export default async function AdminCreateOrderPage() {
           categoryId: p.categoryId,
           brand: p.brand.name,
           category: p.category.name,
+          fitments: p.compatibilities,
         }))}
         brands={brands}
         categories={categories}
+        models={models}
         discountByCategory={discountByCategory}
       />
     </div>

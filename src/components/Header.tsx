@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
-import { ChevronDown, LayoutDashboard, LogOut, ShieldCheck, ShoppingBag, User as UserIcon } from "lucide-react";
+import { ChevronDown, LayoutDashboard, LogOut, ShieldCheck, ShoppingBag, Truck, User as UserIcon } from "lucide-react";
 import { useCart } from "@/lib/cart-store";
 import { useWishlist } from "@/lib/wishlist-store";
 import { useOverlays } from "@/lib/overlays-store";
@@ -44,13 +45,20 @@ export function Header({
       {/* Desktop nav — hidden on mobile (mobile uses MobileBottomBar). */}
       <header className="sticky top-0 z-30 hidden border-b border-white/10 bg-ink lg:block">
         <div className="mx-auto flex h-16 max-w-site items-center gap-2 px-[var(--gutter)]">
-          {/* Home affordance — small "MZR" mark, no logo (the big logo lives in the hero) */}
+          {/* Home affordance — small logo mark (the big logo lives in the hero) */}
           <Link
             href="/"
-            className="mr-4 flex shrink-0 items-center font-head text-lg font-black uppercase tracking-wider text-foreground transition hover:text-primary"
+            className="mr-4 flex shrink-0 items-center transition hover:opacity-80"
             aria-label="MZR Spare — home"
           >
-            MZR
+            <Image
+              src="/logo.png"
+              alt="MZR Spare"
+              width={617}
+              height={405}
+              priority
+              className="h-10 w-auto"
+            />
           </Link>
 
           {/* Desktop nav */}
@@ -69,11 +77,11 @@ export function Header({
             ) : null}
             <SimpleLink href="/products?sort=new" label="New In" />
             <SimpleLink href="/products" label="All Products" />
-            <SimpleLink href="/trade-account" label="Trade" />
           </nav>
 
           {/* Right actions */}
           <div className="ml-auto flex items-center gap-1">
+            <Link href="/track" className="btn-trade mr-1">Track Order</Link>
             <Link href="/trade-account" className="btn-trade">Trade Account</Link>
 
             <ActionBtn label="Search" onClick={openSearch}>
@@ -134,6 +142,12 @@ export function Header({
                         <Link href="/account/orders" className="cursor-pointer">
                           <ShoppingBag className="h-4 w-4" />
                           My orders
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/track" className="cursor-pointer">
+                          <Truck className="h-4 w-4" />
+                          Track order
                         </Link>
                       </DropdownMenuItem>
                     </>

@@ -7,13 +7,18 @@ import { PromoRow } from "@/components/home/PromoRow";
 import { BrandsMarquee } from "@/components/home/BrandsMarquee";
 import { TrustStrip } from "@/components/home/TrustStrip";
 import { getTradeContext, tradePrice } from "@/lib/trade-pricing";
+import { getNavData } from "@/lib/nav-cache";
 
 // Per-request render so trade pricing reflects the current viewer.
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const trade = await getTradeContext();
-  const [featured, categories, brands, models] = await Promise.all([
+  // Brands / categories / models are loaded from the shared 5-min cache that
+  // already populates the header — avoids 3 duplicate Postgres queries per
+  // home page render.
+  const [trade, nav, featured] = await Promise.all([
+    getTradeContext(),
+    getNavData(),
     prisma.product.findMany({
       where: { featured: true, active: true },
       include: {
@@ -26,13 +31,8 @@ export default async function HomePage() {
       },
       take: 8,
     }),
-    prisma.category.findMany({ orderBy: { name: "asc" } }),
-    prisma.brand.findMany({ orderBy: { name: "asc" } }),
-    prisma.bikeModel.findMany({
-      orderBy: [{ brandId: "asc" }, { name: "asc" }],
-      select: { id: true, name: true, brandId: true, yearStart: true, yearEnd: true },
-    }),
   ]);
+  const { brands, models, categories } = nav;
 
   const empty =
     categories.length === 0 &&

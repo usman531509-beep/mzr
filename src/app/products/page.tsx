@@ -5,6 +5,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { CompactFilters } from "@/components/CompactFilters";
 import { Breadcrumbs, type Crumb } from "@/components/Breadcrumbs";
 import { getTradeContext, tradePrice } from "@/lib/trade-pricing";
+import { getNavData } from "@/lib/nav-cache";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { Prisma } from "@prisma/client";
@@ -85,8 +86,11 @@ export default async function ProductsPage({
   }
   if (and.length) where.AND = and;
 
-  const trade = await getTradeContext();
-  const [products, brands, allModels, allCategories, activeCategory, activeBrand] = await Promise.all([
+  // Brands / categories / models come from the 5-minute shared cache that the
+  // header already populates — saves three duplicate queries per page render.
+  const [trade, nav, products, activeCategory, activeBrand] = await Promise.all([
+    getTradeContext(),
+    getNavData(),
     prisma.product.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -100,15 +104,22 @@ export default async function ProductsPage({
       },
       take: 60,
     }),
-    prisma.brand.findMany({ orderBy: { name: "asc" } }),
-    prisma.bikeModel.findMany({
-      orderBy: [{ brandId: "asc" }, { name: "asc" }],
-      include: { brand: true },
-    }),
-    prisma.category.findMany({ orderBy: { name: "asc" } }),
-    categorySlug ? prisma.category.findUnique({ where: { slug: categorySlug } }) : null,
-    brandSlug ? prisma.brand.findUnique({ where: { slug: brandSlug } }) : null,
+    categorySlug
+      ? prisma.category.findUnique({ where: { slug: categorySlug }, select: { name: true, description: true } })
+      : null,
+    brandSlug
+      ? prisma.brand.findUnique({ where: { slug: brandSlug }, select: { name: true } })
+      : null,
   ]);
+  const brands = nav.brands;
+  const allCategories = nav.categories;
+  // CompactFilters expects each model to carry its brand's name+slug — enrich
+  // the lean cached models with the brand we already have in `nav.brands`.
+  const brandById = new Map(brands.map((b) => [b.id, { name: b.name, slug: b.slug }]));
+  const allModels = nav.models.map((m) => ({
+    ...m,
+    brand: brandById.get(m.brandId) ?? { name: "", slug: "" },
+  }));
 
   const heading = activeCategory?.name
     ? `${activeCategory.name} parts`

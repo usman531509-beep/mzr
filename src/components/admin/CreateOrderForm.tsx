@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus, Search, Trash2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
+import { AdminProductFinder, type FinderProduct } from "@/components/admin/AdminProductFinder";
 
 type UserOpt = {
   id: string; name: string; email: string; phone: string;
@@ -24,16 +25,18 @@ type ProductOpt = {
   price: number; stock: number; image?: string;
   brandId: string; categoryId: string;
   brand: string; category: string;
+  fitments: { bikeModelId: string; yearFrom: number; yearTo: number }[];
 };
 type Line = { productId: string; quantity: number };
 
 export function CreateOrderForm({
-  users, products, brands, categories, discountByCategory,
+  users, products, brands, categories, models, discountByCategory,
 }: {
   users: UserOpt[];
   products: ProductOpt[];
   brands: { id: string; name: string }[];
   categories: { id: string; name: string }[];
+  models: { id: string; name: string; brandId: string; yearStart: number; yearEnd: number }[];
   discountByCategory: Record<string, number>;
 }) {
   const router = useRouter();
@@ -67,29 +70,24 @@ export function CreateOrderForm({
     }
   };
 
-  const [q, setQ] = useState("");
-  const [brandFilter, setBrandFilter] = useState("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-
-  const filteredProducts = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    const matched = products.filter((p) => {
-      if (brandFilter !== "all" && p.brandId !== brandFilter) return false;
-      if (categoryFilter !== "all" && p.categoryId !== categoryFilter) return false;
-      if (!s) return true;
-      return (
-        p.name.toLowerCase().includes(s) ||
-        (p.sku ?? "").toLowerCase().includes(s) ||
-        (p.oemNumber ?? "").toLowerCase().includes(s) ||
-        p.brand.toLowerCase().includes(s) ||
-        p.category.toLowerCase().includes(s)
-      );
-    });
-    // Cap to keep the picker tidy, but show more once filters narrow the set.
-    return s || brandFilter !== "all" || categoryFilter !== "all"
-      ? matched.slice(0, 30)
-      : matched.slice(0, 12);
-  }, [products, q, brandFilter, categoryFilter]);
+  // Shape the products to AdminProductFinder's expected type.
+  const finderProducts = useMemo<FinderProduct[]>(
+    () => products.map((p) => ({
+      id: p.id,
+      name: p.name,
+      sku: p.sku,
+      oemNumber: p.oemNumber,
+      price: p.price,
+      stock: p.stock,
+      image: p.image ?? null,
+      brandId: p.brandId,
+      brandName: p.brand,
+      categoryId: p.categoryId,
+      categoryName: p.category,
+      fitments: p.fitments,
+    })),
+    [products],
+  );
 
   const [lines, setLines] = useState<Line[]>([]);
   const addLine = (productId: string) => {
@@ -214,71 +212,14 @@ export function CreateOrderForm({
 
         <Card>
           <CardContent className="space-y-3 p-5">
-            <div className="space-y-2">
-              <Label className="block text-xs">Add products</Label>
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="relative min-w-[200px] flex-1">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
-                    placeholder="Search by name, SKU, OEM, brand…"
-                    className="h-9 pl-8"
-                  />
-                </div>
-                <Select value={brandFilter} onValueChange={setBrandFilter}>
-                  <SelectTrigger className="h-9 w-[140px]"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All brands</SelectItem>
-                    {brands.map((b) => (
-                      <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="h-9 w-[160px]"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All categories</SelectItem>
-                    {categories.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid gap-2">
-              {filteredProducts.map((p) => {
-                const eff = priceFor(p);
-                const discounted = eff !== p.price;
-                return (
-                  <div key={p.id} className="flex items-center gap-3 rounded border border-border p-2">
-                    <ProductThumb src={p.image} alt={p.name} />
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium">{p.name}</div>
-                      <div className="text-[11px] text-muted-foreground">
-                        {p.brand} · {p.category} · {p.stock} in stock
-                      </div>
-                    </div>
-                    <div className="shrink-0 text-sm tabular-nums">
-                      {discounted ? (
-                        <>
-                          <span className="text-emerald-300">£{eff.toFixed(2)}</span>{" "}
-                          <span className="text-[11px] text-muted-foreground line-through">£{p.price.toFixed(2)}</span>
-                        </>
-                      ) : (
-                        <>£{p.price.toFixed(2)}</>
-                      )}
-                    </div>
-                    <Button type="button" size="sm" variant="outline" onClick={() => addLine(p.id)}>
-                      <Plus className="h-3.5 w-3.5" /> Add
-                    </Button>
-                  </div>
-                );
-              })}
-              {filteredProducts.length === 0 && (
-                <p className="text-sm text-muted-foreground">No products match.</p>
-              )}
-            </div>
+            <Label className="block text-xs">Add products</Label>
+            <AdminProductFinder
+              products={finderProducts}
+              brands={brands}
+              categories={categories}
+              models={models}
+              onAdd={(p) => addLine(p.id)}
+            />
           </CardContent>
         </Card>
       </div>

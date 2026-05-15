@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { signIn, getSession } from "next-auth/react";
 import { Briefcase, Loader2, ShieldCheck, User as UserIcon, ArrowRight } from "lucide-react";
 
 import { Breadcrumbs } from "@/components/Breadcrumbs";
@@ -15,42 +16,45 @@ import {
 import { Separator } from "@/components/ui/separator";
 
 export default function LoginPage() {
+  const router = useRouter();
   const sp = useSearchParams();
   // Middleware sends users here as ?callbackUrl=…
   const callbackUrl = sp.get("callbackUrl") || sp.get("from") || "";
-  const errorParam = sp.get("error");
 
-  // Hidden CSRF token — fetched on mount from NextAuth's csrf endpoint.
-  const [csrf, setCsrf] = useState("");
-  const [csrfReady, setCsrfReady] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/auth/csrf", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((d) => {
-        if (cancelled) return;
-        setCsrf(d.csrfToken);
-        setCsrfReady(true);
-      })
-      .catch(() => setCsrfReady(true)); // still let user submit; server will reject if needed
-    return () => { cancelled = true; };
-  }, []);
-
-  // Where to land after auth — /post-login decides admin vs storefront.
-  const postLoginUrl = `/post-login${callbackUrl ? `?to=${encodeURIComponent(callbackUrl)}` : ""}`;
-
-  // Demo-account autofill (controlled inputs).
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
   const fillDemo = (e: string, p: string) => { setEmail(e); setPassword(p); };
 
-  const errorMessage =
-    errorParam === "CredentialsSignin"
-      ? "Wrong email or password."
-      : errorParam
-        ? "Sign in failed. Please try again."
-        : null;
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await signIn("credentials", { email, password, redirect: false });
+      if (!res || res.error) {
+        setError("Wrong email or password.");
+        return;
+      }
+      // Pick the destination from the freshly-issued session so admins land
+      // straight on /admin without a trampoline route.
+      const session = await getSession();
+      const role = session?.user?.role;
+      const safeCallback = callbackUrl.startsWith("/") ? callbackUrl : "";
+      const dest =
+        safeCallback ||
+        (role === "ADMIN" || role === "MANAGER" || role === "STAFF" ? "/admin" : "/account");
+      router.replace(dest);
+    } catch {
+      setError("Sign in failed. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const errorMessage = error;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -68,13 +72,7 @@ export default function LoginPage() {
             <CardDescription>Sign in to manage your orders or admin panel.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form
-              method="POST"
-              action="/api/auth/callback/credentials"
-              className="space-y-4"
-            >
-              <input type="hidden" name="csrfToken" value={csrf} />
-              <input type="hidden" name="callbackUrl" value={postLoginUrl} />
+            <form onSubmit={submit} className="space-y-4">
               {errorMessage && (
                 <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                   {errorMessage}
@@ -98,7 +96,7 @@ export default function LoginPage() {
                   value={password} onChange={(e) => setPassword(e.target.value)} required
                 />
               </div>
-              <SubmitButton ready={csrfReady} />
+              <SubmitButton busy={busy} />
             </form>
           </CardContent>
           <CardFooter className="border-t border-border pt-4">
@@ -184,12 +182,12 @@ export default function LoginPage() {
   );
 }
 
-function SubmitButton({ ready }: { ready: boolean }) {
+function SubmitButton({ busy }: { busy: boolean }) {
   return (
-    <Button type="submit" className="w-full" disabled={!ready}>
-      {!ready ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-      {!ready ? "Loading…" : "Sign in"}
-      {ready && <ArrowRight className="h-3.5 w-3.5" />}
+    <Button type="submit" className="w-full" disabled={busy}>
+      {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+      {busy ? "Signing in…" : "Sign in"}
+      {!busy && <ArrowRight className="h-3.5 w-3.5" />}
     </Button>
   );
 }

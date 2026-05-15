@@ -196,7 +196,7 @@ export function CompactFilters({
             { value: "", label: "Any model" },
             ...filteredModels.map((m) => ({
               value: m.id,
-              label: brandSlug ? m.name : `${m.brand.name} ${m.name}`,
+              label: `${brandSlug ? m.name : `${m.brand.name} ${m.name}`} (${m.yearStart}–${m.yearEnd})`,
             })),
           ]}
           selected={modelId}

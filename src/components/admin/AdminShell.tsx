@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
   LayoutDashboard, Package, Layers, Tag, Bike, ShoppingCart, Users, Briefcase, Receipt, Boxes,
-  Activity,
+  Activity, Truck, ClipboardList, MapPin,
   Menu, ChevronLeft, ChevronDown, ExternalLink, Home, LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -52,6 +52,19 @@ const NAV = [
     ],
   },
   {
+    group: "Procurement",
+    items: [
+      { href: "/admin/suppliers",       label: "Suppliers",       icon: Truck },
+      { href: "/admin/purchase-orders", label: "Purchase Orders", icon: ClipboardList },
+    ],
+  },
+  {
+    group: "Shipping",
+    items: [
+      { href: "/admin/couriers", label: "Couriers", icon: MapPin },
+    ],
+  },
+  {
     group: "Audit",
     items: [
       { href: "/admin/activity", label: "Activity log", icon: Activity },
@@ -81,6 +94,9 @@ const HREF_TO_KEY: Record<string, ModuleKey> = {
   "/admin/users":           "users",
   "/admin/trade-requests":  "trade-requests",
   "/admin/trade-discounts": "trade-discounts",
+  "/admin/suppliers":       "suppliers",
+  "/admin/purchase-orders": "purchase-orders",
+  "/admin/couriers":        "couriers",
   "/admin/activity":        "activity",
 };
 
@@ -194,6 +210,9 @@ const ADMIN_LABELS: Record<string, string> = {
   "/admin/users":        "Users",
   "/admin/trade-requests": "Trade Requests",
   "/admin/trade-discounts": "Trade Discounts",
+  "/admin/suppliers":       "Suppliers",
+  "/admin/purchase-orders": "Purchase Orders",
+  "/admin/couriers":        "Couriers",
   "/admin/activity":        "Activity log",
 };
 

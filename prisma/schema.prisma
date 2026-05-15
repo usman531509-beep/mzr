@@ -31,6 +31,13 @@ enum TradeRequestStatus {
   REJECTED
 }
 
+enum PurchaseOrderStatus {
+  DRAFT
+  PLACED
+  RECEIVED
+  CANCELLED
+}
+
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
@@ -45,6 +52,7 @@ model User {
   ordersCreatedAsAdmin Order[] @relation("AdminCreatedOrders")
   expensesCreated      Expense[] @relation("AdminCreatedExpenses")
   activityLogs         ActivityLog[]
+  purchaseOrdersCreated PurchaseOrder[] @relation("AdminCreatedPOs")
   cart          Cart?
   wishlist      Wishlist?
   tradeApproved Boolean   @default(false)
@@ -93,7 +101,10 @@ model BikeModel {
   compatibilities ProductCompatibility[]
   createdAt     DateTime               @default(now())
 
-  @@unique([brandId, name])
+  // Same brand+model can repeat with different year ranges (e.g. "Nmax 125
+  // (2015-2020)" and "Nmax 125 (2021-2025)" as two separate rows), so the
+  // year range is part of the uniqueness key.
+  @@unique([brandId, name, yearStart, yearEnd])
   @@index([brandId])
 }
 
@@ -119,12 +130,14 @@ model Product {
   orderItems      OrderItem[]
   cartItems       CartItem[]
   wishlistItems   WishlistItem[]
+  purchaseOrderItems PurchaseOrderItem[]
   createdAt       DateTime               @default(now())
   updatedAt       DateTime               @updatedAt
 
   @@index([brandId])
   @@index([categoryId])
   @@index([featured])
+  @@index([active])
 }
 
 model ProductCompatibility {
@@ -139,6 +152,7 @@ model ProductCompatibility {
 
   @@unique([productId, bikeModelId, yearFrom, yearTo])
   @@index([bikeModelId, yearFrom, yearTo])
+  @@index([productId])
 }
 
 model Order {
@@ -160,6 +174,12 @@ model Order {
   shippingCity    String
   shippingCountry String
   notes       String?
+  // Shipment / tracking info. Captured when admin transitions the order
+  // into SHIPPED. Customer-visible on the account orders page.
+  courierId       String?
+  courier         Courier?    @relation(fields: [courierId], references: [id], onDelete: SetNull)
+  trackingNumber  String?
+  shippedAt       DateTime?
   // True once stock has been deducted for this order's items. Stock is
   // deducted on transition to DELIVERED and restored on transition away
   // from DELIVERED. Lets us avoid double-deduction if status flips back.
@@ -170,6 +190,7 @@ model Order {
 
   @@index([userId])
   @@index([status])
+  @@index([courierId])
 }
 
 model TradeDiscount {
@@ -317,4 +338,82 @@ model OrderItem {
   // when no discount was applied.
   originalPrice Decimal @db.Decimal(10, 2) @default(0)
   quantity      Int
+}
+
+model Supplier {
+  id          String   @id @default(cuid())
+  name        String
+  contactName String?
+  email       String?
+  phone       String?
+  address     String?
+  city        String?
+  country     String?
+  notes       String?
+  active      Boolean  @default(true)
+  purchaseOrders PurchaseOrder[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
+}
+
+model PurchaseOrder {
+  id               String                 @id @default(cuid())
+  // Human-readable number, e.g. "PO5000001". Allocated transactionally
+  // similar to Order.orderNumber.
+  poNumber         String                 @unique
+  supplierId       String
+  supplier         Supplier               @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  status           PurchaseOrderStatus    @default(DRAFT)
+  // Money totals snapshotted at create-time; updated on amend.
+  total            Decimal                @db.Decimal(10, 2)
+  notes            String?
+  expectedAt       DateTime?
+  receivedAt       DateTime?
+  // Tracks whether stock has been incremented for the items on this PO.
+  // Set true when status transitions into RECEIVED, false on transition out.
+  stockReceived    Boolean                @default(false)
+  createdByAdminId String?
+  createdByAdmin   User?                  @relation("AdminCreatedPOs", fields: [createdByAdminId], references: [id], onDelete: SetNull)
+  items            PurchaseOrderItem[]
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  @@index([supplierId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// Courier company that handles shipments. Admin maintains the list under
+// "Tracking" in the admin panel. `trackingUrl` is the carrier's public
+// tracking page; the customer-facing /track page uses it to redirect.
+model Courier {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  trackingUrl String
+  logoUrl     String?
+  active      Boolean  @default(true)
+  orders      Order[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([active])
+}
+
+model PurchaseOrderItem {
+  id        String   @id @default(cuid())
+  poId      String
+  po        PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  // Snapshot fields so the line survives even if the product is removed
+  // or renamed after the PO is recorded.
+  name      String
+  sku       String?
+  unitCost  Decimal  @db.Decimal(10, 2)
+  quantity  Int
+
+  @@index([productId])
 }

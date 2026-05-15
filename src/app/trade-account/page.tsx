@@ -48,7 +48,7 @@ export default async function TradeAccountPage() {
         <div className="mb-6">
           <h1 className="text-3xl font-bold tracking-tight lg:text-4xl">Open a trade account</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Workshops, dealers and fleet operators — apply for a trade account to get
+            Workshops, dealers and fleet operators apply for a trade account to get
             wholesale terms. We review every application and get back within 1–2 business days.
           </p>
         </div>

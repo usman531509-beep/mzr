@@ -17,13 +17,16 @@ export type ModuleKey =
   | "users"
   | "trade-requests"
   | "trade-discounts"
+  | "suppliers"
+  | "purchase-orders"
+  | "couriers"
   | "activity";
 
 export type ModuleDef = {
   key: ModuleKey;
   label: string;
   href: string;
-  group: "Overview" | "Catalogue" | "Sales" | "People" | "Trader management" | "Audit";
+  group: "Overview" | "Catalogue" | "Sales" | "People" | "Trader management" | "Procurement" | "Shipping" | "Audit";
 };
 
 export const ADMIN_MODULES: ModuleDef[] = [
@@ -38,6 +41,9 @@ export const ADMIN_MODULES: ModuleDef[] = [
   { key: "users",          label: "Users",          href: "/admin/users",            group: "People" },
   { key: "trade-requests", label: "Trade Requests", href: "/admin/trade-requests",   group: "Trader management" },
   { key: "trade-discounts",label: "Trade Discounts",href: "/admin/trade-discounts",  group: "Trader management" },
+  { key: "suppliers",      label: "Suppliers",      href: "/admin/suppliers",        group: "Procurement" },
+  { key: "purchase-orders",label: "Purchase Orders",href: "/admin/purchase-orders",  group: "Procurement" },
+  { key: "couriers",       label: "Couriers",       href: "/admin/couriers",         group: "Shipping" },
   { key: "activity",       label: "Activity log",   href: "/admin/activity",         group: "Audit" },
 ];
 

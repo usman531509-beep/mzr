@@ -55,13 +55,16 @@ export function BikeModelsClient({
       headers: { "content-type": "application/json" },
       body: JSON.stringify(form),
     });
+    const data = await res.json().catch(() => ({}));
     setBusy(false);
     if (res.ok) {
       toast.success("Bike model created");
       setForm({ ...form, name: "" });
       setOpen(false);
       router.refresh();
-    } else toast.error("Failed to create");
+    } else {
+      toast.error(data.error ?? "Failed to create");
+    }
   };
   const [editing, setEditing] = useState<Row | null>(null);
   const [editForm, setEditForm] = useState({
@@ -83,12 +86,15 @@ export function BikeModelsClient({
       headers: { "content-type": "application/json" },
       body: JSON.stringify(editForm),
     });
+    const data = await res.json().catch(() => ({}));
     setBusy(false);
     if (res.ok) {
       toast.success("Bike model updated");
       setEditing(null);
       router.refresh();
-    } else toast.error("Failed to update");
+    } else {
+      toast.error(data.error ?? "Failed to update");
+    }
   };
 
   const del = async (id: string, label: string) => {

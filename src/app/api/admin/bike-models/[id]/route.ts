@@ -37,19 +37,31 @@ export async function PATCH(
   if (d.yearStart !== undefined) data.yearStart = d.yearStart;
   if (d.yearEnd !== undefined)   data.yearEnd = d.yearEnd;
   if (d.imageUrl !== undefined)  data.imageUrl = d.imageUrl;
-  // Re-slug only when name or brand changed.
-  if (d.name !== undefined || d.brandId !== undefined) {
+  // Re-slug when name, brand, or year range changed. The year range is
+  // included so two same-named rows with different years don't collide
+  // on the unique `slug` column.
+  if (d.name !== undefined || d.brandId !== undefined || d.yearStart !== undefined || d.yearEnd !== undefined) {
     const brand = await prisma.brand.findUnique({
       where: { id: (d.brandId as string) ?? before.brandId },
       select: { name: true },
     });
-    data.slug = slugify(`${brand?.name ?? ""}-${d.name ?? before.name}`);
+    const ys = d.yearStart ?? before.yearStart;
+    const ye = d.yearEnd ?? before.yearEnd;
+    data.slug = slugify(`${brand?.name ?? ""}-${d.name ?? before.name}-${ys}-${ye}`);
   }
 
-  const updated = await prisma.bikeModel.update({
-    where: { id }, data,
-    include: { brand: { select: { name: true } } },
-  });
+  let updated;
+  try {
+    updated = await prisma.bikeModel.update({
+      where: { id }, data,
+      include: { brand: { select: { name: true } } },
+    });
+  } catch (e) {
+    const msg = e instanceof Error && e.message.includes("Unique")
+      ? "Another bike model already uses this brand, name and year range."
+      : "Could not update bike model";
+    return NextResponse.json({ error: msg }, { status: 409 });
+  }
   revalidateTag(NAV_CACHE_TAG);
 
   // Build a friendly diff: surface brand by name, not id.

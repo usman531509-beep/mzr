@@ -87,7 +87,7 @@ export function FinderSheet({
               Find your part
             </SheetTitle>
             <SheetDescription className="text-[11.5px]">
-              Pick your bike — we'll show only matching parts.
+              Pick your bike we'll show only matching parts.
             </SheetDescription>
           </SheetHeader>
         </div>
@@ -130,7 +130,7 @@ export function FinderSheet({
                 <SelectContent>
                   <SelectItem value={ANY}>Any model</SelectItem>
                   {filteredModels.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                    <SelectItem key={m.id} value={m.id}>{m.name} ({m.yearStart}–{m.yearEnd})</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

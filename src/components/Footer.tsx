@@ -39,6 +39,7 @@ export function Footer() {
             { l: "Sign in", h: "/login" },
             { l: "Create account", h: "/register" },
             { l: "My orders", h: "/account/orders" },
+            { l: "Track order", h: "/track" },
             { l: "Cart", h: "/cart" },
           ]} />
 

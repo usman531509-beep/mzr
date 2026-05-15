@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { Truck, ShieldCheck, RotateCcw, Package } from "lucide-react";
 
@@ -20,16 +21,30 @@ const PLACEHOLDER =
     `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'><rect width='4' height='3' fill='%231C1E21'/></svg>`,
   );
 
+// Shared per-request fetch: Next renders `generateMetadata` AND the page in
+// the same request, so wrapping in React.cache() collapses the two calls
+// into a single Prisma round-trip.
+const getProduct = cache((slug: string) =>
+  prisma.product.findUnique({
+    where: { slug },
+    include: {
+      brand: true,
+      category: true,
+      compatibilities: {
+        include: { bikeModel: { include: { brand: true } } },
+        orderBy: { yearTo: "desc" },
+      },
+    },
+  }),
+);
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const p = await prisma.product.findUnique({
-    where: { slug },
-    include: { brand: true, category: true },
-  });
+  const p = await getProduct(slug);
   if (!p) return { title: "Product not found" };
   return {
     title: `${p.name} — ${p.brand.name}`,
@@ -44,17 +59,7 @@ export default async function ProductPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const p = await prisma.product.findUnique({
-    where: { slug },
-    include: {
-      brand: true,
-      category: true,
-      compatibilities: {
-        include: { bikeModel: { include: { brand: true } } },
-        orderBy: { yearTo: "desc" },
-      },
-    },
-  });
+  const p = await getProduct(slug);
   if (!p || !p.active) notFound();
 
   const mainImg = p.images[0] ?? PLACEHOLDER;

@@ -1,11 +1,13 @@
+import Link from "next/link";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { fmtMoney } from "@/lib/format";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { ShieldCheck } from "lucide-react";
+import { ExternalLink, ShieldCheck, Truck } from "lucide-react";
 
 export default async function OrdersPage() {
   const session = await auth();
@@ -17,6 +19,7 @@ export default async function OrdersPage() {
     include: {
       items: true,
       createdByAdmin: { select: { name: true, email: true } },
+      courier: { select: { name: true, trackingUrl: true } },
     },
   });
 
@@ -66,6 +69,44 @@ export default async function OrdersPage() {
                     </li>
                   ))}
                 </ul>
+
+                {o.trackingNumber && o.courier && (() => {
+                  // Append the tracking number to the courier's tracking URL as
+                  // a path segment so the customer lands directly on the
+                  // shipment page (mirrors the /track flow).
+                  const n = encodeURIComponent(o.trackingNumber);
+                  const base = o.courier.trackingUrl;
+                  const trackHref = base.endsWith("/") ? `${base}${n}` : `${base}/${n}`;
+                  return (
+                    <>
+                      <Separator className="my-3" />
+                      <div className="rounded-md border border-border bg-muted/30 p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                              <Truck className="h-3.5 w-3.5" /> Tracking
+                            </div>
+                            <div className="mt-1 text-sm font-medium">{o.courier.name}</div>
+                            <div className="font-mono text-xs text-muted-foreground">{o.trackingNumber}</div>
+                          </div>
+                          <div className="flex flex-col items-end gap-1.5">
+                            <Button asChild size="sm" variant="outline">
+                              <a href={trackHref} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="h-3.5 w-3.5" /> Track on {o.courier.name}
+                              </a>
+                            </Button>
+                            <Link
+                              href={`/track?courier=${encodeURIComponent(o.courier.name)}&number=${encodeURIComponent(o.trackingNumber)}`}
+                              className="text-[11px] text-muted-foreground hover:text-foreground hover:underline"
+                            >
+                              Use tracking page →
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
 
                 <Separator className="my-3" />
 

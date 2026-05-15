@@ -6,6 +6,10 @@ import { logActivity } from "@/lib/activity-log";
 
 const schema = z.object({
   status: z.enum(["PENDING", "PAID", "SHIPPED", "DELIVERED", "CANCELLED"]),
+  // Optional shipment fields — required (and validated below) when status
+  // transitions into SHIPPED.
+  courierId: z.string().min(1).nullable().optional(),
+  trackingNumber: z.string().min(1).max(120).nullable().optional(),
 });
 
 export async function PATCH(
@@ -17,6 +21,8 @@ export async function PATCH(
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid" }, { status: 400 });
   const newStatus = parsed.data.status;
+  const courierId = parsed.data.courierId ?? null;
+  const trackingNumber = parsed.data.trackingNumber?.trim() || null;
 
   let prevStatus: string | undefined;
   try {
@@ -53,11 +59,35 @@ export async function PATCH(
         }
       }
 
+      // Build the shipment patch. Entering SHIPPED requires a courier + tracking
+      // number; leaving SHIPPED (or moving to CANCELLED) clears the shipment.
+      const shipmentData: Record<string, unknown> = {};
+      const enteringShipped = newStatus === "SHIPPED" && current.status !== "SHIPPED";
+      if (enteringShipped) {
+        if (!courierId || !trackingNumber) {
+          throw new Error("Courier and tracking number are required to mark as shipped");
+        }
+        const courier = await tx.courier.findUnique({ where: { id: courierId }, select: { id: true } });
+        if (!courier) throw new Error("Selected courier not found");
+        shipmentData.courierId = courierId;
+        shipmentData.trackingNumber = trackingNumber;
+        shipmentData.shippedAt = new Date();
+      } else if (newStatus === "CANCELLED") {
+        shipmentData.courierId = null;
+        shipmentData.trackingNumber = null;
+        shipmentData.shippedAt = null;
+      } else if (newStatus === "SHIPPED" && (courierId || trackingNumber)) {
+        // Already shipped — allow updating courier/tracking inline.
+        if (courierId) shipmentData.courierId = courierId;
+        if (trackingNumber) shipmentData.trackingNumber = trackingNumber;
+      }
+
       return tx.order.update({
         where: { id },
         data: {
           status: newStatus,
           stockDeducted: decrement ? true : increment ? false : current.stockDeducted,
+          ...shipmentData,
         },
       });
     });
@@ -68,7 +98,12 @@ export async function PATCH(
         moduleKey: "order",
         target: `Order ${updated.orderNumber ?? `#${updated.id.slice(0, 8)}`}`,
         targetId: updated.id,
-        meta: { changes: { status: { from: prevStatus, to: updated.status } } },
+        meta: {
+          changes: { status: { from: prevStatus, to: updated.status } },
+          ...(updated.status === "SHIPPED"
+            ? { courierId: updated.courierId, trackingNumber: updated.trackingNumber }
+            : {}),
+        },
       });
     }
     return NextResponse.json(updated);
