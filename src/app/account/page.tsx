@@ -8,6 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
+// Per-request render so each customer sees their own data; prevents Vercel
+// from accidentally caching a prerendered shell across users.
+export const dynamic = "force-dynamic";
+
 export default async function AccountOverview() {
   const session = await auth();
   if (!session?.user) return null;
