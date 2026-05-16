@@ -14,3 +14,4 @@ prisma/migrations/dev.db*
 public/uploads/*
 !public/uploads/.gitkeep
 wimbledon-motorbikes*.html
+.vercel
