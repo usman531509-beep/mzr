@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { signIn, getSession } from "next-auth/react";
 import { Briefcase, Loader2, ShieldCheck, User as UserIcon, ArrowRight } from "lucide-react";
 
@@ -16,7 +16,6 @@ import {
 import { Separator } from "@/components/ui/separator";
 
 export default function LoginPage() {
-  const router = useRouter();
   const sp = useSearchParams();
   // Middleware sends users here as ?callbackUrl=…
   const callbackUrl = sp.get("callbackUrl") || sp.get("from") || "";
@@ -46,7 +45,11 @@ export default function LoginPage() {
       const dest =
         safeCallback ||
         (role === "ADMIN" || role === "MANAGER" || role === "STAFF" ? "/admin" : "/account");
-      router.replace(dest);
+      // Hard navigation (not router.replace) so the browser fully commits the
+      // Set-Cookie response from signIn before the next request fires. With a
+      // soft navigation, middleware sometimes ran on the next route before the
+      // JWT cookie was readable and bounced the user back to /login.
+      window.location.href = dest;
     } catch {
       setError("Sign in failed. Please try again.");
     } finally {
