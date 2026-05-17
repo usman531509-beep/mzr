@@ -49,7 +49,7 @@ export function Header({
           <Link
             href="/"
             className="mr-4 flex shrink-0 items-center transition hover:opacity-80"
-            aria-label="MZR Spare — home"
+            aria-label="MZR Spare home"
           >
             <Image
               src="/logo.png"
@@ -57,7 +57,7 @@ export function Header({
               width={617}
               height={405}
               priority
-              className="h-10 w-auto"
+              className="h-16 w-auto"
             />
           </Link>
 

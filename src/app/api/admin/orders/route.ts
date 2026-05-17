@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity-log";
 import { nextOrderNumber } from "@/lib/order-number";
+import { consumeLayersFifo, getFifoRetailBreakdown, refreshProductRetail } from "@/lib/fifo";
 
 export const dynamic = "force-dynamic";
 
@@ -56,16 +57,41 @@ export async function POST(req: Request) {
     discounts = new Map(rows.map((r) => [r.categoryId, r.percent]));
   }
 
-  let total = 0;
-  const orderItemsCreate = data.items.map((i) => {
+  for (const i of data.items) {
     const p = products.find((x) => x.id === i.productId)!;
-    if (p.stock < i.quantity) throw new Error(`Insufficient stock for ${p.name}`);
-    const base = Number(p.price);
+    if (p.stock < i.quantity) {
+      return NextResponse.json({ error: `Insufficient stock for ${p.name}` }, { status: 400 });
+    }
+  }
+
+  // FIFO retail: split each cart line into one OrderItem per batch so each
+  // unit is billed at the retail of the batch it'll come from. Trade
+  // discount is applied per segment.
+  let total = 0;
+  const orderItemsCreate: Array<{
+    productId: string; name: string; price: number; originalPrice: number; quantity: number;
+  }> = [];
+  for (const i of data.items) {
+    const p = products.find((x) => x.id === i.productId)!;
+    const segments = await getFifoRetailBreakdown(prisma, {
+      productId: p.id,
+      qty: i.quantity,
+      fallbackRetail: Number(p.price),
+    });
     const pct = discounts.get(p.categoryId) ?? 0;
-    const price = pct > 0 ? +(base * (1 - pct / 100)).toFixed(2) : base;
-    total += price * i.quantity;
-    return { productId: p.id, name: p.name, price, originalPrice: base, quantity: i.quantity };
-  });
+    for (const seg of segments) {
+      const base = seg.unitRetail;
+      const price = pct > 0 ? +(base * (1 - pct / 100)).toFixed(2) : base;
+      total += price * seg.qty;
+      orderItemsCreate.push({
+        productId: p.id,
+        name: p.name,
+        price,
+        originalPrice: base,
+        quantity: seg.qty,
+      });
+    }
+  }
 
   const shipping = total > 200 ? 0 : 9.99;
   const tax = +(total * 0.05).toFixed(2);
@@ -93,14 +119,29 @@ export async function POST(req: Request) {
         include: { items: true },
       });
       // If the admin created the order with DELIVERED status, deduct stock
-      // immediately and stamp the flag. Any other starting status leaves
-      // stock untouched until a future PATCH moves it to DELIVERED.
-      if (created.status === "DELIVERED") {
-        for (const i of data.items) {
+      // immediately, consume FIFO layers for cost attribution, and stamp
+      // the flag. Any other starting status leaves stock untouched until a
+      // future PATCH moves it to DELIVERED.
+      // Reserve stock at create unless the admin explicitly marked the order
+      // CANCELLED on the way in. Older model only consumed at DELIVERED,
+      // which made the displayed catalogue price lag when a later order was
+      // entered before the prior one shipped — now FIFO advances immediately.
+      if (created.status !== "CANCELLED") {
+        const productIdsTouched = new Set<string>();
+        for (const oi of created.items) {
           await tx.product.update({
-            where: { id: i.productId },
-            data: { stock: { decrement: i.quantity } },
+            where: { id: oi.productId },
+            data: { stock: { decrement: oi.quantity } },
           });
+          await consumeLayersFifo(tx, {
+            orderItemId: oi.id,
+            productId: oi.productId,
+            qty: oi.quantity,
+          });
+          productIdsTouched.add(oi.productId);
+        }
+        for (const pid of productIdsTouched) {
+          await refreshProductRetail(tx, pid);
         }
         await tx.order.update({
           where: { id: created.id },

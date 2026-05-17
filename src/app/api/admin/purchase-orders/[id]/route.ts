@@ -48,34 +48,14 @@ export async function PATCH(
       }
       if (d.status !== undefined) data.status = d.status;
 
+      // PO is a procurement document only — status transitions don't touch
+      // stock or FIFO layers anymore. The receivedAt field is a timestamp
+      // for the document itself.
       const willBeReceived = d.status === "RECEIVED";
       const wasReceived = current.status === "RECEIVED";
-
-      // Stock applied on the way in, restored on the way out.
-      const apply = willBeReceived && !wasReceived && !current.stockReceived;
-      const restore = wasReceived && !willBeReceived && current.stockReceived;
-
-      if (apply) {
-        for (const it of current.items) {
-          if (it.productId) {
-            await tx.product.update({
-              where: { id: it.productId },
-              data: { stock: { increment: it.quantity } },
-            });
-          }
-        }
-        data.stockReceived = true;
+      if (willBeReceived && !wasReceived) {
         data.receivedAt = new Date();
-      } else if (restore) {
-        for (const it of current.items) {
-          if (it.productId) {
-            await tx.product.update({
-              where: { id: it.productId },
-              data: { stock: { decrement: it.quantity } },
-            });
-          }
-        }
-        data.stockReceived = false;
+      } else if (!willBeReceived && wasReceived) {
         data.receivedAt = null;
       }
 
@@ -117,15 +97,10 @@ export async function DELETE(
   const { id } = await ctx.params;
   const before = await prisma.purchaseOrder.findUnique({
     where: { id },
-    select: { poNumber: true, stockReceived: true },
+    select: { poNumber: true },
   });
   if (!before) return NextResponse.json({ ok: false }, { status: 404 });
-  if (before.stockReceived) {
-    return NextResponse.json(
-      { ok: false, error: "Can't delete a received PO. Cancel it instead." },
-      { status: 400 },
-    );
-  }
+  // POs don't affect stock anymore, so deletion is always safe.
   await prisma.purchaseOrder.delete({ where: { id } });
   await logActivity(session, {
     action: "deleted",

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { getTradeContext, tradePrice } from "@/lib/trade-pricing";
 import { nextOrderNumber } from "@/lib/order-number";
+import { consumeLayersFifo, getFifoRetailBreakdown, refreshProductRetail } from "@/lib/fifo";
 
 const schema = z.object({
   customerName: z.string().min(2),
@@ -72,27 +73,43 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unknown product in cart" }, { status: 400 });
   }
 
-  let total = 0;
-  const orderItemsCreate = data.items.map((i) => {
+  // Validate stock up front so we can fail fast before doing any layer reads.
+  for (const i of data.items) {
     const p = products.find((p) => p.id === i.productId)!;
     if (p.stock < i.quantity) {
-      throw new Error(`Insufficient stock for ${p.name}`);
+      return NextResponse.json({ error: `Insufficient stock for ${p.name}` }, { status: 400 });
     }
-    // Re-resolve the price server-side. For trade-approved users this applies
-    // the active discount for the product's category — we never trust client
-    // prices.
-    const tp = tradePrice(Number(p.price), p.categoryId, trade);
-    const originalPrice = Number(p.price);
-    const price = tp.percent > 0 ? tp.discounted : originalPrice;
-    total += price * i.quantity;
-    return {
+  }
+
+  // FIFO retail: a single cart line may span multiple batches, each with its
+  // own retail price. We split into one OrderItem per batch so customers
+  // pay the actual price for each unit (old units at old retail, new units
+  // at new retail). Trade discount applies per segment.
+  let total = 0;
+  const orderItemsCreate: Array<{
+    productId: string; name: string; price: number; originalPrice: number; quantity: number;
+  }> = [];
+  for (const i of data.items) {
+    const p = products.find((p) => p.id === i.productId)!;
+    const segments = await getFifoRetailBreakdown(prisma, {
       productId: p.id,
-      name: p.name,
-      price,
-      originalPrice,
-      quantity: i.quantity,
-    };
-  });
+      qty: i.quantity,
+      fallbackRetail: Number(p.price),
+    });
+    for (const seg of segments) {
+      const tp = tradePrice(seg.unitRetail, p.categoryId, trade);
+      const originalPrice = seg.unitRetail;
+      const price = tp.percent > 0 ? tp.discounted : originalPrice;
+      total += price * seg.qty;
+      orderItemsCreate.push({
+        productId: p.id,
+        name: p.name,
+        price,
+        originalPrice,
+        quantity: seg.qty,
+      });
+    }
+  }
   const shipping = total > 200 ? 0 : 9.99;
   const tax = +(total * 0.05).toFixed(2);
   const grand = +(total + shipping + tax).toFixed(2);
@@ -118,9 +135,32 @@ export async function POST(req: Request) {
         },
         include: { items: true },
       });
-      // Stock is NOT deducted here. It is deducted only when the order moves
-      // to DELIVERED (handled in /api/admin/orders/[id] PATCH). The earlier
-      // availability check above prevents over-selling against current stock.
+
+      // Reserve stock immediately at order create — the next order should
+      // see the next batch's price (FIFO) without having to wait for this
+      // one to be delivered. Each created OrderItem corresponds to one
+      // batch (after the FIFO retail split above) so we consume layers and
+      // decrement product.stock per item.
+      const productIdsTouched = new Set<string>();
+      for (const oi of created.items) {
+        await tx.product.update({
+          where: { id: oi.productId },
+          data: { stock: { decrement: oi.quantity } },
+        });
+        await consumeLayersFifo(tx, {
+          orderItemId: oi.id,
+          productId: oi.productId,
+          qty: oi.quantity,
+        });
+        productIdsTouched.add(oi.productId);
+      }
+      for (const pid of productIdsTouched) {
+        await refreshProductRetail(tx, pid);
+      }
+      await tx.order.update({
+        where: { id: created.id },
+        data: { stockDeducted: true },
+      });
       return created;
     });
     return NextResponse.json({ id: order.id });

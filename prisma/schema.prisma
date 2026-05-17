@@ -38,6 +38,16 @@ enum PurchaseOrderStatus {
   CANCELLED
 }
 
+// How a StockLayer entered inventory. PURCHASE_ORDER → linked to a PO line.
+// MANUAL_ADJUSTMENT → admin bumped stock directly (uses product's current
+// costPrice). INITIAL → synthetic backfill layer for stock that existed
+// before FIFO tracking was introduced.
+enum StockLayerSource {
+  PURCHASE_ORDER
+  MANUAL_ADJUSTMENT
+  INITIAL
+}
+
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
@@ -131,6 +141,7 @@ model Product {
   cartItems       CartItem[]
   wishlistItems   WishlistItem[]
   purchaseOrderItems PurchaseOrderItem[]
+  stockLayers     StockLayer[]
   createdAt       DateTime               @default(now())
   updatedAt       DateTime               @updatedAt
 
@@ -338,6 +349,10 @@ model OrderItem {
   // when no discount was applied.
   originalPrice Decimal @db.Decimal(10, 2) @default(0)
   quantity      Int
+  // FIFO cost attribution. Populated when the order transitions to
+  // DELIVERED — one row per StockLayer consumed by this line. Cleared
+  // (deleted) on transition out of DELIVERED.
+  costAllocations OrderItemCostAllocation[]
 }
 
 model Supplier {
@@ -414,6 +429,67 @@ model PurchaseOrderItem {
   sku       String?
   unitCost  Decimal  @db.Decimal(10, 2)
   quantity  Int
+  // The inventory layer created when this PO line was received. Set when
+  // the PO transitions to RECEIVED; deleted on transition out (if still
+  // unconsumed).
+  stockLayer StockLayer?
 
   @@index([productId])
+}
+
+// Inventory layer (FIFO batch). One row per distinct receipt event for a
+// product — typically created when a PO transitions to RECEIVED, but also
+// when admin manually bumps stock outside a PO. `qtyRemaining` is decremented
+// (in oldest-first order) as orders are delivered. The invariant we maintain
+// is: SUM(qtyRemaining) per product == product.stock.
+model StockLayer {
+  id              String           @id @default(cuid())
+  productId       String
+  product         Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  // Set when this layer was created from a PO line. Unique because each PO
+  // line creates at most one layer.
+  sourcePoItemId  String?          @unique
+  sourcePoItem    PurchaseOrderItem? @relation(fields: [sourcePoItemId], references: [id], onDelete: SetNull)
+  source          StockLayerSource
+  unitCost        Decimal          @db.Decimal(10, 2)
+  // The retail price this batch will sell at when it's the active (oldest
+  // in-stock) layer. The product's displayed Product.price always tracks
+  // the oldest active layer's unitRetail — so customers keep paying the
+  // old price while old stock remains, then switch to the new batch's
+  // price once it depletes. Nullable for legacy rows backfilled before
+  // this field existed.
+  unitRetail      Decimal?         @db.Decimal(10, 2)
+  qtyReceived     Int
+  qtyRemaining    Int
+  // Effective date for FIFO ordering. For PO layers this equals the PO's
+  // receivedAt (or now() on apply); for manual / initial layers it's the
+  // creation time. Kept as its own column so we don't rely on createdAt
+  // ordering when historical layers are backfilled out-of-order.
+  receivedAt      DateTime         @default(now())
+  notes           String?
+  allocations     OrderItemCostAllocation[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([productId, receivedAt])
+  @@index([receivedAt])
+  @@index([source])
+}
+
+// FIFO consumption record. Created when an order item is fulfilled — one
+// row per StockLayer the item drew from. Lets the dashboard compute actual
+// cost-of-goods-sold per item (instead of using the single mutable
+// Product.costPrice value). Deleted when the order moves OUT of DELIVERED.
+model OrderItemCostAllocation {
+  id             String     @id @default(cuid())
+  orderItemId    String
+  orderItem      OrderItem  @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  stockLayerId   String
+  stockLayer     StockLayer @relation(fields: [stockLayerId], references: [id], onDelete: Restrict)
+  qty            Int
+  unitCost       Decimal    @db.Decimal(10, 2)
+  createdAt      DateTime   @default(now())
+
+  @@index([orderItemId])
+  @@index([stockLayerId])
 }

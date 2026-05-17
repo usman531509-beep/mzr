@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Minus, Plus, Trash2 } from "lucide-react";
 import { fmtMoney } from "@/lib/format";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -174,7 +174,8 @@ export function NewPOForm({
                 </SelectContent>
               </Select>
               <p className="text-[10px] text-muted-foreground">
-                RECEIVED will bump stock for every linked product line.
+                Status is for tracking only — POs don&apos;t change stock. Log
+                arrived stock through &ldquo;Stock Received&rdquo;.
               </p>
             </div>
             <div className="space-y-1.5">
@@ -243,12 +244,31 @@ export function NewPOForm({
                       <div className="grid grid-cols-3 gap-2">
                         <div>
                           <Label className="mb-1 block text-[10px] uppercase text-muted-foreground">Qty</Label>
-                          <Input
-                            type="number" min={1}
-                            value={l.quantity}
-                            onChange={(e) => update(idx, { quantity: Math.max(1, Number(e.target.value)) })}
-                            className="h-8"
-                          />
+                          <div className="flex h-8 items-stretch overflow-hidden rounded-md border border-border">
+                            <Button
+                              type="button" size="icon" variant="ghost"
+                              onClick={() => update(idx, { quantity: Math.max(1, l.quantity - 1) })}
+                              disabled={l.quantity <= 1}
+                              className="h-full w-7 rounded-none border-r border-border"
+                              aria-label="Decrease quantity"
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <Input
+                              type="number" min={1}
+                              value={l.quantity}
+                              onChange={(e) => update(idx, { quantity: Math.max(1, Number(e.target.value)) })}
+                              className="h-full flex-1 rounded-none border-0 px-1 text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            />
+                            <Button
+                              type="button" size="icon" variant="ghost"
+                              onClick={() => update(idx, { quantity: l.quantity + 1 })}
+                              className="h-full w-7 rounded-none border-l border-border"
+                              aria-label="Increase quantity"
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
                         <div>
                           <Label className="mb-1 block text-[10px] uppercase text-muted-foreground">Unit cost</Label>

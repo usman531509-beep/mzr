@@ -67,10 +67,15 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
   const itemRangeFilter    = from && to ? { order: { is: { createdAt: { gte: from, lte: to } } } } : {};
   const expenseRangeFilter = from && to ? { paidOn: { gte: from, lte: to } } : {};
 
+  // All dashboard queries fire in parallel as a single batch — the second
+  // group used to wait for the first to finish, costing one extra DB
+  // round-trip (~70ms when the DB is in another region).
   const [
     productsCount, ordersCount, usersCount, revenueAgg,
     recentOrders, products, brands, categories, models,
     statusCounts, ordersForChart, orderItemsAgg,
+    expensesAgg, oosCount, stockProducts, pendingAgg,
+    lifetimeRevenueAgg, lifetimeOrdersCount,
   ] = await Promise.all([
     prisma.product.count(),
     // Financial metrics only count orders that have actually been delivered.
@@ -108,14 +113,12 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
       include: {
         order: { select: { status: true, createdAt: true } },
         product: { select: { categoryId: true, costPrice: true } },
+        // FIFO cost attribution: when populated, each row's qty × unitCost is
+        // the real cost of goods sold (instead of the single mutable
+        // Product.costPrice which doesn't reflect batch history).
+        costAllocations: { select: { qty: true, unitCost: true } },
       },
     }),
-  ]);
-
-  const [
-    expensesAgg, oosCount, stockProducts, pendingAgg,
-    lifetimeRevenueAgg, lifetimeOrdersCount,
-  ] = await Promise.all([
     prisma.expense.aggregate({
       where: expenseRangeFilter,
       _sum: { amount: true },
@@ -154,10 +157,12 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
   const totalExpenses = Number(expensesAgg._sum.amount ?? 0);
   const totalRevenue  = Number(revenueAgg._sum.total ?? 0);
 
-  // Gross profit = sum over non-cancelled order items of (price − cost) × qty.
-  // Items without a cost price set on the product are excluded so they don't
-  // skew the number — they're surfaced as "items missing cost".
-  // Tax is 5% of subtotal (matches the rate applied at checkout).
+  // Gross profit = revenue − cost of goods sold.
+  // Preferred cost source: per-item FIFO cost allocations (one row per
+  // StockLayer the item consumed). Fallback for items without any
+  // allocations yet (legacy data before FIFO was wired in, or items still
+  // pending): the product's current costPrice.
+  // Items with no costPrice and no allocations are surfaced as "missing cost".
   const TAX_RATE = 0.05;
   let grossProfit = 0;
   let itemsMissingCost = 0;
@@ -165,14 +170,24 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
   let unitsSold = 0;
   for (const it of orderItemsAgg) {
     if (it.order.status !== "DELIVERED") continue;
-    const line = Number(it.price) * it.quantity;
+    const sellPrice = Number(it.price);
+    const line = sellPrice * it.quantity;
     lineSubtotal += line;
     unitsSold += it.quantity;
+
+    if (it.costAllocations.length > 0) {
+      // FIFO path: each allocation already knows its consumed qty and the
+      // batch unitCost at the time the layer was received.
+      for (const a of it.costAllocations) {
+        grossProfit += (sellPrice - Number(a.unitCost)) * a.qty;
+      }
+      continue;
+    }
     if (it.product.costPrice == null) {
       itemsMissingCost += it.quantity;
       continue;
     }
-    grossProfit += (Number(it.price) - Number(it.product.costPrice)) * it.quantity;
+    grossProfit += (sellPrice - Number(it.product.costPrice)) * it.quantity;
   }
   const taxCollected = +(lineSubtotal * TAX_RATE).toFixed(2);
 

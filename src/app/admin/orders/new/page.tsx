@@ -1,4 +1,7 @@
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { Button } from "@/components/ui/button";
 import { CreateOrderForm } from "@/components/admin/CreateOrderForm";
 
 export const dynamic = "force-dynamic";
@@ -38,12 +41,19 @@ export default async function AdminCreateOrderPage() {
 
   return (
     <div className="space-y-4 p-4 lg:p-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Create Order</h1>
-        <p className="text-sm text-muted-foreground">
-          Build an order on behalf of a customer. The order will be tagged as
-          created by you and appear in the customer&apos;s order history.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Create Order</h1>
+          <p className="text-sm text-muted-foreground">
+            Build an order on behalf of a customer. The order will be tagged as
+            created by you and appear in the customer&apos;s order history.
+          </p>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/admin/orders" className="gap-2">
+            <ArrowLeft className="h-3.5 w-3.5" /> Back to orders
+          </Link>
+        </Button>
       </div>
 
       <CreateOrderForm

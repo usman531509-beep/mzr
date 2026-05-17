@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Minus, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -251,14 +251,34 @@ export function CreateOrderForm({
                           {discounted && <Badge className="ml-1 bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30 hover:bg-emerald-500/15">Trade</Badge>}
                         </div>
                       </div>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={p.stock}
-                        value={l.quantity}
-                        onChange={(e) => setQty(l.productId, Number(e.target.value))}
-                        className="h-8 w-16"
-                      />
+                      <div className="flex h-8 items-stretch overflow-hidden rounded-md border border-border">
+                        <Button
+                          type="button" size="icon" variant="ghost"
+                          onClick={() => setQty(l.productId, l.quantity - 1)}
+                          disabled={l.quantity <= 1}
+                          className="h-full w-7 rounded-none border-r border-border"
+                          aria-label="Decrease quantity"
+                        >
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={p.stock}
+                          value={l.quantity}
+                          onChange={(e) => setQty(l.productId, Number(e.target.value))}
+                          className="h-full w-12 rounded-none border-0 px-1 text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                        />
+                        <Button
+                          type="button" size="icon" variant="ghost"
+                          onClick={() => setQty(l.productId, l.quantity + 1)}
+                          disabled={l.quantity >= p.stock}
+                          className="h-full w-7 rounded-none border-l border-border"
+                          aria-label="Increase quantity"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      </div>
                       <div className="w-16 text-right text-sm tabular-nums">£{(eff * l.quantity).toFixed(2)}</div>
                       <Button type="button" size="icon" variant="ghost" onClick={() => remove(l.productId)} className="h-8 w-8 text-destructive hover:bg-destructive/10">
                         <Trash2 className="h-3.5 w-3.5" />

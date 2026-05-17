@@ -79,19 +79,17 @@ export async function POST(req: Request) {
       });
 
       // If admin created the PO directly as RECEIVED, increment stock for
-      // every line that's linked to a real product.
+      // every line that's linked to a real product AND create a FIFO
+      // inventory layer per line so the batch's cost is preserved.
+      // PO is purely a procurement record now — it never modifies stock or
+      // FIFO layers. Stock is managed independently through the "Stock
+      // Received" section (manual receipts) and order fulfilment. We still
+      // stamp receivedAt when the PO is created already in RECEIVED so the
+      // document shows when it was logged.
       if (status === "RECEIVED") {
-        for (const it of created.items) {
-          if (it.productId) {
-            await tx.product.update({
-              where: { id: it.productId },
-              data: { stock: { increment: it.quantity } },
-            });
-          }
-        }
         await tx.purchaseOrder.update({
           where: { id: created.id },
-          data: { stockReceived: true, receivedAt: new Date() },
+          data: { receivedAt: new Date() },
         });
       }
 

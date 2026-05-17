@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
     "build": "prisma db push --accept-data-loss --skip-generate && prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
@@ -12,7 +12,9 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
-    "db:backfill-order-numbers": "tsx scripts/backfill-order-numbers.ts"
+    "db:backfill-order-numbers": "tsx scripts/backfill-order-numbers.ts",
+    "db:backfill-stock-layers": "tsx scripts/backfill-stock-layers.ts",
+    "db:renumber-orders-pos": "tsx scripts/renumber-orders-pos.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

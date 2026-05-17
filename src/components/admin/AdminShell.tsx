@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
   LayoutDashboard, Package, Layers, Tag, Bike, ShoppingCart, Users, Briefcase, Receipt, Boxes,
-  Activity, Truck, ClipboardList, MapPin,
+  Activity, Truck, ClipboardList, MapPin, PackageCheck,
   Menu, ChevronLeft, ChevronDown, ExternalLink, Home, LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -56,6 +56,7 @@ const NAV = [
     items: [
       { href: "/admin/suppliers",       label: "Suppliers",       icon: Truck },
       { href: "/admin/purchase-orders", label: "Purchase Orders", icon: ClipboardList },
+      { href: "/admin/stock-received",  label: "Stock Received",  icon: PackageCheck },
     ],
   },
   {
@@ -96,6 +97,7 @@ const HREF_TO_KEY: Record<string, ModuleKey> = {
   "/admin/trade-discounts": "trade-discounts",
   "/admin/suppliers":       "suppliers",
   "/admin/purchase-orders": "purchase-orders",
+  "/admin/stock-received":  "stock-received",
   "/admin/couriers":        "couriers",
   "/admin/activity":        "activity",
 };
@@ -212,6 +214,7 @@ const ADMIN_LABELS: Record<string, string> = {
   "/admin/trade-discounts": "Trade Discounts",
   "/admin/suppliers":       "Suppliers",
   "/admin/purchase-orders": "Purchase Orders",
+  "/admin/stock-received":  "Stock Received",
   "/admin/couriers":        "Couriers",
   "/admin/activity":        "Activity log",
 };

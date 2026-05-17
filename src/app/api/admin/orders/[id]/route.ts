@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { logActivity } from "@/lib/activity-log";
+import { consumeLayersFifo, refreshProductRetail, reverseLayerConsumption } from "@/lib/fifo";
 
 const schema = z.object({
   status: z.enum(["PENDING", "PAID", "SHIPPED", "DELIVERED", "CANCELLED"]),
@@ -34,28 +35,39 @@ export async function PATCH(
       if (!current) throw new Error("Not found");
       prevStatus = current.status;
 
-      const wasDelivered = current.status === "DELIVERED";
-      const willBeDelivered = newStatus === "DELIVERED";
+      // Stock + FIFO move on the CANCELLED boundary:
+      //   - apply when an order leaves CANCELLED (or any legacy order with
+      //     stockDeducted=false moves to a non-cancelled status — covers
+      //     orders created before "reserve at create" landed)
+      //   - reverse when an order enters CANCELLED with stock still deducted
+      // All other transitions (PAID ↔ SHIPPED ↔ DELIVERED) leave stock and
+      // FIFO untouched: the units stay reserved for the customer for the
+      // full life of the order.
+      const goingToCancelled = newStatus === "CANCELLED";
+      const shouldApply   = !goingToCancelled && !current.stockDeducted;
+      const shouldReverse =  goingToCancelled &&  current.stockDeducted;
 
-      // Stock decrements happen on transition INTO delivered, increments on
-      // transition OUT of delivered. The stockDeducted flag is a safety net
-      // so we never double-deduct or double-restore.
-      const decrement = willBeDelivered && !wasDelivered && !current.stockDeducted;
-      const increment = wasDelivered && !willBeDelivered && current.stockDeducted;
-
-      if (decrement) {
+      if (shouldApply) {
         for (const it of current.items) {
           await tx.product.update({
             where: { id: it.productId },
             data: { stock: { decrement: it.quantity } },
           });
+          await consumeLayersFifo(tx, {
+            orderItemId: it.id,
+            productId: it.productId,
+            qty: it.quantity,
+          });
+          await refreshProductRetail(tx, it.productId);
         }
-      } else if (increment) {
+      } else if (shouldReverse) {
         for (const it of current.items) {
+          await reverseLayerConsumption(tx, { orderItemId: it.id });
           await tx.product.update({
             where: { id: it.productId },
             data: { stock: { increment: it.quantity } },
           });
+          await refreshProductRetail(tx, it.productId);
         }
       }
 
@@ -86,7 +98,7 @@ export async function PATCH(
         where: { id },
         data: {
           status: newStatus,
-          stockDeducted: decrement ? true : increment ? false : current.stockDeducted,
+          stockDeducted: shouldApply ? true : shouldReverse ? false : current.stockDeducted,
           ...shipmentData,
         },
       });

@@ -19,6 +19,7 @@ export type ModuleKey =
   | "trade-discounts"
   | "suppliers"
   | "purchase-orders"
+  | "stock-received"
   | "couriers"
   | "activity";
 
@@ -43,6 +44,7 @@ export const ADMIN_MODULES: ModuleDef[] = [
   { key: "trade-discounts",label: "Trade Discounts",href: "/admin/trade-discounts",  group: "Trader management" },
   { key: "suppliers",      label: "Suppliers",      href: "/admin/suppliers",        group: "Procurement" },
   { key: "purchase-orders",label: "Purchase Orders",href: "/admin/purchase-orders",  group: "Procurement" },
+  { key: "stock-received", label: "Stock Received", href: "/admin/stock-received",   group: "Procurement" },
   { key: "couriers",       label: "Couriers",       href: "/admin/couriers",         group: "Shipping" },
   { key: "activity",       label: "Activity log",   href: "/admin/activity",         group: "Audit" },
 ];

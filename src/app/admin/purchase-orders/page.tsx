@@ -35,8 +35,17 @@ export default async function PurchaseOrdersPage({ searchParams }: { searchParam
       where,
       orderBy: { createdAt: "desc" },
       include: {
-        supplier: { select: { id: true, name: true } },
-        items: { select: { id: true, name: true, quantity: true, unitCost: true } },
+        supplier: {
+          select: {
+            id: true, name: true, contactName: true, email: true,
+            phone: true, address: true, city: true, country: true,
+          },
+        },
+        items: {
+          select: {
+            id: true, name: true, sku: true, quantity: true, unitCost: true,
+          },
+        },
         createdByAdmin: { select: { name: true, email: true } },
       },
       take: 200,
@@ -50,7 +59,8 @@ export default async function PurchaseOrdersPage({ searchParams }: { searchParam
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Purchase Orders</h1>
           <p className="text-sm text-muted-foreground">
-            Record what you order from suppliers. Marking a PO as Received bumps stock automatically.
+            Record what you order from suppliers. Each PO is a printable
+            procurement document — it doesn&apos;t change stock on its own.
           </p>
         </div>
         <Button asChild>
@@ -82,10 +92,24 @@ export default async function PurchaseOrdersPage({ searchParams }: { searchParam
               poNumber: p.poNumber,
               supplierName: p.supplier.name,
               supplierId: p.supplier.id,
+              supplier: {
+                name: p.supplier.name,
+                contactName: p.supplier.contactName,
+                email: p.supplier.email,
+                phone: p.supplier.phone,
+                address: p.supplier.address,
+                city: p.supplier.city,
+                country: p.supplier.country,
+              },
               status: p.status,
               total: Number(p.total),
               itemCount: p.items.reduce((s, it) => s + it.quantity, 0),
-              items: p.items.map((it) => ({ name: it.name, quantity: it.quantity, unitCost: Number(it.unitCost) })),
+              items: p.items.map((it) => ({
+                name: it.name,
+                sku: it.sku,
+                quantity: it.quantity,
+                unitCost: Number(it.unitCost),
+              })),
               notes: p.notes,
               expectedAt: p.expectedAt?.toISOString() ?? null,
               receivedAt: p.receivedAt?.toISOString() ?? null,
