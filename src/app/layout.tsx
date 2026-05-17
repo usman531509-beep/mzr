@@ -4,6 +4,7 @@ import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 import { auth } from "@/auth";
 import { getNavData } from "@/lib/nav-cache";
+import { Topbar } from "@/components/Topbar";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { GlobalOverlays } from "@/components/GlobalOverlays";
@@ -53,6 +54,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <CartScope />
           <WishlistScope />
           <ForcePasswordChange />
+          {/* Topbar is a server component so it can fetch active offers and
+              hide itself site-wide when none are active. */}
+          <Topbar />
           <Header categories={navCategories} brands={navBrands} />
           <main className="flex-1">{children}</main>
           <Footer />

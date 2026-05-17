@@ -7,7 +7,6 @@ import { ChevronDown, LayoutDashboard, LogOut, ShieldCheck, ShoppingBag, Truck, 
 import { useCart } from "@/lib/cart-store";
 import { useWishlist } from "@/lib/wishlist-store";
 import { useOverlays } from "@/lib/overlays-store";
-import { Topbar } from "@/components/Topbar";
 import { MegaMenu, type MegaColumn } from "@/components/MegaMenu";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
@@ -40,8 +39,6 @@ export function Header({
 
   return (
     <>
-      <Topbar />
-
       {/* Desktop nav — hidden on mobile (mobile uses MobileBottomBar). */}
       <header className="sticky top-0 z-30 hidden border-b border-white/10 bg-ink lg:block">
         <div className="mx-auto flex h-16 max-w-site items-center gap-2 px-[var(--gutter)]">

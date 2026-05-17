@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
   LayoutDashboard, Package, Layers, Tag, Bike, ShoppingCart, Users, Briefcase, Receipt, Boxes,
-  Activity, Truck, ClipboardList, MapPin, PackageCheck,
+  Activity, Truck, ClipboardList, MapPin, PackageCheck, Megaphone,
   Menu, ChevronLeft, ChevronDown, ExternalLink, Home, LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -35,6 +35,12 @@ const NAV = [
     items: [
       { href: "/admin/orders",   label: "Orders",   icon: ShoppingCart },
       { href: "/admin/expenses", label: "Expenses", icon: Receipt },
+    ],
+  },
+  {
+    group: "Marketing",
+    items: [
+      { href: "/admin/offers", label: "Offers", icon: Megaphone },
     ],
   },
   {
@@ -92,6 +98,7 @@ const HREF_TO_KEY: Record<string, ModuleKey> = {
   "/admin/bike-models":     "bike-models",
   "/admin/orders":          "orders",
   "/admin/expenses":        "expenses",
+  "/admin/offers":          "offers",
   "/admin/users":           "users",
   "/admin/trade-requests":  "trade-requests",
   "/admin/trade-discounts": "trade-discounts",
@@ -209,6 +216,7 @@ const ADMIN_LABELS: Record<string, string> = {
   "/admin/bike-models":  "Bike Models",
   "/admin/orders":       "Orders",
   "/admin/expenses":     "Expenses",
+  "/admin/offers":       "Offers",
   "/admin/users":        "Users",
   "/admin/trade-requests": "Trade Requests",
   "/admin/trade-discounts": "Trade Discounts",
@@ -236,9 +244,6 @@ function adminCrumbs(pathname: string): Crumb[] {
 function SidebarHeader({ collapsed }: { collapsed: boolean }) {
   return (
     <div className="flex h-14 items-center gap-2.5 px-4">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
-        <span className="font-head font-black">M</span>
-      </div>
       {!collapsed && (
         <div className="leading-tight">
           <div className="font-head text-sm font-bold uppercase tracking-wider">MZR Admin</div>

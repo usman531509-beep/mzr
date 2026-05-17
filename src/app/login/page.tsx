@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { signIn, getSession } from "next-auth/react";
 import { Briefcase, Loader2, ShieldCheck, User as UserIcon, ArrowRight } from "lucide-react";
@@ -67,14 +68,21 @@ export default function LoginPage() {
       <div className="mx-auto grid w-full max-w-5xl gap-8 px-4 pb-12 pt-6 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:px-6 lg:py-12">
         {/* Left: form */}
         <Card className="w-full">
-          <CardHeader>
-            <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <span className="font-head text-lg font-black">M</span>
-            </div>
+          <CardHeader className="items-center space-y-1 pb-4 pt-4 text-center">
+            <Link href="/" className="inline-flex items-center transition hover:opacity-80" aria-label="MZR Spare — home">
+              <Image
+                src="/logo.png"
+                alt="MZR Spare"
+                width={617}
+                height={405}
+                priority
+                className="h-24 w-auto"
+              />
+            </Link>
             <CardTitle className="text-2xl">Welcome back</CardTitle>
             <CardDescription>Sign in to manage your orders or admin panel.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-2">
             <form onSubmit={submit} className="space-y-4">
               {errorMessage && (
                 <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">

@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus, MoreHorizontal, Pencil, Trash2, ExternalLink, Search } from "lucide-react";
+import { Plus, MoreHorizontal, Pencil, Trash2, ExternalLink, Search, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -38,20 +38,72 @@ export function ProductsPageClient({
   const [editing, setEditing] = useState<DashboardProduct | undefined>();
   const [q, setQ] = useState("");
   const [filterCat, setFilterCat] = useState("all");
+  const [filterBrand, setFilterBrand] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [filterStock, setFilterStock] = useState("all");
+  const [sortBy, setSortBy] = useState<
+    "newest" | "oldest" | "name-asc" | "name-desc" |
+    "price-asc" | "price-desc" | "stock-asc" | "stock-desc"
+  >("newest");
 
-  const filtered = products.filter((p) => {
-    if (filterCat !== "all" && p.categorySlug !== filterCat) return false;
-    if (filterStatus === "active" && !p.active) return false;
-    if (filterStatus === "inactive" && p.active) return false;
-    if (filterStatus === "featured" && !p.featured) return false;
-    if (filterStatus === "out" && p.stock > 0) return false;
-    if (q) {
-      const s = q.toLowerCase();
-      if (!p.name.toLowerCase().includes(s) && !p.brand.toLowerCase().includes(s)) return false;
+  const anyFilter =
+    !!q || filterCat !== "all" || filterBrand !== "all" ||
+    filterStatus !== "all" || filterStock !== "all" || sortBy !== "newest";
+
+  const resetFilters = () => {
+    setQ("");
+    setFilterCat("all");
+    setFilterBrand("all");
+    setFilterStatus("all");
+    setFilterStock("all");
+    setSortBy("newest");
+  };
+
+  // Smart search: split the query into tokens and require each token to be
+  // found somewhere in the product's haystack (name, brand, category, SKU,
+  // OEM number). Lets admins type "honda brk" or "BRK-35235" and have the
+  // right rows surface.
+  const filtered = useMemo(() => {
+    const tokens = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const LOW_STOCK_THRESHOLD = 5;
+
+    const matched = products.filter((p) => {
+      if (filterCat !== "all" && p.categorySlug !== filterCat) return false;
+      if (filterBrand !== "all" && p.brandId !== filterBrand) return false;
+      if (filterStatus === "active"   && !p.active)   return false;
+      if (filterStatus === "inactive" &&  p.active)   return false;
+      if (filterStatus === "featured" && !p.featured) return false;
+      if (filterStock === "in"  && p.stock <= 0) return false;
+      if (filterStock === "out" && p.stock !== 0) return false;
+      if (filterStock === "low" && (p.stock <= 0 || p.stock > LOW_STOCK_THRESHOLD)) return false;
+
+      if (tokens.length > 0) {
+        const haystack = [
+          p.name, p.brand, p.category,
+          p.sku ?? "", p.oemNumber ?? "",
+        ].join(" ").toLowerCase();
+        for (const t of tokens) {
+          if (!haystack.includes(t)) return false;
+        }
+      }
+      return true;
+    });
+
+    // Sort. We keep "newest" as the default — the parent already sorted
+    // by createdAt desc, so it's just the input order.
+    if (sortBy === "newest") return matched;
+    const sorted = [...matched];
+    switch (sortBy) {
+      case "oldest":     sorted.reverse(); break;
+      case "name-asc":   sorted.sort((a, b) => a.name.localeCompare(b.name)); break;
+      case "name-desc":  sorted.sort((a, b) => b.name.localeCompare(a.name)); break;
+      case "price-asc":  sorted.sort((a, b) => Number(a.price) - Number(b.price)); break;
+      case "price-desc": sorted.sort((a, b) => Number(b.price) - Number(a.price)); break;
+      case "stock-asc":  sorted.sort((a, b) => a.stock - b.stock); break;
+      case "stock-desc": sorted.sort((a, b) => b.stock - a.stock); break;
     }
-    return true;
-  });
+    return sorted;
+  }, [products, q, filterCat, filterBrand, filterStatus, filterStock, sortBy]);
 
   const del = async (id: string, name: string) => {
     if (!confirm(`Delete "${name}"?`)) return;
@@ -77,28 +129,76 @@ export function ProductsPageClient({
       <Card>
         <CardContent className="p-4">
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <div className="relative min-w-[220px] flex-1">
+            <div className="relative min-w-[240px] flex-1 max-w-md">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Search by name or brand…" value={q} onChange={(e) => setQ(e.target.value)} className="pl-8" />
+              <Input
+                placeholder="Name, brand, category, SKU, OEM…"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                className="pl-8 pr-8"
+              />
+              {q && (
+                <button
+                  type="button"
+                  onClick={() => setQ("")}
+                  className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                  aria-label="Clear search"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
             </div>
             <Select value={filterCat} onValueChange={setFilterCat}>
-              <SelectTrigger className="w-[180px]"><SelectValue placeholder="Category" /></SelectTrigger>
+              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Category" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All categories</SelectItem>
                 {categories.map((c) => <SelectItem key={c.id} value={c.slug}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
+            <Select value={filterBrand} onValueChange={setFilterBrand}>
+              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Brand" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All brands</SelectItem>
+                {brands.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={filterStock} onValueChange={setFilterStock}>
+              <SelectTrigger className="w-[150px]"><SelectValue placeholder="Stock" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All stock</SelectItem>
+                <SelectItem value="in">In stock</SelectItem>
+                <SelectItem value="low">Low (≤ 5)</SelectItem>
+                <SelectItem value="out">Out of stock</SelectItem>
+              </SelectContent>
+            </Select>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectTrigger className="w-[150px]"><SelectValue placeholder="Status" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All statuses</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="inactive">Inactive</SelectItem>
                 <SelectItem value="featured">Featured</SelectItem>
-                <SelectItem value="out">Out of stock</SelectItem>
               </SelectContent>
             </Select>
-            <div className="text-[11px] text-muted-foreground">
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+              <SelectTrigger className="w-[170px]"><SelectValue placeholder="Sort" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest first</SelectItem>
+                <SelectItem value="oldest">Oldest first</SelectItem>
+                <SelectItem value="name-asc">Name A → Z</SelectItem>
+                <SelectItem value="name-desc">Name Z → A</SelectItem>
+                <SelectItem value="price-asc">Price low → high</SelectItem>
+                <SelectItem value="price-desc">Price high → low</SelectItem>
+                <SelectItem value="stock-asc">Stock low → high</SelectItem>
+                <SelectItem value="stock-desc">Stock high → low</SelectItem>
+              </SelectContent>
+            </Select>
+            {anyFilter && (
+              <Button variant="ghost" size="sm" onClick={resetFilters} className="h-9 px-2 text-[11px] text-muted-foreground">
+                Clear filters
+              </Button>
+            )}
+            <div className="ml-auto text-[11px] text-muted-foreground">
               {filtered.length} of {products.length}
             </div>
           </div>
@@ -139,7 +239,12 @@ export function ProductsPageClient({
                             {p.featured && <Badge variant="warning" className="text-[9px]">Featured</Badge>}
                             {!p.active && <Badge variant="secondary" className="text-[9px]">Inactive</Badge>}
                           </div>
-                          {p.sku && <div className="text-[11px] text-muted-foreground">SKU: {p.sku}</div>}
+                          {(p.sku || p.oemNumber) && (
+                            <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
+                              {p.sku && <span>SKU: <span className="font-mono">{p.sku}</span></span>}
+                              {p.oemNumber && <span>OEM: <span className="font-mono">{p.oemNumber}</span></span>}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </TableCell>

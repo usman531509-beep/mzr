@@ -400,6 +400,20 @@ model PurchaseOrder {
   @@index([createdAt])
 }
 
+// Promotional message rendered in the storefront top bar. Admin maintains
+// a small list; the top bar is hidden entirely when no Offer.active is true.
+model Offer {
+  id        String   @id @default(cuid())
+  text      String
+  icon      String?  // optional emoji / unicode glyph to render before the text
+  active    Boolean  @default(true)
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active, position])
+}
+
 // Courier company that handles shipments. Admin maintains the list under
 // "Tracking" in the admin panel. `trackingUrl` is the carrier's public
 // tracking page; the customer-facing /track page uses it to redirect.

@@ -117,9 +117,6 @@ function accountCrumbs(pathname: string): Crumb[] {
 function SidebarHeader({ collapsed }: { collapsed: boolean }) {
   return (
     <div className="flex h-14 items-center gap-2.5 px-4">
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
-        <span className="font-head font-black">M</span>
-      </div>
       {!collapsed && (
         <div className="leading-tight">
           <div className="font-head text-sm font-bold uppercase tracking-wider">MZR Account</div>
