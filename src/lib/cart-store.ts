@@ -144,7 +144,9 @@ useCart.subscribe((state) => {
 export const cartTotals = (items: CartItem[]) => {
   const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
   const shipping = items.length === 0 ? 0 : subtotal > 200 ? 0 : 9.99;
-  const tax = +(subtotal * 0.05).toFixed(2);
+  // VAT (20%) is charged on the gross sale — i.e. goods + shipping. The
+  // `tax` key is kept for backwards compatibility with existing consumers.
+  const tax = +((subtotal + shipping) * 0.20).toFixed(2);
   const total = +(subtotal + shipping + tax).toFixed(2);
   return { subtotal, shipping, tax, total };
 };

@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
   LayoutDashboard, Package, Layers, Tag, Bike, ShoppingCart, Users, Briefcase, Receipt, Boxes,
-  Activity, Truck, ClipboardList, MapPin, PackageCheck, Megaphone,
-  Menu, ChevronLeft, ChevronDown, ExternalLink, Home, LogOut,
+  Activity, Truck, ClipboardList, MapPin, PackageCheck, Megaphone, CreditCard,
+  Menu, ChevronLeft, ChevronDown, Home, LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Breadcrumbs, type Crumb } from "@/components/Breadcrumbs";
@@ -34,6 +34,7 @@ const NAV = [
     group: "Sales",
     items: [
       { href: "/admin/orders",   label: "Orders",   icon: ShoppingCart },
+      { href: "/admin/payments", label: "Payments", icon: CreditCard },
       { href: "/admin/expenses", label: "Expenses", icon: Receipt },
     ],
   },
@@ -97,6 +98,7 @@ const HREF_TO_KEY: Record<string, ModuleKey> = {
   "/admin/brands":          "brands",
   "/admin/bike-models":     "bike-models",
   "/admin/orders":          "orders",
+  "/admin/payments":        "payments",
   "/admin/expenses":        "expenses",
   "/admin/offers":          "offers",
   "/admin/users":           "users",
@@ -145,7 +147,7 @@ export function AdminShell({
   const filteredNav = filterNav(role, permissions);
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
+    <div className="portal-scope flex min-h-screen bg-background text-foreground">
       {/* Desktop sidebar */}
       <aside
         className={cn(
@@ -215,6 +217,7 @@ const ADMIN_LABELS: Record<string, string> = {
   "/admin/brands":       "Brands",
   "/admin/bike-models":  "Bike Models",
   "/admin/orders":       "Orders",
+  "/admin/payments":     "Payments",
   "/admin/expenses":     "Expenses",
   "/admin/offers":       "Offers",
   "/admin/users":        "Users",

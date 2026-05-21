@@ -2,8 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Minus, Plus, Trash2 } from "lucide-react";
+import { Check, Copy, Loader2, Minus, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,10 +51,19 @@ export function CreateOrderForm({
 
   const [shipping, setShipping] = useState({
     customerName: "", customerEmail: "", customerPhone: "",
-    shippingAddress: "", shippingCity: "", shippingCountry: "",
+    shippingAddress: "",       // line 1
+    shippingAddressLine2: "",  // optional
+    shippingCity: "",
+    shippingCounty: "",        // optional (UK)
+    shippingPostcode: "",
+    shippingCountry: "United Kingdom",
     notes: "",
   });
   const [status, setStatus] = useState("PENDING");
+  // Optional overrides admin can apply when placing the order. Blank means
+  // "use the default" — empty strings flow through as undefined to the API.
+  const [shippingOverride, setShippingOverride] = useState<string>("");
+  const [discountInput, setDiscountInput] = useState<string>("");
 
   // Auto-fill shipping when a user is selected.
   const onPickUser = (id: string) => {
@@ -117,9 +129,20 @@ export function CreateOrderForm({
     const p = productMap.get(l.productId);
     return p ? s + priceFor(p) * l.quantity : s;
   }, 0);
-  const shippingFee = lines.length === 0 ? 0 : subtotal > 200 ? 0 : 9.99;
-  const tax = +(subtotal * 0.05).toFixed(2);
-  const grand = +(subtotal + shippingFee + tax).toFixed(2);
+  const autoShipping = lines.length === 0 ? 0 : subtotal > 200 ? 0 : 9.99;
+  const parsedShippingOverride = parseFloat(shippingOverride);
+  const shippingFee = shippingOverride !== "" && Number.isFinite(parsedShippingOverride) && parsedShippingOverride >= 0
+    ? +parsedShippingOverride.toFixed(2)
+    : autoShipping;
+  const parsedDiscount = parseFloat(discountInput);
+  const discount = discountInput !== "" && Number.isFinite(parsedDiscount) && parsedDiscount >= 0
+    ? +parsedDiscount.toFixed(2)
+    : 0;
+  // VAT (20%) on the net taxable amount: goods + shipping − discount.
+  // A discount on the bill therefore also reduces the VAT charged.
+  const taxable = Math.max(0, subtotal + shippingFee - discount);
+  const tax = +(taxable * 0.20).toFixed(2);
+  const grand = +(taxable + tax).toFixed(2);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,6 +159,14 @@ export function CreateOrderForm({
           ...shipping,
           status,
           items: lines,
+          // Only send overrides when admin actually typed a value, so the
+          // API falls back to its own defaults when blank.
+          ...(shippingOverride !== "" && Number.isFinite(parsedShippingOverride)
+            ? { shippingFee: parsedShippingOverride }
+            : {}),
+          ...(discountInput !== "" && Number.isFinite(parsedDiscount) && parsedDiscount > 0
+            ? { discount: parsedDiscount }
+            : {}),
         }),
       });
       const data = await res.json();
@@ -144,9 +175,38 @@ export function CreateOrderForm({
         return;
       }
       toast.success("Order created");
+      // If the order is PENDING the API hands back a relative pay path. Show
+      // it in a modal with copy + go-to-order buttons before navigating away;
+      // pre-paid orders skip straight to the orders list.
+      if (data.payPath) {
+        const origin = typeof window !== "undefined" ? window.location.origin : "";
+        setPayLink({
+          url: `${origin}${data.payPath}`,
+          orderNumber: data.orderNumber ?? null,
+          orderId: data.id,
+        });
+        return;
+      }
       router.push("/admin/orders");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const [payLink, setPayLink] = useState<
+    | { url: string; orderNumber: string | null; orderId: string }
+    | null
+  >(null);
+  const [copied, setCopied] = useState(false);
+  const copyPayLink = async () => {
+    if (!payLink) return;
+    try {
+      await navigator.clipboard.writeText(payLink.url);
+      setCopied(true);
+      toast.success("Payment link copied");
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      toast.error("Could not copy — select the link manually");
     }
   };
 
@@ -169,7 +229,7 @@ export function CreateOrderForm({
               </Select>
               {selectedUser?.tradeApproved && (
                 <p className="mt-1.5 text-[12px] text-emerald-300">
-                  Trade-approved customer — category discounts will be applied automatically.
+                  Trade approved customer, category discounts will be applied automatically.
                 </p>
               )}
             </div>
@@ -194,11 +254,26 @@ export function CreateOrderForm({
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="Address" required full>
-                <Input value={shipping.shippingAddress} onChange={(e) => setShipping({ ...shipping, shippingAddress: e.target.value })} required />
+              <Field label="Address line 1" required full>
+                <Input value={shipping.shippingAddress} onChange={(e) => setShipping({ ...shipping, shippingAddress: e.target.value })} placeholder="House number and street" required />
               </Field>
-              <Field label="City" required>
+              <Field label="Address line 2 (optional)" full>
+                <Input value={shipping.shippingAddressLine2} onChange={(e) => setShipping({ ...shipping, shippingAddressLine2: e.target.value })} placeholder="Apartment, suite, building" />
+              </Field>
+              <Field label="Town / City" required>
                 <Input value={shipping.shippingCity} onChange={(e) => setShipping({ ...shipping, shippingCity: e.target.value })} required />
+              </Field>
+              <Field label="County (optional)">
+                <Input value={shipping.shippingCounty} onChange={(e) => setShipping({ ...shipping, shippingCounty: e.target.value })} placeholder="e.g. Greater London" />
+              </Field>
+              <Field label="Postcode" required>
+                <Input
+                  value={shipping.shippingPostcode}
+                  onChange={(e) => setShipping({ ...shipping, shippingPostcode: e.target.value.toUpperCase() })}
+                  placeholder="SW1A 1AA"
+                  autoComplete="postal-code"
+                  required
+                />
               </Field>
               <Field label="Country" required>
                 <Input value={shipping.shippingCountry} onChange={(e) => setShipping({ ...shipping, shippingCountry: e.target.value })} required />
@@ -292,12 +367,58 @@ export function CreateOrderForm({
         </Card>
 
         <Card>
-          <CardContent className="space-y-1.5 p-5 text-sm">
-            <Row label="Subtotal" value={`£${subtotal.toFixed(2)}`} />
-            <Row label="Shipping" value={shippingFee === 0 ? "Free" : `£${shippingFee.toFixed(2)}`} />
-            <Row label="Tax (5%)" value={`£${tax.toFixed(2)}`} />
-            <div className="my-2 border-t border-border" />
-            <Row label={<span className="font-semibold">Total</span>} value={<span className="font-bold">£{grand.toFixed(2)}</span>} />
+          <CardContent className="space-y-3 p-5 text-sm">
+            {/* Manual overrides — leave blank to use the defaults. */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Shipping (£)
+                </Label>
+                <Input
+                  type="number" min={0} step="0.01"
+                  value={shippingOverride}
+                  onChange={(e) => setShippingOverride(e.target.value)}
+                  placeholder={autoShipping === 0 ? "Free" : autoShipping.toFixed(2)}
+                  className="h-9"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Discount (£)
+                </Label>
+                <Input
+                  type="number" min={0} step="0.01"
+                  value={discountInput}
+                  onChange={(e) => setDiscountInput(e.target.value)}
+                  placeholder="0.00"
+                  className="h-9"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5 border-t border-border pt-3">
+              <Row label="Subtotal" value={`£${subtotal.toFixed(2)}`} />
+              <Row
+                label={
+                  <span>
+                    Shipping
+                    {shippingOverride !== "" && Number.isFinite(parsedShippingOverride) && (
+                      <span className="ml-1 text-[10px] text-muted-foreground">(override)</span>
+                    )}
+                  </span>
+                }
+                value={shippingFee === 0 ? "Free" : `£${shippingFee.toFixed(2)}`}
+              />
+              {discount > 0 && (
+                <Row
+                  label={<span className="text-emerald-400">Discount</span>}
+                  value={<span className="text-emerald-400">−£{discount.toFixed(2)}</span>}
+                />
+              )}
+              <Row label="VAT (20%)" value={`£${tax.toFixed(2)}`} />
+              <div className="my-2 border-t border-border" />
+              <Row label={<span className="font-semibold">Total</span>} value={<span className="font-bold">£{grand.toFixed(2)}</span>} />
+            </div>
           </CardContent>
         </Card>
 
@@ -308,6 +429,68 @@ export function CreateOrderForm({
           Create order
         </Button>
       </div>
+
+      <Dialog
+        open={!!payLink}
+        onOpenChange={(v) => {
+          if (!v) {
+            setPayLink(null);
+            router.push("/admin/orders");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Payment link ready</DialogTitle>
+            <DialogDescription>
+              Share this link with the customer. They can review the order and
+              pay through Stripe; once paid, the order moves to PAID and the
+              payment appears in their portal automatically.
+            </DialogDescription>
+          </DialogHeader>
+          {payLink && (
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Payment link</Label>
+                <div className="flex gap-2">
+                  <Input readOnly value={payLink.url} className="font-mono text-xs" />
+                  <Button type="button" variant="outline" onClick={copyPayLink}>
+                    {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                    {copied ? "Copied" : "Copy"}
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                The customer can also see a <strong>Pay now</strong> button on this
+                order inside their account portal.
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setPayLink(null);
+                router.push("/admin/orders");
+              }}
+            >
+              Done
+            </Button>
+            {payLink && (
+              <Button
+                type="button"
+                onClick={() => {
+                  setPayLink(null);
+                  router.push("/admin/orders");
+                }}
+              >
+                View order
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </form>
   );
 }

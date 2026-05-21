@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
-  LayoutDashboard, ShoppingBag, User as UserIcon,
+  LayoutDashboard, ShoppingBag, User as UserIcon, CreditCard,
   Menu, ChevronLeft, Home, LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -20,9 +20,10 @@ const NAV = [
   {
     group: "My Account",
     items: [
-      { href: "/account",         label: "Overview", icon: LayoutDashboard },
-      { href: "/account/orders",  label: "Orders",   icon: ShoppingBag },
-      { href: "/account/profile", label: "Profile",  icon: UserIcon },
+      { href: "/account",          label: "Overview", icon: LayoutDashboard },
+      { href: "/account/orders",   label: "Orders",   icon: ShoppingBag },
+      { href: "/account/payments", label: "Payments", icon: CreditCard },
+      { href: "/account/profile",  label: "Profile",  icon: UserIcon },
     ],
   },
 ];
@@ -42,7 +43,7 @@ export function AccountShell({
   const pathname = usePathname();
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
+    <div className="portal-scope flex min-h-screen bg-background text-foreground">
       {/* Desktop sidebar */}
       <aside
         className={cn(
@@ -96,9 +97,10 @@ export function AccountShell({
 }
 
 const ACCOUNT_LABELS: Record<string, string> = {
-  "/account":         "Overview",
-  "/account/orders":  "Orders",
-  "/account/profile": "Profile",
+  "/account":          "Overview",
+  "/account/orders":   "Orders",
+  "/account/payments": "Payments",
+  "/account/profile":  "Profile",
 };
 
 function accountCrumbs(pathname: string): Crumb[] {

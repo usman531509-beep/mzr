@@ -22,6 +22,7 @@ export type ModuleKey =
   | "stock-received"
   | "couriers"
   | "offers"
+  | "payments"
   | "activity";
 
 export type ModuleDef = {
@@ -39,6 +40,7 @@ export const ADMIN_MODULES: ModuleDef[] = [
   { key: "brands",         label: "Brands",         href: "/admin/brands",           group: "Catalogue" },
   { key: "bike-models",    label: "Bike Models",    href: "/admin/bike-models",      group: "Catalogue" },
   { key: "orders",         label: "Orders",         href: "/admin/orders",           group: "Sales" },
+  { key: "payments",       label: "Payments",       href: "/admin/payments",         group: "Sales" },
   { key: "expenses",       label: "Expenses",       href: "/admin/expenses",         group: "Sales" },
   { key: "offers",         label: "Offers",         href: "/admin/offers",           group: "Marketing" },
   { key: "users",          label: "Users",          href: "/admin/users",            group: "People" },

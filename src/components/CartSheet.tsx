@@ -148,7 +148,7 @@ export function CartSheet() {
                 label="Shipping"
                 value={totals.shipping === 0 ? "FREE" : fmtMoney(totals.shipping)}
               />
-              <Row label="Tax (5%)" value={fmtMoney(totals.tax)} />
+              <Row label="VAT (20%)" value={fmtMoney(totals.tax)} />
             </div>
             <Separator className="my-3" />
             <Row label="Total" value={fmtMoney(totals.total)} bold />

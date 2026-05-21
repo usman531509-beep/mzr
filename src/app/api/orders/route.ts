@@ -10,9 +10,12 @@ const schema = z.object({
   customerName: z.string().min(2),
   customerEmail: z.string().email(),
   customerPhone: z.string().min(5),
-  shippingAddress: z.string().min(3),
-  shippingCity: z.string().min(2),
-  shippingCountry: z.string().min(2),
+  shippingAddress:      z.string().min(3),
+  shippingAddressLine2: z.string().max(200).optional(),
+  shippingCity:         z.string().min(2),
+  shippingCounty:       z.string().max(120).optional(),
+  shippingPostcode:     z.string().min(3).max(20),
+  shippingCountry:      z.string().min(2),
   notes: z.string().optional(),
   // Admin-only: place this order on behalf of another user. Ignored for
   // non-admin sessions.
@@ -111,7 +114,8 @@ export async function POST(req: Request) {
     }
   }
   const shipping = total > 200 ? 0 : 9.99;
-  const tax = +(total * 0.05).toFixed(2);
+  // VAT (20%) is charged on goods + shipping.
+  const tax = +((total + shipping) * 0.20).toFixed(2);
   const grand = +(total + shipping + tax).toFixed(2);
 
   try {
@@ -124,12 +128,16 @@ export async function POST(req: Request) {
           createdByAdminId: isAdminPlacingForCustomer ? session!.user.id : null,
           status: "PENDING",
           total: grand,
+          shippingFee: shipping,
           customerName: data.customerName,
           customerEmail: data.customerEmail,
           customerPhone: data.customerPhone,
-          shippingAddress: data.shippingAddress,
-          shippingCity: data.shippingCity,
-          shippingCountry: data.shippingCountry,
+          shippingAddress:      data.shippingAddress,
+          shippingAddressLine2: data.shippingAddressLine2?.trim() || null,
+          shippingCity:         data.shippingCity,
+          shippingCounty:       data.shippingCounty?.trim() || null,
+          shippingPostcode:     data.shippingPostcode.trim().toUpperCase(),
+          shippingCountry:      data.shippingCountry,
           notes: data.notes,
           items: { create: orderItemsCreate },
         },

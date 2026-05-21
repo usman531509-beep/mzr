@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { randomBytes } from "crypto";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity-log";
@@ -13,12 +14,21 @@ const schema = z.object({
   customerName: z.string().min(2),
   customerEmail: z.string().email(),
   customerPhone: z.string().min(3),
-  shippingAddress: z.string().min(3),
-  shippingCity: z.string().min(1),
-  shippingCountry: z.string().min(1),
+  shippingAddress:      z.string().min(3),
+  shippingAddressLine2: z.string().max(200).optional(),
+  shippingCity:         z.string().min(1),
+  shippingCounty:       z.string().max(120).optional(),
+  shippingPostcode:     z.string().min(3).max(20),
+  shippingCountry:      z.string().min(1),
   notes: z.string().optional(),
   // Admin can override the status of the new order (e.g. mark PAID directly).
   status: z.enum(["PENDING", "PAID", "SHIPPED", "DELIVERED", "CANCELLED"]).optional(),
+  // Optional overrides applied when admin is placing the order for a
+  // customer. shippingFee replaces the default £9.99 / free-over-£200 rule;
+  // discount is a flat amount subtracted from the grand total (e.g. a
+  // negotiated price for a phone-in order).
+  shippingFee: z.number().nonnegative().max(10_000).optional(),
+  discount:    z.number().nonnegative().max(10_000_000).optional(),
   items: z
     .array(z.object({
       productId: z.string(),
@@ -93,9 +103,27 @@ export async function POST(req: Request) {
     }
   }
 
-  const shipping = total > 200 ? 0 : 9.99;
-  const tax = +(total * 0.05).toFixed(2);
-  const grand = +(total + shipping + tax).toFixed(2);
+  // Admin can override shipping; otherwise fall back to the default rule.
+  const shipping = data.shippingFee !== undefined
+    ? +data.shippingFee.toFixed(2)
+    : (total > 200 ? 0 : 9.99);
+  const discount = data.discount !== undefined ? +data.discount.toFixed(2) : 0;
+  // VAT (20%) is charged on the net taxable amount — goods + shipping
+  // minus any discount. So a discount on the bill also reduces the VAT.
+  const taxable = Math.max(0, total + shipping - discount);
+  const tax = +(taxable * 0.20).toFixed(2);
+  const grand = +(taxable + tax).toFixed(2);
+
+  // Orders that come out as PENDING get a one-time pay link so the customer
+  // can settle later from the email / portal. Pre-paid statuses (PAID,
+  // SHIPPED, DELIVERED) skip this; CANCELLED is excluded too. The token is
+  // a 24-char base64url-safe string — unguessable but human-readable enough
+  // to paste.
+  const initialStatus = data.status ?? "PENDING";
+  const paymentToken =
+    initialStatus === "PENDING"
+      ? randomBytes(18).toString("base64url")
+      : null;
 
   try {
     const order = await prisma.$transaction(async (tx) => {
@@ -105,14 +133,20 @@ export async function POST(req: Request) {
           orderNumber,
           userId: data.userId,
           createdByAdminId: session.user.id,
-          status: data.status ?? "PENDING",
+          status: initialStatus,
           total: grand,
+          shippingFee: shipping,
+          discount,
+          paymentToken,
           customerName: data.customerName,
           customerEmail: data.customerEmail,
           customerPhone: data.customerPhone,
-          shippingAddress: data.shippingAddress,
-          shippingCity: data.shippingCity,
-          shippingCountry: data.shippingCountry,
+          shippingAddress:      data.shippingAddress,
+          shippingAddressLine2: data.shippingAddressLine2?.trim() || null,
+          shippingCity:         data.shippingCity,
+          shippingCounty:       data.shippingCounty?.trim() || null,
+          shippingPostcode:     data.shippingPostcode.trim().toUpperCase(),
+          shippingCountry:      data.shippingCountry,
           notes: data.notes,
           items: { create: orderItemsCreate },
         },
@@ -157,7 +191,14 @@ export async function POST(req: Request) {
       targetId: order.id,
       meta: { onBehalfOf: data.userId, status: order.status },
     });
-    return NextResponse.json({ id: order.id });
+    return NextResponse.json({
+      id: order.id,
+      orderNumber: order.orderNumber,
+      // Relative URL so the caller (admin browser) can resolve it against
+      // whatever origin they're on (localhost, preview, prod). Customer-
+      // facing email/copy flow uses the full origin when surfacing it.
+      payPath: paymentToken ? `/pay/${paymentToken}` : null,
+    });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Order failed";
     return NextResponse.json({ error: msg }, { status: 400 });

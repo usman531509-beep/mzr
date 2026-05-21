@@ -12,15 +12,15 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import type { NavCategoryNode } from "@/lib/nav-cache";
 
-type NavCategory = { name: string; slug: string; count: number };
 type NavBrand = { name: string; slug: string };
 
 export function Header({
-  categories = [],
+  tree = [],
   brands = [],
 }: {
-  categories?: NavCategory[];
+  tree?: NavCategoryNode[];
   brands?: NavBrand[];
 }) {
   const { data: session } = useSession();
@@ -31,10 +31,11 @@ export function Header({
   const openCart     = useOverlays((s) => s.openCart);
   const openWishlist = useOverlays((s) => s.openWishlist);
 
-  // Build live mega menus from the catalogue. The "Parts" mega groups all
-  // categories that actually have products, split into 3 columns by name so
-  // the dropdown stays balanced. The "Brands" mega lists every brand by name.
-  const partsCols  = chunk(categories.filter((c) => c.count > 0).map(toCatItem), 3);
+  // Build live mega menus from the catalogue tree. Each top-level category
+  // (depth 0) becomes a column; its direct children become the items. Empty
+  // branches are hidden so users don't click through to an empty grid. If a
+  // top-level has no children, we still surface it as a single-item column.
+  const partsCols = treeToColumns(tree);
   const brandsCols = chunk(brands.map(toBrandItem), 2);
 
   return (
@@ -260,15 +261,26 @@ function ActionBtn({
 
 // ---- Mega-menu helpers (real catalogue → MegaColumn[]) -------------------
 
-function toCatItem(c: NavCategory) {
-  return {
-    label: c.count > 0 ? `${c.name}` : c.name,
-    href: `/products?category=${c.slug}`,
-  };
-}
-
 function toBrandItem(b: NavBrand) {
   return { label: b.name, href: `/products?brand=${b.slug}` };
+}
+
+// Turn the category tree into a column-per-top-level mega-menu layout.
+// Each top-level node is a column with its name as the heading; its direct
+// children are the link items, deep-linking to /category/<full-path>.
+// Empty top-levels (no descendants with active products) are hidden.
+function treeToColumns(tree: NavCategoryNode[]): MegaColumn[] {
+  return tree
+    .filter((root) => root.productCount > 0)
+    .map((root) => ({
+      heading: root.name,
+      items: root.children.length > 0
+        ? root.children
+            .filter((c) => c.productCount > 0)
+            .map((c) => ({ label: c.name, href: `/category/${c.path}` }))
+        : [{ label: `Browse ${root.name}`, href: `/category/${root.path}` }],
+    }))
+    .filter((col) => col.items.length > 0);
 }
 
 function chunk<T>(arr: T[], cols: number): MegaColumn[] {

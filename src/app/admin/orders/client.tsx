@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Eye, ExternalLink, FileText, Pencil, Plus, Printer, Search, ShieldCheck, Truck, X } from "lucide-react";
+import { Check, Copy, Eye, ExternalLink, FileText, Pencil, Plus, Printer, Search, ShieldCheck, Truck, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,12 +33,17 @@ type OrderRow = {
   orderNumber: string | null;
   status: string;
   total: number;
+  shippingFee: number;
+  discount: number;
   customer: string;
   email: string;
   phone: string;
   address: string;
   shippingAddress: string;
+  shippingAddressLine2: string;
   shippingCity: string;
+  shippingCounty: string;
+  shippingPostcode: string;
   shippingCountry: string;
   notes: string;
   courierId: string | null;
@@ -57,6 +62,7 @@ type OrderRow = {
   }[];
   createdAt: string;
   createdByAdmin: string | null;
+  paymentToken: string | null;
 };
 
 type CourierOption = { id: string; name: string; trackingUrl: string };
@@ -83,6 +89,7 @@ export function OrdersClient({
   const [amending, setAmending] = useState<OrderRow | null>(null);
   const [shipping, setShipping] = useState<OrderRow | null>(null);
   const [invoice, setInvoice] = useState<{ order: OrderRow; autoprint: boolean } | null>(null);
+  const [payCopied, setPayCopied] = useState(false);
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
@@ -311,9 +318,77 @@ export function OrdersClient({
                     <div className="font-medium">{open.customer}</div>
                     <div className="text-muted-foreground">{open.email}</div>
                     <div className="text-muted-foreground">{open.phone}</div>
-                    <div className="mt-2 text-muted-foreground">{open.address}</div>
+                    <div className="mt-2 text-muted-foreground">
+                      <div>{open.shippingAddress}</div>
+                      {open.shippingAddressLine2 && <div>{open.shippingAddressLine2}</div>}
+                      <div>
+                        {open.shippingCity}
+                        {open.shippingCounty ? `, ${open.shippingCounty}` : ""}
+                      </div>
+                      {open.shippingPostcode && (
+                        <div className="font-mono">{open.shippingPostcode}</div>
+                      )}
+                      <div>{open.shippingCountry}</div>
+                    </div>
                   </div>
                 </section>
+
+                {open.paymentToken && open.status === "PENDING" && (
+                  <>
+                    <Separator />
+                    <section>
+                      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Payment link
+                      </h3>
+                      <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
+                        <div className="mb-2 text-xs text-muted-foreground">
+                          Share this link with the customer so they can pay via
+                          Stripe. The link is also visible to them inside their
+                          account portal.
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            readOnly
+                            value={`${typeof window === "undefined" ? "" : window.location.origin}/pay/${open.paymentToken}`}
+                            onFocus={(e) => e.currentTarget.select()}
+                            className="h-8 font-mono text-xs"
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(
+                                  `${window.location.origin}/pay/${open.paymentToken}`,
+                                );
+                                setPayCopied(true);
+                                toast.success("Payment link copied");
+                                setTimeout(() => setPayCopied(false), 1800);
+                              } catch {
+                                toast.error("Could not copy — select the link manually");
+                              }
+                            }}
+                          >
+                            {payCopied
+                              ? <Check className="h-3.5 w-3.5" />
+                              : <Copy className="h-3.5 w-3.5" />}
+                            {payCopied ? "Copied" : "Copy"}
+                          </Button>
+                          <Button asChild size="sm" variant="ghost">
+                            <a
+                              href={`/pay/${open.paymentToken}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" /> Open
+                            </a>
+                          </Button>
+                        </div>
+                      </div>
+                    </section>
+                  </>
+                )}
 
                 <Separator />
 
@@ -426,7 +501,12 @@ function AmendDialog({
 }) {
   const [form, setForm] = useState({
     customerName: "", customerEmail: "", customerPhone: "",
-    shippingAddress: "", shippingCity: "", shippingCountry: "",
+    shippingAddress: "",       // line 1
+    shippingAddressLine2: "",
+    shippingCity: "",
+    shippingCounty: "",
+    shippingPostcode: "",
+    shippingCountry: "",
     notes: "",
   });
   const [busy, setBusy] = useState(false);
@@ -438,9 +518,12 @@ function AmendDialog({
         customerName: order.customer,
         customerEmail: order.email,
         customerPhone: order.phone,
-        shippingAddress: order.shippingAddress,
-        shippingCity: order.shippingCity,
-        shippingCountry: order.shippingCountry,
+        shippingAddress:      order.shippingAddress,
+        shippingAddressLine2: order.shippingAddressLine2,
+        shippingCity:         order.shippingCity,
+        shippingCounty:       order.shippingCounty,
+        shippingPostcode:     order.shippingPostcode,
+        shippingCountry:      order.shippingCountry,
         notes: order.notes,
       });
     }
@@ -483,8 +566,11 @@ function AmendDialog({
           <Field label="Customer name" full><Input value={form.customerName} onChange={(e) => setForm({ ...form, customerName: e.target.value })} required /></Field>
           <Field label="Email"><Input type="email" value={form.customerEmail} onChange={(e) => setForm({ ...form, customerEmail: e.target.value })} required /></Field>
           <Field label="Phone"><Input value={form.customerPhone} onChange={(e) => setForm({ ...form, customerPhone: e.target.value })} required /></Field>
-          <Field label="Address" full><Input value={form.shippingAddress} onChange={(e) => setForm({ ...form, shippingAddress: e.target.value })} required /></Field>
-          <Field label="City"><Input value={form.shippingCity} onChange={(e) => setForm({ ...form, shippingCity: e.target.value })} required /></Field>
+          <Field label="Address line 1" full><Input value={form.shippingAddress} onChange={(e) => setForm({ ...form, shippingAddress: e.target.value })} placeholder="House number and street" required /></Field>
+          <Field label="Address line 2 (optional)" full><Input value={form.shippingAddressLine2} onChange={(e) => setForm({ ...form, shippingAddressLine2: e.target.value })} placeholder="Apartment, suite, building" /></Field>
+          <Field label="Town / City"><Input value={form.shippingCity} onChange={(e) => setForm({ ...form, shippingCity: e.target.value })} required /></Field>
+          <Field label="County (optional)"><Input value={form.shippingCounty} onChange={(e) => setForm({ ...form, shippingCounty: e.target.value })} placeholder="e.g. Greater London" /></Field>
+          <Field label="Postcode"><Input value={form.shippingPostcode} onChange={(e) => setForm({ ...form, shippingPostcode: e.target.value.toUpperCase() })} placeholder="SW1A 1AA" autoComplete="postal-code" required /></Field>
           <Field label="Country"><Input value={form.shippingCountry} onChange={(e) => setForm({ ...form, shippingCountry: e.target.value })} required /></Field>
           <Field label="Notes" full><Textarea rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></Field>
           <DialogFooter className="col-span-2">
@@ -626,8 +712,17 @@ function InvoiceDialog({
   if (!state) return null;
   const order = state.order;
   const subtotal = order.items.reduce((s, i) => s + i.price * i.qty, 0);
-  const tax = +(subtotal * 0.05).toFixed(2);
-  const shipping = Math.max(0, order.total - subtotal - tax);
+  const discount = order.discount ?? 0;
+  // Use the persisted shippingFee when available; legacy orders (pre-column)
+  // have shippingFee=0 by default, so we fall back to deriving it from the
+  // remainder of the total by inverting the VAT formula:
+  //   total    = (subtotal + shipping − discount) * 1.20
+  // ⇒ shipping = total / 1.20 − subtotal + discount
+  const shipping = order.shippingFee > 0
+    ? order.shippingFee
+    : Math.max(0, +(order.total / 1.20 - subtotal + discount).toFixed(2));
+  const taxable = Math.max(0, subtotal + shipping - discount);
+  const tax = +(taxable * 0.20).toFixed(2);
   const ref = order.orderNumber ?? order.id;
 
   return (
@@ -678,7 +773,12 @@ function InvoiceDialog({
             <div>
               <div className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-gray-500">Ship to</div>
               <div>{order.shippingAddress}</div>
-              <div>{order.shippingCity}</div>
+              {order.shippingAddressLine2 && <div>{order.shippingAddressLine2}</div>}
+              <div>
+                {order.shippingCity}
+                {order.shippingCounty ? `, ${order.shippingCounty}` : ""}
+              </div>
+              {order.shippingPostcode && <div className="font-mono">{order.shippingPostcode}</div>}
               <div>{order.shippingCountry}</div>
             </div>
           </div>
@@ -732,7 +832,10 @@ function InvoiceDialog({
           <div className="ml-auto mt-4 w-full max-w-sm text-sm">
             <InvoiceRow label="Subtotal" value={fmtMoney(subtotal)} />
             <InvoiceRow label="Shipping" value={shipping === 0 ? "Free" : fmtMoney(shipping)} />
-            <InvoiceRow label="Tax (5%)" value={fmtMoney(tax)} />
+            {discount > 0 && (
+              <InvoiceRow label="Discount" value={`−${fmtMoney(discount)}`} />
+            )}
+            <InvoiceRow label="VAT (20%)" value={fmtMoney(tax)} />
             <div className="my-2 border-t border-gray-300" />
             <InvoiceRow label="Total" value={fmtMoney(order.total)} strong />
           </div>
@@ -786,8 +889,12 @@ function moneyForPrint(n: number): string {
 
 function buildInvoiceHtml(order: OrderRow): string {
   const subtotal = order.items.reduce((s, i) => s + i.price * i.qty, 0);
-  const tax = +(subtotal * 0.05).toFixed(2);
-  const shipping = Math.max(0, order.total - subtotal - tax);
+  const discount = order.discount ?? 0;
+  const shipping = order.shippingFee > 0
+    ? order.shippingFee
+    : Math.max(0, +(order.total / 1.20 - subtotal + discount).toFixed(2));
+  const taxable = Math.max(0, subtotal + shipping - discount);
+  const tax = +(taxable * 0.20).toFixed(2);
   const ref = order.orderNumber ?? order.id;
   const date = new Date(order.createdAt).toLocaleString("en-GB");
   const rows = order.items
@@ -878,7 +985,9 @@ function buildInvoiceHtml(order: OrderRow): string {
       <div>
         <div class="label" style="margin-bottom:4px;">Ship to</div>
         <div>${escapeHtml(order.shippingAddress)}</div>
-        <div>${escapeHtml(order.shippingCity)}</div>
+        ${order.shippingAddressLine2 ? `<div>${escapeHtml(order.shippingAddressLine2)}</div>` : ""}
+        <div>${escapeHtml(order.shippingCity)}${order.shippingCounty ? `, ${escapeHtml(order.shippingCounty)}` : ""}</div>
+        ${order.shippingPostcode ? `<div style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">${escapeHtml(order.shippingPostcode)}</div>` : ""}
         <div>${escapeHtml(order.shippingCountry)}</div>
       </div>
     </div>
@@ -898,7 +1007,8 @@ function buildInvoiceHtml(order: OrderRow): string {
     <div class="totals">
       <div class="row"><span style="color:#555">Subtotal</span><span>${moneyForPrint(subtotal)}</span></div>
       <div class="row"><span style="color:#555">Shipping</span><span>${shipping === 0 ? "Free" : moneyForPrint(shipping)}</span></div>
-      <div class="row"><span style="color:#555">Tax (5%)</span><span>${moneyForPrint(tax)}</span></div>
+      ${discount > 0 ? `<div class="row"><span style="color:#555">Discount</span><span>−${moneyForPrint(discount)}</span></div>` : ""}
+      <div class="row"><span style="color:#555">VAT (20%)</span><span>${moneyForPrint(tax)}</span></div>
       <div class="sep"></div>
       <div class="row grand"><span>Total</span><span>${moneyForPrint(order.total)}</span></div>
     </div>

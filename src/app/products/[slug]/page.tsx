@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { getTradeContext, tradePrice } from "@/lib/trade-pricing";
+import { getAncestors } from "@/lib/category-tree";
 import type { Metadata } from "next";
 
 // Trade discount must be evaluated per-request, so we can't statically cache.
@@ -63,7 +64,10 @@ export default async function ProductPage({
   if (!p || !p.active) notFound();
 
   const mainImg = p.images[0] ?? PLACEHOLDER;
-  const trade = await getTradeContext();
+  const [trade, ancestors] = await Promise.all([
+    getTradeContext(),
+    getAncestors(p.categoryId),
+  ]);
   const tp = tradePrice(Number(p.price), p.categoryId, trade);
   const showTrade = tp.percent > 0;
 
@@ -73,8 +77,11 @@ export default async function ProductPage({
         <Breadcrumbs
           className="mb-6"
           items={[
-            { label: "Products", href: "/products" },
-            { label: p.category.name, href: `/products?category=${p.category.slug}` },
+            { label: "All Categories", href: "/products" },
+            ...ancestors.map((a) => ({
+              label: a.name,
+              href: `/category/${a.path}`,
+            })),
             { label: p.name },
           ]}
         />

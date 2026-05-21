@@ -4,7 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Loader2, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Loader2, ShoppingBag } from "lucide-react";
+import { loadStripe } from "@stripe/stripe-js";
+import {
+  Elements, CardElement, useStripe, useElements,
+} from "@stripe/react-stripe-js";
 
 import { useCart, cartTotals, type CartItem } from "@/lib/cart-store";
 import { Badge } from "@/components/ui/badge";
@@ -16,17 +20,45 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { AdminCustomerPicker, type PickedCustomer } from "@/components/AdminCustomerPicker";
+
+type SavedAddress = {
+  id: string;
+  label: string | null;
+  recipientName: string;
+  phone: string | null;
+  line1: string;
+  line2: string | null;
+  city: string;
+  county: string | null;
+  postcode: string;
+  country: string;
+  isDefault: boolean;
+};
+
+// Load Stripe.js once and reuse the promise across renders / mounts.
+const STRIPE_PK = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+const stripePromise = STRIPE_PK ? loadStripe(STRIPE_PK) : null;
 
 export default function CheckoutPage() {
   const items = useCart((s) => s.items);
   const clear = useCart((s) => s.clear);
   const { data: session } = useSession();
   const router = useRouter();
-  const totals = cartTotals(items); // baseline (admin's price) — kept for non-admin flow
+  const totals = cartTotals(items);
 
   const isAdmin = session?.user?.role === "ADMIN";
   const [forCustomer, setForCustomer] = useState<PickedCustomer | null>(null);
+
+  // Two-step flow for the customer-side Stripe path:
+  //   "shipping" → customer enters address + clicks Continue to payment
+  //   "payment"  → Stripe Payment Element rendered with the intent's secret
+  const [step, setStep] = useState<"shipping" | "payment">("shipping");
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [orderId, setOrderId] = useState<string | null>(null);
 
   // Server-priced lines for admin-on-behalf-of-customer flow. When set, these
   // override the cart's stored prices so the summary reflects the customer's
@@ -60,9 +92,6 @@ export default function CheckoutPage() {
     return () => { cancelled = true; };
   }, [isAdmin, forCustomer, items]);
 
-  // Cart items, optionally re-priced via the preview lines. Used for the
-  // checkout summary; the server is still the authoritative source at order
-  // time.
   const displayItems = useMemo<CartItem[]>(() => {
     if (!previewLines) return items;
     return items.map((it) => {
@@ -76,17 +105,67 @@ export default function CheckoutPage() {
     customerName: session?.user?.name ?? "",
     customerEmail: session?.user?.email ?? "",
     customerPhone: "",
-    shippingAddress: "",
+    shippingAddress: "",       // line 1
+    shippingAddressLine2: "",  // optional
     shippingCity: "",
+    shippingCounty: "",        // optional
+    shippingPostcode: "",
     shippingCountry: "United Kingdom",
     notes: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  // Saved-address book for the signed-in customer. Loaded once after sign-in
+  // checks pass; the dropdown above the shipping form lets them pre-fill
+  // every shipping field from a stored address.
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>("");
+
+  // Apply a saved address to the form. Extracted so we can call it both
+  // when the user picks one from the dropdown and (auto) when their default
+  // address arrives from the API.
+  const applyAddress = (a: SavedAddress) => {
+    setForm((f) => ({
+      ...f,
+      customerName:         a.recipientName || f.customerName,
+      customerPhone:        a.phone ?? f.customerPhone,
+      shippingAddress:      a.line1,
+      shippingAddressLine2: a.line2 ?? "",
+      shippingCity:         a.city,
+      shippingCounty:       a.county ?? "",
+      shippingPostcode:     a.postcode,
+      shippingCountry:      a.country,
+    }));
+    setSelectedAddressId(a.id);
+  };
+
+  useEffect(() => {
+    // Skip the fetch for guests and for the admin-on-behalf flow.
+    if (!session?.user?.id || isAdmin) {
+      setSavedAddresses([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch("/api/account/addresses");
+        const d = await r.json();
+        if (cancelled || !d.ok) return;
+        const list = d.addresses as SavedAddress[];
+        setSavedAddresses(list);
+        const def = list.find((a) => a.isDefault);
+        if (def) applyAddress(def);
+      } catch {
+        /* network error — checkout still works, just no pre-fill */
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.id, isAdmin]);
+
   const pickCustomer = (u: PickedCustomer) => {
     setForCustomer(u);
-    // Auto-fill the shipping form from the customer's profile.
     setForm((f) => ({
       ...f,
       customerName:    u.name    ?? f.customerName,
@@ -122,7 +201,11 @@ export default function CheckoutPage() {
     );
   }
 
-  const submit = async (e: React.FormEvent) => {
+  // Admin-on-behalf still uses the legacy "create immediately, no payment"
+  // flow — admins are recording an order, not taking a card right now.
+  const adminOnBehalf = isAdmin && !!forCustomer;
+
+  const submitAdminOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     setErr(null);
@@ -131,7 +214,7 @@ export default function CheckoutPage() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         ...form,
-        forUserId: isAdmin && forCustomer ? forCustomer.id : undefined,
+        forUserId: forCustomer?.id,
         items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
       }),
     });
@@ -143,6 +226,32 @@ export default function CheckoutPage() {
     }
     clear();
     router.push(`/checkout/success?id=${data.id}`);
+  };
+
+  const continueToPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setErr(null);
+    try {
+      const res = await fetch("/api/checkout/intent", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.clientSecret) {
+        setErr(data.error || "Could not start payment");
+        return;
+      }
+      setOrderId(data.orderId);
+      setClientSecret(data.clientSecret);
+      setStep("payment");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -167,54 +276,169 @@ export default function CheckoutPage() {
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <Card>
           <CardHeader>
-            <CardTitle>Shipping details</CardTitle>
+            <CardTitle>
+              {step === "shipping" ? "Shipping details" : "Payment"}
+            </CardTitle>
             <CardDescription>
-              {isAdmin && forCustomer
-                ? `This order will be placed under ${forCustomer.name || forCustomer.email}.`
-                : "Cash on Delivery — pay when your parts arrive."}
+              {adminOnBehalf
+                ? `This order will be placed under ${forCustomer!.name || forCustomer!.email} without a card payment.`
+                : step === "shipping"
+                  ? "We'll take payment securely with Stripe on the next step."
+                  : "Enter your card details. Your payment is processed by Stripe we never store the card."}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={submit} className="space-y-4">
-              {err && (
-                <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                  {err}
-                </div>
-              )}
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Full name" value={form.customerName}
-                       on={(v) => setForm({ ...form, customerName: v })} required />
-                <Field label="Email" type="email" value={form.customerEmail}
-                       on={(v) => setForm({ ...form, customerEmail: v })} required />
-                <Field label="Phone" value={form.customerPhone}
-                       on={(v) => setForm({ ...form, customerPhone: v })} required />
-                <Field label="Country" value={form.shippingCountry}
-                       on={(v) => setForm({ ...form, shippingCountry: v })} required />
-                <Field label="City" value={form.shippingCity}
-                       on={(v) => setForm({ ...form, shippingCity: v })} required />
-                <div className="sm:col-span-2 space-y-1.5">
-                  <Label>Address</Label>
-                  <Textarea
-                    rows={3}
+            {err && (
+              <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {err}
+              </div>
+            )}
+
+            {/* Shipping form */}
+            {step === "shipping" && (
+              <form onSubmit={adminOnBehalf ? submitAdminOrder : continueToPayment} className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {/* Contact */}
+                  <Field label="Full name" value={form.customerName}
+                         on={(v) => setForm({ ...form, customerName: v })} required />
+                  <Field label="Email" type="email" value={form.customerEmail}
+                         on={(v) => setForm({ ...form, customerEmail: v })} required />
+                  <Field label="Phone" value={form.customerPhone}
+                         on={(v) => setForm({ ...form, customerPhone: v })}
+                         placeholder="07xxx xxxxxx" required />
+
+                  <div className="sm:col-span-2 flex flex-wrap items-end justify-between gap-2 -mb-1 mt-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Shipping address
+                    </span>
+                    {savedAddresses.length > 0 && (
+                      <Link
+                        href="/account/profile"
+                        className="text-[11px] text-muted-foreground hover:text-foreground hover:underline"
+                      >
+                        Manage saved addresses →
+                      </Link>
+                    )}
+                  </div>
+
+                  {savedAddresses.length > 0 && (
+                    <div className="sm:col-span-2 space-y-1.5">
+                      <Label className="text-xs">Use a saved address</Label>
+                      <Select
+                        value={selectedAddressId || "new"}
+                        onValueChange={(v) => {
+                          if (v === "new") {
+                            setSelectedAddressId("");
+                            return;
+                          }
+                          const a = savedAddresses.find((x) => x.id === v);
+                          if (a) applyAddress(a);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pick a saved address" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="new">+ Use a new address</SelectItem>
+                          {savedAddresses.map((a) => (
+                            <SelectItem key={a.id} value={a.id}>
+                              {(a.label || a.recipientName) + " — " + a.line1 + ", " + a.postcode}
+                              {a.isDefault ? "  (default)" : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  <Field
+                    label="Address line 1" full
                     value={form.shippingAddress}
-                    onChange={(e) => setForm({ ...form, shippingAddress: e.target.value })}
+                    on={(v) => setForm({ ...form, shippingAddress: v })}
+                    placeholder="House number and street"
                     required
                   />
-                </div>
-                <div className="sm:col-span-2 space-y-1.5">
-                  <Label>Order notes (optional)</Label>
-                  <Textarea
-                    rows={2}
-                    value={form.notes}
-                    onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                  <Field
+                    label="Address line 2 (optional)" full
+                    value={form.shippingAddressLine2}
+                    on={(v) => setForm({ ...form, shippingAddressLine2: v })}
+                    placeholder="Apartment, suite, building"
                   />
+                  <Field
+                    label="Town / City"
+                    value={form.shippingCity}
+                    on={(v) => setForm({ ...form, shippingCity: v })}
+                    required
+                  />
+                  <Field
+                    label="County (optional)"
+                    value={form.shippingCounty}
+                    on={(v) => setForm({ ...form, shippingCounty: v })}
+                    placeholder="e.g. Greater London"
+                  />
+                  <Field
+                    label="Postcode"
+                    value={form.shippingPostcode}
+                    on={(v) => setForm({ ...form, shippingPostcode: v.toUpperCase() })}
+                    placeholder="e.g. SW1A 1AA"
+                    autoComplete="postal-code"
+                    required
+                  />
+                  <Field
+                    label="Country"
+                    value={form.shippingCountry}
+                    on={(v) => setForm({ ...form, shippingCountry: v })}
+                    required
+                  />
+
+                  <div className="sm:col-span-2 space-y-1.5">
+                    <Label>Order notes (optional)</Label>
+                    <Textarea
+                      rows={2}
+                      value={form.notes}
+                      onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                    />
+                  </div>
                 </div>
+                <Button type="submit" disabled={submitting} className="w-full" size="lg">
+                  {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {submitting
+                    ? (adminOnBehalf ? "Placing order…" : "Starting payment…")
+                    : adminOnBehalf
+                      ? `Place order — ${fmtMoney(displayTotals.total)}`
+                      : `Continue to payment — ${fmtMoney(displayTotals.total)}`}
+                </Button>
+              </form>
+            )}
+
+            {/* Stripe Payment Element */}
+            {step === "payment" && clientSecret && stripePromise && (
+              <div className="space-y-4">
+                <button
+                  type="button"
+                  onClick={() => { setStep("shipping"); setErr(null); }}
+                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <ArrowLeft className="h-3 w-3" /> Edit shipping details
+                </button>
+                <Elements stripe={stripePromise}>
+                  <StripePaymentForm
+                    clientSecret={clientSecret}
+                    orderId={orderId!}
+                    total={displayTotals.total}
+                    onError={(m) => setErr(m)}
+                    onPaying={(v) => setSubmitting(v)}
+                    onSuccess={() => clear()}
+                  />
+                </Elements>
               </div>
-              <Button type="submit" disabled={submitting} className="w-full" size="lg">
-                {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                {submitting ? "Placing order…" : `Place order — ${fmtMoney(displayTotals.total)}`}
-              </Button>
-            </form>
+            )}
+
+            {step === "payment" && !stripePromise && (
+              <div className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm">
+                Stripe is not configured. Add <code className="font-mono">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> to your env and restart.
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -257,25 +481,125 @@ export default function CheckoutPage() {
             <Separator />
             <Row label="Subtotal" value={fmtMoney(displayTotals.subtotal)} />
             <Row label="Shipping" value={displayTotals.shipping === 0 ? "FREE" : fmtMoney(displayTotals.shipping)} />
-            <Row label="Tax" value={fmtMoney(displayTotals.tax)} />
+            <Row label="VAT (20%)" value={fmtMoney(displayTotals.tax)} />
             <Separator />
             <Row label="Total" value={fmtMoney(displayTotals.total)} bold />
           </CardContent>
         </Card>
       </div>
+
+      {/* Suppress unused-var warning while keeping the prop for future use. */}
+      <span hidden>{totals.total}</span>
     </div>
   );
 }
 
-function Field({
-  label, value, on, type = "text", required,
+function StripePaymentForm({
+  clientSecret, orderId, total, onError, onPaying, onSuccess,
 }: {
-  label: string; value: string; on: (v: string) => void; type?: string; required?: boolean;
+  clientSecret: string;
+  orderId: string;
+  total: number;
+  onError: (msg: string) => void;
+  onPaying: (paying: boolean) => void;
+  onSuccess: () => void;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+    const card = elements.getElement(CardElement);
+    if (!card) return;
+    setBusy(true);
+    onPaying(true);
+    onError("");
+
+    const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
+      clientSecret,
+      { payment_method: { card } },
+    );
+
+    if (stripeError) {
+      onError(stripeError.message ?? "Payment failed. Please try again.");
+      setBusy(false);
+      onPaying(false);
+      return;
+    }
+    if (paymentIntent && paymentIntent.status === "succeeded") {
+      // Close the loop server-side immediately — don't wait for the Stripe
+      // webhook (which doesn't fire locally without `stripe listen`).
+      try {
+        await fetch("/api/checkout/confirm", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ orderId, paymentIntentId: paymentIntent.id }),
+        });
+      } catch {
+        // Webhook will reconcile if the direct call failed.
+      }
+      onSuccess();
+      window.location.href = `/checkout/success?id=${orderId}`;
+      return;
+    }
+    setBusy(false);
+    onPaying(false);
+  };
+
+  return (
+    <form onSubmit={submit} className="space-y-4">
+      <div className="rounded-md border border-border bg-card px-3 py-3">
+        <CardElement
+          options={{
+            style: {
+              base: {
+                fontSize: "15px",
+                color: "#fff",
+                fontFamily: "inherit",
+                "::placeholder": { color: "#9ca3af" },
+              },
+              invalid: { color: "#f87171" },
+            },
+            hidePostalCode: false,
+          }}
+        />
+      </div>
+      <Button type="submit" disabled={!stripe || busy} className="w-full" size="lg">
+        {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+        {busy ? "Processing payment…" : `Pay ${fmtMoney(total)}`}
+      </Button>
+      <p className="text-center text-[11px] text-muted-foreground">
+        Powered by Stripe · we never see your card details.
+      </p>
+    </form>
+  );
+}
+
+function Field({
+  label, value, on, type = "text", required, full, placeholder, autoComplete,
+}: {
+  label: string;
+  value: string;
+  on: (v: string) => void;
+  type?: string;
+  required?: boolean;
+  full?: boolean;
+  placeholder?: string;
+  autoComplete?: string;
 }) {
   return (
-    <div className="space-y-1.5">
+    <div className={`${full ? "sm:col-span-2 " : ""}space-y-1.5`}>
       <Label>{label}</Label>
-      <Input type={type} value={value} onChange={(e) => on(e.target.value)} required={required} />
+      <Input
+        type={type}
+        value={value}
+        onChange={(e) => on(e.target.value)}
+        required={required}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+      />
     </div>
   );
 }

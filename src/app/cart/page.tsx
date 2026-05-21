@@ -110,7 +110,7 @@ export default function CartPage() {
                 label="Shipping"
                 value={totals.shipping === 0 ? "FREE" : fmtMoney(totals.shipping)}
               />
-              <Row label="Tax (5%)" value={fmtMoney(totals.tax)} />
+              <Row label="VAT (20%)" value={fmtMoney(totals.tax)} />
               <Separator />
               <Row label="Total" value={fmtMoney(totals.total)} bold />
               <div className="space-y-2 pt-2">

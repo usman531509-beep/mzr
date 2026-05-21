@@ -8,7 +8,13 @@ export default async function AdminProductsPage() {
       include: { brand: true, category: true, compatibilities: true },
     }),
     prisma.brand.findMany({ orderBy: { name: "asc" } }),
-    prisma.category.findMany({ orderBy: { name: "asc" } }),
+    prisma.category.findMany({
+      orderBy: [{ depth: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
+      select: {
+        id: true, name: true, slug: true, parentId: true, path: true,
+        _count: { select: { children: true } },
+      },
+    }),
     prisma.bikeModel.findMany({
       orderBy: [{ brandId: "asc" }, { name: "asc" }],
       include: { brand: true },
@@ -41,7 +47,10 @@ export default async function AdminProductsPage() {
         })),
       }))}
       brands={brands.map((b) => ({ id: b.id, name: b.name }))}
-      categories={categories.map((c) => ({ id: c.id, name: c.name, slug: c.slug }))}
+      categories={categories.map((c) => ({
+        id: c.id, name: c.name, slug: c.slug,
+        parentId: c.parentId, path: c.path, childCount: c._count.children,
+      }))}
       models={models.map((m) => ({
         id: m.id, name: m.name, brandId: m.brandId,
         yearStart: m.yearStart, yearEnd: m.yearEnd,

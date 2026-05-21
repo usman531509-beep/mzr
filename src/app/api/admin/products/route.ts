@@ -46,6 +46,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
   const d = parsed.data;
+
+  // Products may only attach to a leaf category. Reject a parent pick early.
+  const childCount = await prisma.category.count({ where: { parentId: d.categoryId } });
+  if (childCount > 0) {
+    return NextResponse.json(
+      { error: "Pick a leaf category (one with no sub-categories)." },
+      { status: 400 },
+    );
+  }
+
   const slug = slugify(d.name) + "-" + Math.random().toString(36).slice(2, 6);
 
   const product = await prisma.product.create({

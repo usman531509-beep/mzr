@@ -13,7 +13,9 @@ export type MigrationSummary = {
 export type MigrationName =
   | "renumber-orders-pos"
   | "backfill-order-numbers"
-  | "backfill-stock-layers";
+  | "backfill-stock-layers"
+  | "category-tree"
+  | "order-payment-token";
 
 export const MIGRATIONS: Array<{
   name: MigrationName;
@@ -38,15 +40,31 @@ export const MIGRATIONS: Array<{
     description:
       "Create StockLayer rows for RECEIVED POs and an INITIAL layer for any unaccounted-for stock. Populates unitRetail on legacy layers.",
   },
+  {
+    name: "category-tree",
+    label: "Convert categories to a tree",
+    description:
+      "Adds parentId/path/depth/sortOrder columns, backfills path=slug for every existing row, swaps the legacy global-unique indexes for tree-aware ones. Idempotent.",
+  },
+  {
+    name: "order-payment-token",
+    label: "Add Order.paymentToken for admin-created pay links",
+    description:
+      "Adds the unique paymentToken column to Order so admin-placed orders can be paid via a public /pay/<token> link. Idempotent.",
+  },
 ];
 
 export { renumberOrdersAndPos } from "./renumber";
 export { backfillOrderNumbers } from "./backfill-order-numbers";
 export { backfillStockLayers }  from "./backfill-stock-layers";
+export { categoryTreeMigration } from "./category-tree";
+export { orderPaymentTokenMigration } from "./order-payment-token";
 
 import { renumberOrdersAndPos }   from "./renumber";
 import { backfillOrderNumbers }   from "./backfill-order-numbers";
 import { backfillStockLayers }    from "./backfill-stock-layers";
+import { categoryTreeMigration }  from "./category-tree";
+import { orderPaymentTokenMigration } from "./order-payment-token";
 
 export async function runMigration(
   db: PrismaClient,
@@ -56,6 +74,8 @@ export async function runMigration(
     case "renumber-orders-pos":   return renumberOrdersAndPos(db);
     case "backfill-order-numbers": return backfillOrderNumbers(db);
     case "backfill-stock-layers": return backfillStockLayers(db);
+    case "category-tree":          return categoryTreeMigration(db);
+    case "order-payment-token":    return orderPaymentTokenMigration(db);
     default: {
       const _exhaust: never = name;
       throw new Error(`Unknown migration: ${_exhaust as string}`);

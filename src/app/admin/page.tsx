@@ -82,7 +82,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
     prisma.order.count({ where: { ...orderRangeFilter, status: "DELIVERED" } }),
     prisma.user.count({ where: { role: "USER" } }),
     prisma.order.aggregate({
-      _sum: { total: true },
+      _sum: { total: true, shippingFee: true, discount: true },
       where: { ...orderRangeFilter, status: "DELIVERED" },
     }),
     // Recent orders panel still shows every order (regardless of status) so
@@ -93,7 +93,13 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
       include: { brand: true, category: true, compatibilities: true },
     }),
     prisma.brand.findMany({ orderBy: { name: "asc" } }),
-    prisma.category.findMany({ orderBy: { name: "asc" } }),
+    prisma.category.findMany({
+      orderBy: [{ depth: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
+      select: {
+        id: true, name: true, slug: true, parentId: true, path: true, depth: true,
+        _count: { select: { children: true } },
+      },
+    }),
     prisma.bikeModel.findMany({
       orderBy: [{ brandId: "asc" }, { name: "asc" }],
       include: { brand: true },
@@ -163,7 +169,8 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
   // allocations yet (legacy data before FIFO was wired in, or items still
   // pending): the product's current costPrice.
   // Items with no costPrice and no allocations are surfaced as "missing cost".
-  const TAX_RATE = 0.05;
+  // VAT is 20% on goods + shipping (matches checkout).
+  const VAT_RATE = 0.20;
   let grossProfit = 0;
   let itemsMissingCost = 0;
   let lineSubtotal = 0;
@@ -189,7 +196,11 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
     }
     grossProfit += (sellPrice - Number(it.product.costPrice)) * it.quantity;
   }
-  const taxCollected = +(lineSubtotal * TAX_RATE).toFixed(2);
+  const shippingCollected = Number(revenueAgg._sum.shippingFee ?? 0);
+  const discountsTotal = Number(revenueAgg._sum.discount ?? 0);
+  // VAT base mirrors checkout: subtotal + shipping − discount, clamped at 0.
+  const vatBase = Math.max(0, lineSubtotal + shippingCollected - discountsTotal);
+  const taxCollected = +(vatBase * VAT_RATE).toFixed(2);
 
   // ---------- Chart data --------------------------------------------------
 
@@ -377,10 +388,10 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
           sub={`${expensesAgg._count._all} entr${expensesAgg._count._all === 1 ? "y" : "ies"} logged`}
         />
         <StatCard
-          label="Tax collected"
+          label="VAT collected"
           value={fmtMoney(taxCollected)}
           icon={Percent}
-          sub={`5% · ${unitsSold} unit${unitsSold === 1 ? "" : "s"} sold`}
+          sub={`20% · ${unitsSold} unit${unitsSold === 1 ? "" : "s"} sold`}
         />
         <StatCard
           label="Trader discount"
@@ -528,7 +539,10 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
         categoriesData={categoriesData}
         products={productsForClient}
         brands={brands.map((b) => ({ id: b.id, name: b.name }))}
-        categories={categories.map((c) => ({ id: c.id, name: c.name, slug: c.slug }))}
+        categories={categories.map((c) => ({
+          id: c.id, name: c.name, slug: c.slug,
+          parentId: c.parentId, path: c.path, childCount: c._count.children,
+        }))}
         models={models.map((m) => ({
           id: m.id, name: m.name, brandId: m.brandId,
           yearStart: m.yearStart, yearEnd: m.yearEnd,

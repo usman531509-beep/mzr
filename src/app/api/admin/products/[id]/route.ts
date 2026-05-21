@@ -55,6 +55,16 @@ export async function PATCH(
   const compats = d.compatibilities;
   delete d.compatibilities;
 
+  if (d.categoryId !== undefined) {
+    const childCount = await prisma.category.count({ where: { parentId: d.categoryId } });
+    if (childCount > 0) {
+      return NextResponse.json(
+        { error: "Pick a leaf category (one with no sub-categories)." },
+        { status: 400 },
+      );
+    }
+  }
+
   // Snapshot of relevant fields BEFORE the update so we can build a diff.
   const before = await prisma.product.findUnique({
     where: { id },

@@ -1,7 +1,14 @@
 import Link from "next/link";
 import Image from "next/image";
+import type { NavCategoryNode } from "@/lib/nav-cache";
 
-export function Footer() {
+export function Footer({ tree = [] }: { tree?: NavCategoryNode[] }) {
+  // Pick the six top-level categories with the most active products. Keeps
+  // the column compact while staying in sync with the actual catalogue.
+  const shopLinks = tree
+    .filter((c) => c.productCount > 0)
+    .slice(0, 6)
+    .map((c) => ({ l: c.name, h: `/category/${c.path}` }));
   return (
     <footer className="border-t border-white/10 bg-[#040405] px-[var(--gutter)] py-16">
       <div className="mx-auto max-w-site">
@@ -26,14 +33,12 @@ export function Footer() {
             </address>
           </div>
 
-          <FCol title="Shop" links={[
-            { l: "Engine parts", h: "/products?category=engine" },
-            { l: "Body & fairings", h: "/products?category=body" },
-            { l: "Tyres", h: "/products?category=tyres" },
-            { l: "Brakes", h: "/products?category=brakes" },
-            { l: "Electrical", h: "/products?category=electrical" },
-            { l: "Suspension", h: "/products?category=suspension" },
-          ]} />
+          <FCol
+            title="Shop"
+            links={shopLinks.length > 0
+              ? shopLinks
+              : [{ l: "All parts", h: "/products" }]}
+          />
 
           <FCol title="Account" links={[
             { l: "Sign in", h: "/login" },

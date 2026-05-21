@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Clock4, ExternalLink, XCircle } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
 import { fmtMoney } from "@/lib/format";
@@ -8,15 +8,45 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
+export const dynamic = "force-dynamic";
+
 export default async function SuccessPage({
   searchParams,
 }: {
-  searchParams: Promise<{ id?: string }>;
+  searchParams: Promise<{ id?: string; payment_intent?: string; redirect_status?: string }>;
 }) {
-  const { id } = await searchParams;
+  const { id, payment_intent: piParam, redirect_status: redirectStatus } = await searchParams;
+
+  // Stripe sometimes redirects with payment_intent + redirect_status set;
+  // either id (our order id) or payment_intent gets us to the order.
   const order = id
-    ? await prisma.order.findUnique({ where: { id }, include: { items: true } })
-    : null;
+    ? await prisma.order.findUnique({
+        where: { id },
+        include: {
+          items: true,
+          payments: { orderBy: { createdAt: "desc" }, take: 1 },
+        },
+      })
+    : piParam
+      ? await prisma.order.findFirst({
+          where: { payments: { some: { providerPaymentId: piParam } } },
+          include: {
+            items: true,
+            payments: { orderBy: { createdAt: "desc" }, take: 1 },
+          },
+        })
+      : null;
+
+  const latestPayment = order?.payments[0] ?? null;
+  // Headline status. Stripe's redirect_status hints which event is en route
+  // from its servers — we surface it as a "pending" affordance because the
+  // webhook (the authoritative source) usually completes within a second
+  // or two.
+  const paid = latestPayment?.status === "SUCCEEDED" || !!order?.paidAt;
+  const paymentFailed = latestPayment?.status === "FAILED" || redirectStatus === "failed";
+  const paymentPending = !paid && !paymentFailed && latestPayment?.status === "PENDING";
+
+  const ref = order?.orderNumber ?? (order ? `#${order.id.slice(0, 8)}…` : "");
 
   return (
     <div className="mx-auto max-w-2xl px-[var(--gutter)] py-6 lg:py-8">
@@ -26,17 +56,48 @@ export default async function SuccessPage({
       />
 
       <div className="text-center">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30">
-          <CheckCircle2 className="h-7 w-7" />
-        </div>
-        <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">
-          Thank you for your order!
-        </h1>
-        {order ? (
+        {paid && (
+          <>
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30">
+              <CheckCircle2 className="h-7 w-7" />
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">
+              Payment received — thank you!
+            </h1>
+          </>
+        )}
+        {paymentPending && (
+          <>
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/30">
+              <Clock4 className="h-7 w-7" />
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">
+              Payment processing…
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Stripe is finalising the transaction. This page updates automatically when it&apos;s done — or check your order in a minute.
+            </p>
+          </>
+        )}
+        {paymentFailed && (
+          <>
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-rose-500/15 text-rose-300 ring-1 ring-rose-500/30">
+              <XCircle className="h-7 w-7" />
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">
+              Payment failed
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {latestPayment?.failureMessage ?? "Stripe rejected the card. Try again with a different payment method."}
+            </p>
+          </>
+        )}
+        {order && (paid || paymentPending) && (
           <p className="mt-2 text-sm text-muted-foreground">
-            Order <span className="font-mono text-foreground">{order.id}</span> placed successfully.
+            Order <span className="font-mono text-foreground">{ref}</span> {paid ? "is on its way." : "saved — we&apos;ll start processing once payment clears."}
           </p>
-        ) : (
+        )}
+        {!order && (
           <p className="mt-2 text-sm text-muted-foreground">Your order has been received.</p>
         )}
       </div>
@@ -62,6 +123,16 @@ export default async function SuccessPage({
               <span>Total</span>
               <span className="tabular-nums">{fmtMoney(Number(order.total))}</span>
             </div>
+            {latestPayment?.receiptUrl && (
+              <a
+                href={latestPayment.receiptUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 pt-2 text-xs text-primary hover:underline"
+              >
+                View Stripe receipt <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
           </CardContent>
         </Card>
       )}
@@ -73,6 +144,11 @@ export default async function SuccessPage({
         <Button asChild variant="outline">
           <Link href="/account/orders">My orders</Link>
         </Button>
+        {!paid && (
+          <Button asChild variant="outline">
+            <Link href="/checkout">Try again</Link>
+          </Button>
+        )}
       </div>
     </div>
   );

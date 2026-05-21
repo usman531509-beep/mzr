@@ -49,13 +49,26 @@ export default async function AdminOrders() {
         orderNumber: o.orderNumber,
         status: o.status,
         total: Number(o.total),
+        shippingFee: Number(o.shippingFee),
+        discount: Number(o.discount),
         customer: o.customerName,
         email: o.customerEmail,
         phone: o.customerPhone,
-        address: `${o.shippingAddress}, ${o.shippingCity}, ${o.shippingCountry}`,
-        shippingAddress: o.shippingAddress,
-        shippingCity: o.shippingCity,
-        shippingCountry: o.shippingCountry,
+        // One-line condensed address used in compact contexts (cards, tooltips).
+        address: [
+          o.shippingAddress,
+          o.shippingAddressLine2,
+          o.shippingCity,
+          o.shippingCounty,
+          o.shippingPostcode,
+          o.shippingCountry,
+        ].filter(Boolean).join(", "),
+        shippingAddress:      o.shippingAddress,
+        shippingAddressLine2: o.shippingAddressLine2 ?? "",
+        shippingCity:         o.shippingCity,
+        shippingCounty:       o.shippingCounty ?? "",
+        shippingPostcode:     o.shippingPostcode ?? "",
+        shippingCountry:      o.shippingCountry,
         notes: o.notes ?? "",
         courierId: o.courierId,
         courierName: o.courier?.name ?? null,
@@ -80,6 +93,7 @@ export default async function AdminOrders() {
         createdByAdmin: o.createdByAdmin
           ? (o.createdByAdmin.name ?? o.createdByAdmin.email)
           : null,
+        paymentToken: o.paymentToken,
       }))}
     />
   );

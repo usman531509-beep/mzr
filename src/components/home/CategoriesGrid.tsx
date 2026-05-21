@@ -1,10 +1,15 @@
 import Link from "next/link";
+import type { NavCategoryNode } from "@/lib/nav-cache";
 
+// Small set of fallback emoji icons keyed by the top-level slug. Anything not
+// in the map gets a generic 📦. Once admins start uploading `imageUrl` on
+// categories we'll prefer that over the emoji.
 const ICONS: Record<string, string> = {
   engine: "🔧",
+  brake: "🛑",
+  brakes: "🛑",
   body: "🛠️",
   tyres: "🛞",
-  brakes: "🛑",
   electrical: "⚡",
   suspension: "🪛",
 };
@@ -12,7 +17,7 @@ const ICONS: Record<string, string> = {
 export function CategoriesGrid({
   categories,
 }: {
-  categories: { id: string; name: string; slug: string }[];
+  categories: NavCategoryNode[];
 }) {
   return (
     <section id="categories" className="mx-auto max-w-site px-[var(--gutter)] py-16">
@@ -32,7 +37,7 @@ export function CategoriesGrid({
         {categories.map((c) => (
           <Link
             key={c.id}
-            href={`/products?category=${c.slug}`}
+            href={`/category/${c.path}`}
             className="group relative flex flex-col items-center gap-2.5 overflow-hidden rounded-lg border border-white/10 bg-ink-800 px-3 py-4 text-center transition hover:-translate-y-1 hover:border-red/45 hover:shadow-[0_8px_28px_rgba(0,0,0,0.5),0_0_0_1px_rgba(232,21,27,0.15)]"
           >
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-red/[0.08] to-transparent opacity-0 transition group-hover:opacity-100" />
@@ -42,6 +47,11 @@ export function CategoriesGrid({
             <span className="relative z-10 font-head text-[11px] font-bold uppercase tracking-wide text-white/85">
               {c.name}
             </span>
+            {c.children.length > 0 && (
+              <span className="relative z-10 text-[10px] text-white/40">
+                {c.children.length} sub
+              </span>
+            )}
           </Link>
         ))}
       </div>

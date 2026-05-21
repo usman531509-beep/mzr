@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { PackageX } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { ProductCard } from "@/components/ProductCard";
@@ -23,6 +24,26 @@ export default async function ProductsPage({
 }) {
   const sp = await searchParams;
   const categorySlug = typeof sp.category === "string" ? sp.category : undefined;
+
+  // Legacy `/products?category=<slug>` URLs predate the tree route. Resolve
+  // the slug to its current path and 301 to /category/<path>.
+  if (categorySlug) {
+    const target = await prisma.category.findFirst({
+      where: { OR: [{ slug: categorySlug }, { path: categorySlug }] },
+      select: { path: true },
+      orderBy: { depth: "asc" },
+    });
+    if (target) {
+      const extra = new URLSearchParams();
+      for (const [k, v] of Object.entries(sp)) {
+        if (k === "category") continue;
+        if (typeof v === "string") extra.set(k, v);
+      }
+      const qs = extra.toString();
+      redirect(`/category/${target.path}${qs ? `?${qs}` : ""}`);
+    }
+  }
+
   const brandSlug = typeof sp.brand === "string" ? sp.brand : undefined;
   const modelId = typeof sp.model === "string" ? sp.model : undefined;
   const yearStr = typeof sp.year === "string" ? sp.year : undefined;
@@ -105,7 +126,11 @@ export default async function ProductsPage({
       take: 60,
     }),
     categorySlug
-      ? prisma.category.findUnique({ where: { slug: categorySlug }, select: { name: true, description: true } })
+      ? prisma.category.findFirst({
+          where: { OR: [{ path: categorySlug }, { slug: categorySlug }] },
+          select: { name: true, description: true },
+          orderBy: { depth: "asc" },
+        })
       : null,
     brandSlug
       ? prisma.brand.findUnique({ where: { slug: brandSlug }, select: { name: true } })

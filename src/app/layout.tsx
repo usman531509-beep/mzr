@@ -9,6 +9,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { GlobalOverlays } from "@/components/GlobalOverlays";
 import { MobileBottomBar } from "@/components/MobileBottomBar";
+import { SiteChrome } from "@/components/SiteChrome";
 import { CartScope } from "@/components/CartScope";
 import { WishlistScope } from "@/components/WishlistScope";
 import { ForcePasswordChange } from "@/components/ForcePasswordChange";
@@ -41,10 +42,7 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const [session, nav] = await Promise.all([auth(), getNavData()]);
-  const { brands, models, categories } = nav;
-  const navCategories = categories.map((c) => ({
-    name: c.name, slug: c.slug, count: c.productCount,
-  }));
+  const { brands, models, tree } = nav;
   const navBrands = brands.map((b) => ({ name: b.name, slug: b.slug }));
 
   return (
@@ -54,14 +52,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <CartScope />
           <WishlistScope />
           <ForcePasswordChange />
-          {/* Topbar is a server component so it can fetch active offers and
-              hide itself site-wide when none are active. */}
-          <Topbar />
-          <Header categories={navCategories} brands={navBrands} />
+          {/* Storefront chrome — hidden on /pay/<token> via SiteChrome. */}
+          <SiteChrome>
+            <Topbar />
+            <Header tree={tree} brands={navBrands} />
+          </SiteChrome>
           <main className="flex-1">{children}</main>
-          <Footer />
-          <GlobalOverlays brands={brands} models={models} categories={navCategories} />
-          <MobileBottomBar />
+          <SiteChrome>
+            <Footer tree={tree} />
+            <GlobalOverlays brands={brands} models={models} tree={tree} />
+            <MobileBottomBar />
+          </SiteChrome>
         </SessionProvider>
       </body>
     </html>

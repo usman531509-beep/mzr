@@ -22,9 +22,10 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { CategoryPicker, type PickerCategory } from "@/components/admin/CategoryPicker";
 
 export type Brand = { id: string; name: string };
-export type Category = { id: string; name: string; slug: string };
+export type Category = PickerCategory & { slug: string };
 export type BikeModel = {
   id: string; name: string; brandId: string;
   yearStart: number; yearEnd: number;
@@ -99,7 +100,7 @@ export function PartDialog({
     defaultValues: {
       name: "", description: "", price: 0, costPrice: null, stock: 0, sku: "", oemNumber: "",
       brandId: brands[0]?.id ?? "",
-      categoryId: defaultCategoryId ?? categories[0]?.id ?? "",
+      categoryId: defaultCategoryId ?? "",
       featured: false, active: true,
     },
   });
@@ -127,7 +128,7 @@ export function PartDialog({
       form.reset({
         name: "", description: "", price: 0, costPrice: null, stock: 0, sku: "", oemNumber: "",
         brandId: brands[0]?.id ?? "",
-        categoryId: defaultCategoryId ?? categories[0]?.id ?? "",
+        categoryId: defaultCategoryId ?? "",
         featured: false, active: true,
       });
       setImages([]);
@@ -244,20 +245,20 @@ export function PartDialog({
                 )}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 sm:col-span-2">
               <Label>Category</Label>
               <Controller
                 control={form.control}
                 name="categoryId"
                 render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
-                    <SelectContent>
-                      {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <CategoryPicker
+                    categories={categories}
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
                 )}
               />
+              {form.formState.errors.categoryId && <p className="text-xs text-destructive">{form.formState.errors.categoryId.message}</p>}
             </div>
             <div className="space-y-1.5">
               <Label>SKU (optional)</Label>

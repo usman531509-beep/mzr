@@ -38,6 +38,14 @@ enum PurchaseOrderStatus {
   CANCELLED
 }
 
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELED
+  REFUNDED
+}
+
 // How a StockLayer entered inventory. PURCHASE_ORDER → linked to a PO line.
 // MANUAL_ADJUSTMENT → admin bumped stock directly (uses product's current
 // costPrice). INITIAL → synthetic backfill layer for stock that existed
@@ -74,8 +82,33 @@ model User {
   permissions   String[]  @default([])
   tradeRequests TradeAccountRequest[] @relation("UserTradeRequests")
   tradeDecisions TradeAccountRequest[] @relation("AdminTradeDecisions")
+  payments       Payment[]
+  addresses     Address[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+}
+
+// Customer-managed address book. Saved templates that get copied into an
+// Order at checkout — editing later does not rewrite historical orders.
+model Address {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label         String?  @db.VarChar(60)
+  recipientName String   @db.VarChar(120)
+  phone         String?  @db.VarChar(60)
+  line1         String   @db.VarChar(200)
+  line2         String?  @db.VarChar(200)
+  city          String   @db.VarChar(120)
+  county        String?  @db.VarChar(120)
+  postcode      String   @db.VarChar(20)
+  country       String   @db.VarChar(120)
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, isDefault])
 }
 
 model Brand {
@@ -90,13 +123,31 @@ model Brand {
 
 model Category {
   id          String    @id @default(cuid())
-  name        String    @unique
-  slug        String    @unique
+  name        String
+  slug        String
+  // Parent in the category tree. Null at the top level. A leaf is any
+  // category with no children — products can only attach to leaves.
+  parentId    String?
+  parent      Category? @relation("CategoryTree", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryTree")
+  // Denormalised so we can resolve `/category/brake/motorcycle-brake-pads`
+  // and run descendant rollups without recursive CTEs. Kept in sync inside
+  // a transaction whenever name/slug/parent changes.
+  path        String    @unique
+  depth       Int       @default(0)
+  sortOrder   Int       @default(0)
   description String?
   imageUrl    String?
   products    Product[]
   tradeDiscount TradeDiscount?
   createdAt   DateTime  @default(now())
+
+  // Slug uniqueness is scoped to a parent — "bearings" can exist under both
+  // "engine" and "wheels". The global `path` uniqueness above prevents
+  // duplicate full URLs.
+  @@unique([parentId, slug])
+  @@index([parentId])
+  @@index([path])
 }
 
 model BikeModel {
@@ -172,18 +223,35 @@ model Order {
   // via a transactional sequence so admins / customers see a sane reference
   // instead of the cuid. Stays unique once assigned.
   orderNumber     String?     @unique
+  // Opaque token used in the public payment URL `/pay/<token>` for orders
+  // created by an admin on a customer's behalf. NULL for storefront orders
+  // (which are paid inline). Once the order is PAID we keep the token so
+  // the page can show a "Payment completed" state instead of 404ing.
+  paymentToken    String?     @unique
   userId          String?
   user            User?       @relation("UserOrders", fields: [userId], references: [id])
   createdByAdminId String?
   createdByAdmin  User?       @relation("AdminCreatedOrders", fields: [createdByAdminId], references: [id], onDelete: SetNull)
   status      OrderStatus @default(PENDING)
   total       Decimal     @db.Decimal(10, 2)
+  // Breakdown of the totals (persisted so invoices/order views don't have
+  // to re-derive them, which breaks once admin enters a manual discount).
+  // Defaults of 0 keep legacy rows working — the display falls back to
+  // deriving shipping from total - subtotal - tax when these are zero.
+  shippingFee Decimal     @db.Decimal(10, 2) @default(0)
+  discount    Decimal     @db.Decimal(10, 2) @default(0)
   customerName  String
   customerEmail String
   customerPhone String
-  shippingAddress String
-  shippingCity    String
-  shippingCountry String
+  // UK-style postal address. shippingAddress is line 1 (kept under the
+  // existing name so legacy rows + invoices continue to work). Postcode
+  // defaults to "" so we don't have to backfill historical orders.
+  shippingAddress      String
+  shippingAddressLine2 String?
+  shippingCity         String
+  shippingCounty       String?
+  shippingPostcode     String  @default("")
+  shippingCountry      String
   notes       String?
   // Shipment / tracking info. Captured when admin transitions the order
   // into SHIPPED. Customer-visible on the account orders page.
@@ -195,6 +263,11 @@ model Order {
   // deducted on transition to DELIVERED and restored on transition away
   // from DELIVERED. Lets us avoid double-deduction if status flips back.
   stockDeducted Boolean   @default(false)
+  // Payments attached to this order. There can be more than one if a card
+  // was retried, or for partial refunds. The latest SUCCEEDED row is the
+  // authoritative "this order is paid" record.
+  payments     Payment[]
+  paidAt       DateTime?
   items       OrderItem[]
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
@@ -202,6 +275,7 @@ model Order {
   @@index([userId])
   @@index([status])
   @@index([courierId])
+  @@index([paidAt])
 }
 
 model TradeDiscount {
@@ -506,4 +580,40 @@ model OrderItemCostAllocation {
 
   @@index([orderItemId])
   @@index([stockLayerId])
+}
+
+// Payment attempt recorded against an Order. One Order can have several
+// (failed card, then successful retry), but only the SUCCEEDED one marks
+// the order as paid (Order.paidAt is stamped from this row). Provider
+// identifiers are deliberately generic so we can add non-Stripe rails
+// later without a schema change.
+model Payment {
+  id              String        @id @default(cuid())
+  orderId         String
+  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId          String?
+  user            User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  // "stripe" today; could grow to "paypal" / "manual" etc.
+  provider        String        @default("stripe")
+  // Stripe PaymentIntent id (pi_...) — unique so the webhook can upsert
+  // safely on retries.
+  providerPaymentId String      @unique
+  status          PaymentStatus @default(PENDING)
+  // Amount in the order currency. Stored separately from Order.total so
+  // partial refunds / partial captures stay representable later.
+  amount          Decimal       @db.Decimal(10, 2)
+  currency        String        @default("gbp")
+  // Optional links: the Stripe receipt + the last error/decline message.
+  receiptUrl      String?
+  failureMessage  String?
+  // Raw provider metadata snapshot — handy for support without re-fetching
+  // from the Stripe dashboard.
+  meta            Json?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([orderId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
 }

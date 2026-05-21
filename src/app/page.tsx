@@ -32,10 +32,13 @@ export default async function HomePage() {
       take: 8,
     }),
   ]);
-  const { brands, models, categories } = nav;
+  const { brands, models, tree } = nav;
+  // The home grid only renders top-level categories — sub-trees are reached
+  // by clicking through to the category page.
+  const topCategories = tree.filter((c) => c.productCount > 0);
 
   const empty =
-    categories.length === 0 &&
+    tree.length === 0 &&
     brands.length === 0 &&
     featured.length === 0;
 
@@ -57,8 +60,8 @@ export default async function HomePage() {
         </section>
       ) : (
         <>
-          {categories.length > 0 && <CategoriesGrid categories={categories} />}
-          {(categories.length > 0 || brands.length > 0) && <PromoRow />}
+          {topCategories.length > 0 && <CategoriesGrid categories={topCategories} />}
+          {(topCategories.length > 0 || brands.length > 0) && <PromoRow />}
           {featured.length > 0 && (
             <FeaturedProducts
               products={featured.map((p) => {

@@ -7,35 +7,38 @@ import { MobileMenu } from "@/components/MobileMenu";
 import { FinderSheet } from "@/components/FinderSheet";
 import { CartSheet } from "@/components/CartSheet";
 import { WishlistSheet } from "@/components/WishlistSheet";
+import type { NavCategoryNode } from "@/lib/nav-cache";
 
 type Brand = { id: string; name: string; slug: string };
 type Model = { id: string; name: string; brandId: string; yearStart: number; yearEnd: number };
-type Category = { name: string; slug: string; count: number };
 
 // Renders the three overlay-style UIs in one place, driven by the global
 // store. Header (desktop) and MobileBottomBar both dispatch open events
 // against the same store, so a single instance of each overlay is enough.
 
 export function GlobalOverlays({
-  brands, models, categories = [],
+  brands, models, tree = [],
 }: {
   brands: Brand[];
   models: Model[];
-  categories?: Category[];
+  tree?: NavCategoryNode[];
 }) {
-  // Build the mobile menu groups from the live catalogue: one group per
-  // category that has products, plus a "Brands" group at the bottom. Each
-  // category links to /products?category=<slug>.
+  // Build the mobile menu groups from the catalogue tree: each top-level
+  // category is one group; its direct children become the items so customers
+  // can drill into sub-categories without opening every page in turn. Empty
+  // branches are hidden.
   const mobileGroups = [
-    ...(categories
-      .filter((c) => c.count > 0)
+    ...tree
+      .filter((c) => c.productCount > 0)
       .map((c) => ({
         icon: "📦",
         title: c.name,
-        items: [
-          { label: `Browse ${c.name}`, href: `/products?category=${c.slug}` },
-        ],
-      }))),
+        items: c.children.length > 0
+          ? c.children
+              .filter((sub) => sub.productCount > 0)
+              .map((sub) => ({ label: sub.name, href: `/category/${sub.path}` }))
+          : [{ label: `Browse ${c.name}`, href: `/category/${c.path}` }],
+      })),
     ...(brands.length > 0
       ? [{
           icon: "🏷️",
