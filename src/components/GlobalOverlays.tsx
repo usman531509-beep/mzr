@@ -23,29 +23,10 @@ export function GlobalOverlays({
   models: Model[];
   tree?: NavCategoryNode[];
 }) {
-  // Build the mobile menu groups from the catalogue tree: each top-level
-  // category is one group; its direct children become the items so customers
-  // can drill into sub-categories without opening every page in turn. Empty
-  // branches are hidden.
-  const mobileGroups = [
-    ...tree
-      .filter((c) => c.productCount > 0)
-      .map((c) => ({
-        icon: "📦",
-        title: c.name,
-        items: c.children.length > 0
-          ? c.children
-              .filter((sub) => sub.productCount > 0)
-              .map((sub) => ({ label: sub.name, href: `/category/${sub.path}` }))
-          : [{ label: `Browse ${c.name}`, href: `/category/${c.path}` }],
-      })),
-    ...(brands.length > 0
-      ? [{
-          icon: "🏷️",
-          title: "Brands",
-          items: brands.map((b) => ({ label: b.name, href: `/products?brand=${b.slug}` })),
-        }]
-      : []),
+  // Shortcuts shown above the category tree in the mobile menu.
+  const shortcuts = [
+    { icon: "🔥", label: "Best deals", href: "/products" },
+    { icon: "✨", label: "New in",     href: "/products?sort=new" },
   ];
   const {
     searchOpen, menuOpen, finderOpen,
@@ -67,7 +48,13 @@ export function GlobalOverlays({
   return (
     <>
       <SearchOverlay open={searchOpen} onClose={closeSearch} />
-      <MobileMenu    open={menuOpen}   onClose={closeMenu}   groups={mobileGroups} />
+      <MobileMenu
+        open={menuOpen}
+        onClose={closeMenu}
+        tree={tree}
+        brands={brands.map((b) => ({ name: b.name, slug: b.slug }))}
+        shortcuts={shortcuts}
+      />
       <FinderSheet   open={finderOpen} onClose={closeFinder} brands={brands} models={models} />
       {/* Cart + wishlist sheets read their own open state from the store. */}
       <CartSheet />

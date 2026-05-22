@@ -127,7 +127,7 @@ export default function LoginPage() {
               Built for <span className="text-primary">riders.</span>
             </h1>
             <p className="mt-2 max-w-md text-sm text-muted-foreground">
-              Manage products, orders, and inventory — or shop genuine spare parts for your bike.
+              Manage products, orders, and inventory or shop genuine spare parts for your bike.
             </p>
           </div>
 

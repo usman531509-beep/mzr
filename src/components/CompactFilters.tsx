@@ -10,7 +10,19 @@ import {
 } from "@/components/ui/popover";
 
 type Brand = { id: string; name: string; slug: string };
-type Category = { id: string; name: string; slug: string };
+// Tree-shaped — we render the dropdown with depth-based indentation and use
+// the full `path` as the value so picking a parent category like "brake"
+// rolls up products from every descendant. `count` is the rolled-up active-
+// product total, used to hide empty branches.
+type Category = {
+  id: string;
+  name: string;
+  slug: string;
+  path: string;
+  depth: number;
+  parentId: string | null;
+  count: number;
+};
 type BikeModel = {
   id: string;
   name: string;
@@ -20,10 +32,11 @@ type BikeModel = {
   brand: { name: string; slug: string };
 };
 
-// Compact horizontal filter row for the /products page.
-// Shows only the bike fitment filters: Brand · Model · Year.
-// (Category is removed — it's already encoded in the URL/page heading;
-// sort/search/category are available elsewhere in the UI.)
+// Horizontal filter row shown above the product grid. Hosts Category +
+// Brand + Model + Year + a free-text search. Pure URL-driven: every chip
+// pushes a search-param patch and refreshes the server-rendered grid.
+// Picking a category navigates to /category/<path> directly so the route
+// can do descendant rollup; everything else stays on the current pathname.
 
 export function CompactFilters({
   brands,
@@ -39,7 +52,16 @@ export function CompactFilters({
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
 
-  const categorySlug = searchParams.get("category") ?? "";
+  // On /category/<path>, the active category lives in the URL pathname, not
+  // in `?category=`. Surface it to the chip so the label reads correctly and
+  // the dropdown opens with the current node highlighted.
+  const pathBasedCategoryPath = useMemo(() => {
+    if (!pathname?.startsWith("/category/")) return "";
+    return decodeURIComponent(pathname.slice("/category/".length));
+  }, [pathname]);
+  const queryCategory = searchParams.get("category") ?? "";
+  const activeCategoryValue = pathBasedCategoryPath || queryCategory;
+
   const brandSlug = searchParams.get("brand") ?? "";
   const modelId   = searchParams.get("model") ?? "";
   const year      = searchParams.get("year")  ?? "";
@@ -57,9 +79,32 @@ export function CompactFilters({
   }, [qInput]);
 
   const selectedCategory = useMemo(
-    () => categories.find((c) => c.slug === categorySlug),
-    [categorySlug, categories],
+    () =>
+      categories.find((c) => c.path === activeCategoryValue) ??
+      categories.find((c) => c.slug === activeCategoryValue),
+    [activeCategoryValue, categories],
   );
+
+  // Pre-sort the tree depth-first so every child appears under its parent
+  // in the dropdown. Indentation is driven by `depth`.
+  const orderedCategories = useMemo(() => {
+    const byParent = new Map<string | null, Category[]>();
+    for (const c of categories) {
+      const arr = byParent.get(c.parentId) ?? [];
+      arr.push(c);
+      byParent.set(c.parentId, arr);
+    }
+    for (const arr of byParent.values()) arr.sort((a, b) => a.name.localeCompare(b.name));
+    const out: Category[] = [];
+    const walk = (parentId: string | null) => {
+      for (const node of byParent.get(parentId) ?? []) {
+        out.push(node);
+        walk(node.id);
+      }
+    };
+    walk(null);
+    return out;
+  }, [categories]);
 
   const filteredModels = useMemo(
     () => (brandSlug ? models.filter((m) => m.brand.slug === brandSlug) : models),
@@ -73,9 +118,6 @@ export function CompactFilters({
     () => models.find((m) => m.id === modelId),
     [modelId, models],
   );
-  // Year dropdown shows the model's full range as a single combined option
-  // (e.g. "2020–2022"), not one row per year. Selecting it scopes the filter
-  // to that range; the server treats a "yyyy-yyyy" value as overlap matching.
   const yearRangeValue = selectedModel
     ? `${selectedModel.yearStart}-${selectedModel.yearEnd}`
     : "";
@@ -83,6 +125,8 @@ export function CompactFilters({
     ? `${selectedModel.yearStart}–${selectedModel.yearEnd}`
     : "";
 
+  // Generic search-param patch — used by brand/model/year/q. Stays on the
+  // current pathname.
   const pushUrl = (patch: Record<string, string | null>) => {
     const params = new URLSearchParams(searchParams.toString());
     for (const [k, v] of Object.entries(patch)) {
@@ -96,28 +140,37 @@ export function CompactFilters({
     });
   };
 
-  const clearAll = () => {
+  // Category change is special — it switches the route. Picking a path
+  // sends you to /category/<path>; picking "all categories" sends you back
+  // to /products. Other filters (brand/model/year/q) come along for the ride.
+  const setCategory = (path: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("category");
-    params.delete("brand");
-    params.delete("model");
-    params.delete("year");
-    params.delete("q");
     const qs = params.toString();
+    const target = path ? `/category/${path}` : "/products";
     startTransition(() => {
-      router.push(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+      router.push(`${target}${qs ? `?${qs}` : ""}`, { scroll: false });
       router.refresh();
     });
   };
 
-  const anyActive = !!(categorySlug || brandSlug || modelId || year || q);
+  const clearAll = () => {
+    // Wipe every filter param AND drop back to /products (the canonical
+    // "no category selected" surface) so the user has a clean slate.
+    startTransition(() => {
+      router.push("/products", { scroll: false });
+      router.refresh();
+    });
+  };
+
+  const anyActive = !!(activeCategoryValue || brandSlug || modelId || year || q);
   const noBrands = brands.length === 0;
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2.5">
       {/* Search within current filters */}
-      <div className="relative flex-1 min-w-[200px] max-w-md">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+      <div className="relative flex-1 min-w-[220px] max-w-md">
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input
           type="search"
           value={qInput}
@@ -127,36 +180,41 @@ export function CompactFilters({
               ? `Search in ${selectedModel?.name ?? selectedBrand?.name} parts…`
               : "Search parts by name, OEM, SKU…"
           }
-          className="w-full rounded-full border border-border bg-card py-2 pl-8 pr-8 text-sm outline-none transition focus:border-primary/50"
+          className="h-11 w-full rounded-full border border-border bg-card pl-10 pr-9 text-[15px] outline-none transition focus:border-primary/50"
         />
         {qInput && (
           <button
             type="button"
             onClick={() => setQInput("")}
             aria-label="Clear search"
-            className="absolute right-2.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
           >
-            <X className="h-3 w-3" />
+            <X className="h-3.5 w-3.5" />
           </button>
         )}
       </div>
 
-      {/* Category */}
+      {/* Category — full tree, indented by depth. Value is the path so the
+          server can roll up products from every descendant. */}
       <FilterChip
         label="Category"
         value={selectedCategory?.name}
-        clearable={!!categorySlug}
-        onClear={() => pushUrl({ category: null })}
-        disabled={categories.length === 0}
+        clearable={!!activeCategoryValue}
+        onClear={() => setCategory("")}
+        disabled={orderedCategories.length === 0}
       >
         <List
           searchable
           items={[
-            { value: "", label: "All categories" },
-            ...categories.map((c) => ({ value: c.slug, label: c.name })),
+            { value: "", label: "All categories", depth: 0 },
+            ...orderedCategories.map((c) => ({
+              value: c.path,
+              label: c.name,
+              depth: c.depth,
+            })),
           ]}
-          selected={categorySlug}
-          onSelect={(v) => pushUrl({ category: v || null })}
+          selected={selectedCategory?.path ?? ""}
+          onSelect={(v) => setCategory(v)}
           empty="No categories yet"
         />
       </FilterChip>
@@ -227,22 +285,22 @@ export function CompactFilters({
         />
       </FilterChip>
 
-      {pending && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+      {pending && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
 
       {anyActive && (
         <button
           type="button"
           onClick={clearAll}
-          className="ml-auto inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px] font-medium text-muted-foreground transition hover:text-foreground"
+          className="ml-auto inline-flex items-center gap-1 rounded-full px-3 py-2 text-sm font-medium text-muted-foreground transition hover:text-foreground"
         >
-          <X className="h-3 w-3" /> Clear
+          <X className="h-3.5 w-3.5" /> Clear
         </button>
       )}
     </div>
   );
 }
 
-// --- Filter chip: small pill button with a popover list ---------------------
+// --- Filter chip: pill button with a popover list --------------------------
 
 function FilterChip({
   label, value, clearable, onClear, children, disabled, hint,
@@ -261,7 +319,7 @@ function FilterChip({
     <div
       className={cn(
         "inline-flex items-center rounded-full border bg-card transition",
-        value ? "border-primary/40 text-foreground" : "border-border text-muted-foreground",
+        value ? "border-primary/50 text-foreground" : "border-border text-muted-foreground",
         disabled && "opacity-50",
       )}
     >
@@ -270,22 +328,22 @@ function FilterChip({
           <button
             type="button"
             disabled={disabled}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-sm disabled:cursor-not-allowed"
+            className="flex h-11 items-center gap-2 px-4 text-sm disabled:cursor-not-allowed"
             aria-label={hint ?? `${label} filter`}
             title={hint}
           >
-            <span className="text-[11px] font-semibold uppercase tracking-wider opacity-60">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] opacity-70">
               {label}
             </span>
-            <span className="text-[14px] font-medium text-foreground">
+            <span className="text-[15px] font-medium text-foreground">
               {value ?? (hint ? "—" : "Any")}
             </span>
-            <ChevronDown className="h-3.5 w-3.5 opacity-50" />
+            <ChevronDown className="h-4 w-4 opacity-60" />
           </button>
         </PopoverTrigger>
         <PopoverContent
           align="start"
-          className="w-[var(--radix-popover-trigger-width)] min-w-[200px] p-1"
+          className="min-w-[260px] p-1"
           onClick={() => setOpen(false)}
         >
           {children}
@@ -295,10 +353,10 @@ function FilterChip({
         <button
           type="button"
           onClick={onClear}
-          className="mr-1.5 flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          className="mr-2 flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
           aria-label={`Clear ${label.toLowerCase()}`}
         >
-          <X className="h-2.5 w-2.5" />
+          <X className="h-3 w-3" />
         </button>
       )}
     </div>
@@ -308,7 +366,7 @@ function FilterChip({
 function List({
   items, selected, onSelect, empty, searchable,
 }: {
-  items: { value: string; label: string }[];
+  items: { value: string; label: string; depth?: number }[];
   selected: string;
   onSelect: (v: string) => void;
   empty: string;
@@ -316,9 +374,8 @@ function List({
 }) {
   const [query, setQuery] = useState("");
   if (items.length <= 1) {
-    return <div className="px-3 py-2 text-xs text-muted-foreground">{empty}</div>;
+    return <div className="px-3 py-2 text-sm text-muted-foreground">{empty}</div>;
   }
-  // "All/Any" item is always shown; the rest are filtered by query.
   const filtered = query
     ? [
         items[0],
@@ -340,28 +397,30 @@ function List({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search…"
-            className="w-full rounded border border-border bg-background py-1.5 pl-7 pr-2 text-sm outline-none focus:border-primary/50"
+            className="w-full rounded border border-border bg-background py-2 pl-7 pr-2 text-sm outline-none focus:border-primary/50"
           />
         </div>
       )}
-      <ul className="max-h-[260px] overflow-y-auto">
+      <ul className="max-h-[300px] overflow-y-auto">
         {filtered.length === 1 && query ? (
-          <li className="px-3 py-2 text-xs text-muted-foreground">No matches</li>
+          <li className="px-3 py-2 text-sm text-muted-foreground">No matches</li>
         ) : (
           filtered.map((it) => {
             const isActive = it.value === selected;
+            const depth = it.depth ?? 0;
             return (
               <li key={it.value || "any"}>
                 <button
                   type="button"
                   onClick={() => onSelect(it.value)}
                   className={cn(
-                    "flex w-full items-center justify-between gap-2 rounded px-2.5 py-1.5 text-left text-sm transition",
+                    "flex w-full items-center justify-between gap-2 rounded py-2 pr-2.5 text-left text-sm transition",
                     isActive ? "bg-primary/10 text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground",
                   )}
+                  style={{ paddingLeft: 12 + depth * 14 }}
                 >
-                  <span>{it.label}</span>
-                  {isActive && <Check className="h-3.5 w-3.5 text-primary" />}
+                  <span className="truncate">{it.label}</span>
+                  {isActive && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
                 </button>
               </li>
             );

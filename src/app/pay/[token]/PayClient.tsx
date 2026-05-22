@@ -3,23 +3,24 @@
 import { useEffect, useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import {
-  Elements, CardElement, useStripe, useElements,
+  Elements, CardNumberElement, useStripe, useElements,
 } from "@stripe/react-stripe-js";
-import { Loader2 } from "lucide-react";
+import { Loader2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { StripeCardFields } from "@/components/StripeCardFields";
 import { fmtMoney } from "@/lib/format";
 import { useCart } from "@/lib/cart-store";
 
 const STRIPE_PK = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 const stripePromise = STRIPE_PK ? loadStripe(STRIPE_PK) : null;
 
-// CardElement is the legacy single-line card input. We use it here (instead
-// of PaymentElement) deliberately: PaymentElement bundles Stripe Link, which
-// fires an "enter the OTP from your email" modal whenever the recipient's
-// email is recognised across any other Stripe shop. For an admin-issued
-// pay link the simplest, most predictable experience is just "type card,
-// click pay" — that's what CardElement gives us. It still supports every
-// test card (4242 4242 4242 4242 for success, etc.).
+// Split-field card form via Stripe's CardNumber/Expiry/CVC elements. We use
+// these (rather than PaymentElement) deliberately: PaymentElement bundles
+// Stripe Link, which fires an "enter the OTP from your email" modal whenever
+// the recipient's email is recognised across any other Stripe shop. For an
+// admin-issued pay link the simplest, most predictable experience is just
+// "type card, click pay". Every test card still works (4242 4242 4242 4242
+// for success, etc.).
 
 export function PayClient({
   token, total, orderId,
@@ -108,7 +109,7 @@ function PayForm({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!stripe || !elements) return;
-    const card = elements.getElement(CardElement);
+    const card = elements.getElement(CardNumberElement);
     if (!card) return;
     setBusy(true);
     setError(null);
@@ -150,43 +151,34 @@ function PayForm({
   };
 
   return (
-    <form onSubmit={submit} className="space-y-4">
-      <div className="rounded-md border border-border bg-card px-3 py-3">
-        <CardElement
-          options={{
-            style: {
-              base: {
-                fontSize: "15px",
-                color: "#fff",
-                fontFamily: "inherit",
-                "::placeholder": { color: "#9ca3af" },
-              },
-              invalid: { color: "#f87171" },
-            },
-            hidePostalCode: false,
-          }}
-        />
-      </div>
+    <form onSubmit={submit} className="space-y-5">
+      <StripeCardFields />
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && (
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {error}
+        </div>
+      )}
 
-      <Button type="submit" disabled={!stripe || busy} className="w-full" size="lg">
-        {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+      <Button type="submit" disabled={!stripe || busy} className="w-full gap-2" size="lg">
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-3.5 w-3.5" />}
         {busy ? "Processing…" : `Pay ${fmtMoney(total)}`}
       </Button>
 
-      <details className="text-[11px] text-muted-foreground">
-        <summary className="cursor-pointer select-none">Test card numbers</summary>
+      <details className="rounded-md border border-border bg-muted/30 px-3 py-2 text-[12px] text-muted-foreground">
+        <summary className="cursor-pointer select-none font-medium">
+          Test card numbers
+        </summary>
         <ul className="mt-2 space-y-0.5 font-mono">
-          <li><strong>4242 4242 4242 4242</strong> — succeeds</li>
-          <li><strong>4000 0027 6000 3184</strong> — requires 3D Secure</li>
-          <li><strong>4000 0000 0000 0002</strong> — declined</li>
-          <li>Any future expiry, any CVC, any postcode.</li>
+          <li><strong className="text-foreground">4242 4242 4242 4242</strong> — succeeds</li>
+          <li><strong className="text-foreground">4000 0027 6000 3184</strong> — requires 3D Secure</li>
+          <li><strong className="text-foreground">4000 0000 0000 0002</strong> — declined</li>
+          <li>Any future expiry, any CVC.</li>
         </ul>
       </details>
 
-      <p className="text-center text-[11px] text-muted-foreground">
-        Powered by Stripe · we never see your card details.
+      <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
+        <Lock className="h-3 w-3" /> Secured by Stripe — we never see your card details.
       </p>
     </form>
   );

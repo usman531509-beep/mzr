@@ -204,6 +204,35 @@ export async function assertLeafForProduct(
   }
 }
 
+// Given a Prisma ProductWhere filter (e.g. brand=Honda + year=2020+q="oil"),
+// return — for each candidate sub-category — the count of products that
+// match the filter under that subtree. Lets the storefront surface only
+// the sub-categories that actually have something to show the customer
+// after they've already filtered by brand/model/year.
+export async function countMatchingProductsBySubtree(
+  candidates: Array<{ id: string; name: string; path: string }>,
+  baseWhere: Prisma.ProductWhereInput,
+): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  if (candidates.length === 0) return counts;
+  // One query for everything that matches the filter, then bucket the
+  // resulting category paths into the candidate subtrees. Beats N queries.
+  const matches = await prisma.product.findMany({
+    where: baseWhere,
+    select: { category: { select: { path: true } } },
+  });
+  for (const c of candidates) counts.set(c.path, 0);
+  for (const row of matches) {
+    const p = row.category.path;
+    for (const c of candidates) {
+      if (p === c.path || p.startsWith(`${c.path}/`)) {
+        counts.set(c.path, (counts.get(c.path) ?? 0) + 1);
+      }
+    }
+  }
+  return counts;
+}
+
 // Roll up product counts: for every category, return the number of active
 // products under it INCLUDING descendants. Used by the nav cache so the
 // header can hide empty parents and the home grid can show top-level totals.

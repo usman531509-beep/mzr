@@ -4,9 +4,11 @@ import { PackageX } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { ProductCard } from "@/components/ProductCard";
 import { CompactFilters } from "@/components/CompactFilters";
+import { CategorySidebar } from "@/components/CategorySidebar";
 import { Breadcrumbs, type Crumb } from "@/components/Breadcrumbs";
 import { getTradeContext, tradePrice } from "@/lib/trade-pricing";
 import { getNavData } from "@/lib/nav-cache";
+import { getAncestors, countMatchingProductsBySubtree } from "@/lib/category-tree";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { Prisma } from "@prisma/client";
@@ -154,6 +156,34 @@ export default async function ProductsPage({
         ? `Search · "${q}"`
         : "Spare parts";
 
+  // Active category's ancestor chain — drives both the sidebar's
+  // highlight/auto-expand and the multi-level breadcrumb at the top.
+  const activeCategoryNode = categorySlug
+    ? await prisma.category.findFirst({
+        where: { OR: [{ path: categorySlug }, { slug: categorySlug }] },
+        select: { id: true, path: true },
+        orderBy: { depth: "asc" },
+      })
+    : null;
+  const ancestors = activeCategoryNode
+    ? await getAncestors(activeCategoryNode.id)
+    : [];
+
+  // Available sub-category strip: when the customer narrows by brand /
+  // model / year / q without picking a category, we surface every
+  // top-level category that contains at least one matching product. Lets
+  // them drill into a specific area without going back to "all".
+  const showSubcategoryChips = !activeCategoryNode && (brandSlug || modelId || q);
+  const subcategoryChips = showSubcategoryChips
+    ? await (async () => {
+        const candidates = nav.tree.map((n) => ({ id: n.id, name: n.name, path: n.path }));
+        const counts = await countMatchingProductsBySubtree(candidates, where);
+        return candidates
+          .map((c) => ({ ...c, count: counts.get(c.path) ?? 0 }))
+          .filter((c) => c.count > 0);
+      })()
+    : [];
+
   return (
     <div className="bg-background text-foreground">
       <div className="mx-auto max-w-site px-[var(--gutter)] py-6 lg:py-8">
@@ -161,80 +191,125 @@ export default async function ProductsPage({
           className="mb-3"
           items={(() => {
             const out: Crumb[] = [{ label: "Products", href: "/products" }];
-            if (activeCategory) out.push({ label: activeCategory.name });
-            else if (activeBrand) out.push({ label: activeBrand.name });
+            // Ancestor chain — every ancestor up to the selection's parent is
+            // a link; the deepest one (the active category) is plain text.
+            for (let i = 0; i < ancestors.length; i++) {
+              const a = ancestors[i];
+              const last = i === ancestors.length - 1;
+              out.push({ label: a.name, href: last ? undefined : `/category/${a.path}` });
+            }
+            if (!ancestors.length && activeBrand) {
+              out.push({ label: activeBrand.name });
+            }
             return out;
           })()}
         />
 
-        {/* Header */}
-        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">{heading}</h1>
-            {activeCategory?.description && (
-              <p className="mt-1 text-sm text-muted-foreground">{activeCategory.description}</p>
+        <div className="flex gap-6">
+          <CategorySidebar tree={nav.tree} selectedPath={activeCategoryNode?.path ?? null} />
+
+          <div className="min-w-0 flex-1">
+            {/* Header */}
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+              <div className="min-w-0">
+                <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">{heading}</h1>
+                {activeCategory?.description && (
+                  <p className="mt-1 text-sm text-muted-foreground">{activeCategory.description}</p>
+                )}
+              </div>
+              <div className="text-sm text-muted-foreground">
+                <span className="font-semibold text-foreground">{products.length}</span>{" "}
+                {products.length === 1 ? "result" : "results"}
+              </div>
+            </div>
+
+            {/* Compact filter bar — Category · Brand · Model · Year */}
+            <div className="mb-5 border-y border-border py-3">
+              <CompactFilters brands={brands} models={allModels} categories={allCategories} />
+            </div>
+
+            {/* Drill-in chips: shown when the customer has filtered by
+                brand/model/year/q without picking a category. Each chip leads
+                into the matching top-level category so they can narrow further. */}
+            {subcategoryChips.length > 0 && (
+              <div className="mb-5">
+                <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Narrow by category
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {subcategoryChips.map((c) => {
+                    const params = new URLSearchParams();
+                    if (brandSlug) params.set("brand", brandSlug);
+                    if (modelId) params.set("model", modelId);
+                    if (yearStr) params.set("year", yearStr);
+                    if (q) params.set("q", q);
+                    const qs = params.toString();
+                    return (
+                      <Link
+                        key={c.id}
+                        href={`/category/${c.path}${qs ? `?${qs}` : ""}`}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-1.5 text-sm font-medium text-foreground/85 transition hover:border-primary/40 hover:bg-accent hover:text-foreground"
+                      >
+                        {c.name}
+                        <span className="text-[11px] text-muted-foreground">{c.count}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Grid */}
+            {products.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center gap-3 p-16 text-center">
+                  <PackageX className="h-10 w-10 text-muted-foreground" />
+                  <h3 className="text-lg font-semibold">No parts match these filters</h3>
+                  <p className="max-w-sm text-sm text-muted-foreground">
+                    Try changing your bike or browse all parts.
+                  </p>
+                  <Button asChild variant="outline" size="sm" className="mt-2">
+                    <Link href={categorySlug ? `/products?category=${categorySlug}` : "/products"}>
+                      {categorySlug ? "Reset filters in this category" : "Clear all filters"}
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-2 xl:grid-cols-3">
+                {products.map((p) => {
+                  const tp = tradePrice(Number(p.price), p.categoryId, trade);
+                  return (
+                    <ProductCard
+                      key={p.id}
+                      p={{
+                        id: p.id,
+                        slug: p.slug,
+                        name: p.name,
+                        price: p.price.toString(),
+                        stock: p.stock,
+                        images: p.images,
+                        brand: p.brand,
+                        category: p.category,
+                        oemNumber: p.oemNumber,
+                        sku: p.sku,
+                        fitments: p.compatibilities.map((c) => ({
+                          brand: c.bikeModel.brand.name,
+                          model: c.bikeModel.name,
+                          yearFrom: c.yearFrom,
+                          yearTo: c.yearTo,
+                        })),
+                        tradePrice: tp.percent > 0
+                          ? { discounted: tp.discounted, percent: tp.percent }
+                          : undefined,
+                      }}
+                    />
+                  );
+                })}
+              </div>
             )}
           </div>
-          <div className="text-sm text-muted-foreground">
-            <span className="font-semibold text-foreground">{products.length}</span>{" "}
-            {products.length === 1 ? "result" : "results"}
-          </div>
         </div>
-
-        {/* Compact filter bar — Brand · Model · Year only */}
-        <div className="mb-5 border-y border-border py-2.5">
-          <CompactFilters brands={brands} models={allModels} categories={allCategories} />
-        </div>
-
-        {/* Grid */}
-        {products.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center gap-3 p-16 text-center">
-              <PackageX className="h-10 w-10 text-muted-foreground" />
-              <h3 className="text-lg font-semibold">No parts match these filters</h3>
-              <p className="max-w-sm text-sm text-muted-foreground">
-                Try changing your bike or browse all parts.
-              </p>
-              <Button asChild variant="outline" size="sm" className="mt-2">
-                <Link href={categorySlug ? `/products?category=${categorySlug}` : "/products"}>
-                  {categorySlug ? "Reset filters in this category" : "Clear all filters"}
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-            {products.map((p) => {
-              const tp = tradePrice(Number(p.price), p.categoryId, trade);
-              return (
-                <ProductCard
-                  key={p.id}
-                  p={{
-                    id: p.id,
-                    slug: p.slug,
-                    name: p.name,
-                    price: p.price.toString(),
-                    stock: p.stock,
-                    images: p.images,
-                    brand: p.brand,
-                    category: p.category,
-                    oemNumber: p.oemNumber,
-                    sku: p.sku,
-                    fitments: p.compatibilities.map((c) => ({
-                      brand: c.bikeModel.brand.name,
-                      model: c.bikeModel.name,
-                      yearFrom: c.yearFrom,
-                      yearTo: c.yearTo,
-                    })),
-                    tradePrice: tp.percent > 0
-                      ? { discounted: tp.discounted, percent: tp.percent }
-                      : undefined,
-                  }}
-                />
-              );
-            })}
-          </div>
-        )}
       </div>
     </div>
   );

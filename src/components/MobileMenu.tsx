@@ -2,29 +2,37 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
+import type { NavCategoryNode } from "@/lib/nav-cache";
 
-type Group = { icon: string; title: string; items: { label: string; href: string }[] };
+// Fixed action shortcuts that always sit above the category list.
+type Shortcut = { icon: string; label: string; href: string };
+
+type BrandsGroup = {
+  brands: Array<{ name: string; slug: string }>;
+};
 
 export function MobileMenu({
   open,
   onClose,
-  groups,
+  tree = [],
+  brands = [],
+  shortcuts = [],
 }: {
   open: boolean;
   onClose: () => void;
-  groups: Group[];
+  tree?: NavCategoryNode[];
+  brands?: BrandsGroup["brands"];
+  shortcuts?: Shortcut[];
 }) {
-  const [openIdx, setOpenIdx] = useState<number | null>(0);
   const [q, setQ] = useState("");
 
-  const filtered = q
-    ? groups
-        .map((g) => ({
-          ...g,
-          items: g.items.filter((i) => i.label.toLowerCase().includes(q.toLowerCase())),
-        }))
-        .filter((g) => g.items.length || g.title.toLowerCase().includes(q.toLowerCase()))
-    : groups;
+  // Search flattens the entire tree (every depth) so a customer can jump
+  // straight to a deeply-nested category by typing part of its name.
+  const flat = flattenTree(tree);
+  const matches = q
+    ? flat.filter((n) => n.name.toLowerCase().includes(q.toLowerCase()))
+    : [];
 
   return (
     <div
@@ -39,7 +47,7 @@ export function MobileMenu({
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search categories…"
-            className="w-full rounded-lg border border-white/10 bg-ink-700 px-3.5 py-2 pr-9 text-sm text-white placeholder:text-white/40 outline-none focus:border-red"
+            className="w-full rounded-lg border border-white/10 bg-ink-700 px-3.5 py-2.5 pr-9 text-[15px] text-white placeholder:text-white/40 outline-none focus:border-red"
           />
           <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/40" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <circle cx="11" cy="11" r="8" />
@@ -59,45 +67,194 @@ export function MobileMenu({
       </div>
 
       <div className="px-5 pb-20 pt-4">
-        <div className="grid grid-cols-2 gap-2 pb-2">
-          <Link href="/products" onClick={onClose} className="flex items-center gap-2 rounded-lg border border-white/10 bg-ink-800 px-3.5 py-3 font-head text-sm font-bold uppercase tracking-wider text-white/85 transition hover:border-red hover:text-white">
-            <span className="text-lg">🔥</span> Best deals
-          </Link>
-          <Link href="/products?sort=new" onClick={onClose} className="flex items-center gap-2 rounded-lg border border-white/10 bg-ink-800 px-3.5 py-3 font-head text-sm font-bold uppercase tracking-wider text-white/85 transition hover:border-red hover:text-white">
-            <span className="text-lg">✨</span> New in
-          </Link>
-        </div>
-
-        {filtered.map((g, idx) => (
-          <div key={g.title} className="border-b border-white/10">
-            <button
-              onClick={() => setOpenIdx(openIdx === idx ? null : idx)}
-              className="flex w-full items-center justify-between py-3.5"
-            >
-              <span className="flex items-center gap-2.5">
-                <span className="w-7 text-center text-lg">{g.icon}</span>
-                <span className="font-head text-base font-extrabold uppercase tracking-wide text-white">{g.title}</span>
-              </span>
-              <span className={`text-xs text-white/40 transition ${openIdx === idx ? "rotate-180" : ""}`}>▼</span>
-            </button>
-            {openIdx === idx && (
-              <ul className="pb-3 pl-9">
-                {g.items.map((it) => (
-                  <li key={it.label}>
-                    <Link
-                      href={it.href}
-                      onClick={onClose}
-                      className="flex items-center gap-2 border-b border-white/5 py-1.5 text-[13.5px] text-white/65 transition hover:translate-x-1 hover:text-white"
-                    >
-                      <span className="h-1.5 w-1.5 rounded-full bg-ink-600" /> {it.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+        {/* Search results take over the body when active — flat list of every
+            matching category at any depth, showing the path for context. */}
+        {q ? (
+          <div className="space-y-1">
+            {matches.length === 0 ? (
+              <div className="px-1 py-6 text-center text-sm text-white/50">
+                No categories match &quot;{q}&quot;.
+              </div>
+            ) : (
+              matches.map((n) => (
+                <Link
+                  key={n.id}
+                  href={`/category/${n.path}`}
+                  onClick={onClose}
+                  className="flex items-center justify-between gap-3 rounded-md border border-white/10 bg-ink-800 px-4 py-3 transition hover:border-red hover:bg-ink-700"
+                >
+                  <span className="font-head text-[15px] font-bold uppercase tracking-wide text-white">
+                    {n.name}
+                  </span>
+                  <span className="truncate font-mono text-[11px] text-white/40">
+                    /{n.path}
+                  </span>
+                </Link>
+              ))
             )}
           </div>
-        ))}
+        ) : (
+          <>
+            {shortcuts.length > 0 && (
+              <div className="mb-3 grid grid-cols-2 gap-2">
+                {shortcuts.map((s) => (
+                  <Link
+                    key={s.label}
+                    href={s.href}
+                    onClick={onClose}
+                    className="flex items-center gap-2 rounded-lg border border-white/10 bg-ink-800 px-3.5 py-3 font-head text-sm font-bold uppercase tracking-wider text-white/85 transition hover:border-red hover:text-white"
+                  >
+                    <span className="text-lg">{s.icon}</span> {s.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            {/* Top-level categories — each row expandable into its tree.
+                Show every category the admin has created, even with zero
+                products, so the structure matches the desktop sidebar. */}
+            <ul>
+              {tree.map((root) => (
+                <CategoryRow
+                  key={root.id}
+                  node={root}
+                  depth={0}
+                  onNavigate={onClose}
+                />
+              ))}
+            </ul>
+
+            {/* Brands group — flat list at the bottom. */}
+            {brands.length > 0 && (
+              <CollapsibleSection title="Brands" icon="🏷️">
+                <ul className="space-y-0.5 pl-3">
+                  {brands.map((b) => (
+                    <li key={b.slug}>
+                      <Link
+                        href={`/products?brand=${b.slug}`}
+                        onClick={onClose}
+                        className="flex items-center gap-2 py-2.5 text-[15px] text-white/75 transition hover:translate-x-1 hover:text-white"
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-white/30" />
+                        {b.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </CollapsibleSection>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
+}
+
+// Recursive category row. Top-level rows render with the big "category"
+// styling; deeper rows render lighter. Anywhere there are children, an
+// expand chevron toggles the nested list. Tapping the name always navigates
+// to that category page (so a parent is reachable too, not just its leaves).
+function CategoryRow({
+  node, depth, onNavigate,
+}: {
+  node: NavCategoryNode;
+  depth: number;
+  onNavigate: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const hasChildren = node.children.length > 0;
+  const isTop = depth === 0;
+
+  return (
+    <li className={isTop ? "border-b border-white/10" : ""}>
+      <div className="flex items-stretch">
+        <Link
+          href={`/category/${node.path}`}
+          onClick={onNavigate}
+          className={
+            isTop
+              ? "flex flex-1 items-center gap-2.5 py-4 text-white"
+              : "flex flex-1 items-center gap-2 py-3 text-white/75 transition hover:translate-x-1 hover:text-white"
+          }
+          style={{ paddingLeft: depth * 16 }}
+        >
+          {isTop ? (
+            <>
+              <span className="w-7 text-center text-lg">📦</span>
+              <span className="font-head text-[18px] font-extrabold uppercase tracking-wide">
+                {node.name}
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="h-1.5 w-1.5 rounded-full bg-white/30" />
+              <span className="text-[15px]">{node.name}</span>
+            </>
+          )}
+        </Link>
+        {hasChildren && (
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            className="flex w-12 shrink-0 items-center justify-center text-white/55 transition hover:text-white"
+            aria-label={open ? "Collapse" : "Expand"}
+          >
+            <ChevronRight
+              className={`h-4 w-4 transition-transform ${open ? "rotate-90" : ""}`}
+            />
+          </button>
+        )}
+      </div>
+      {hasChildren && open && (
+        <ul className="pb-1">
+          {node.children.map((child) => (
+            <CategoryRow
+              key={child.id}
+              node={child}
+              depth={depth + 1}
+              onNavigate={onNavigate}
+            />
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+
+function CollapsibleSection({
+  title, icon, children,
+}: { title: string; icon: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border-b border-white/10">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between py-4"
+      >
+        <span className="flex items-center gap-2.5">
+          <span className="w-7 text-center text-lg">{icon}</span>
+          <span className="font-head text-[18px] font-extrabold uppercase tracking-wide text-white">
+            {title}
+          </span>
+        </span>
+        <ChevronRight
+          className={`h-4 w-4 text-white/55 transition-transform ${open ? "rotate-90" : ""}`}
+        />
+      </button>
+      {open && <div className="pb-3">{children}</div>}
+    </div>
+  );
+}
+
+function flattenTree(tree: NavCategoryNode[]): NavCategoryNode[] {
+  const out: NavCategoryNode[] = [];
+  const walk = (ns: NavCategoryNode[]) => {
+    for (const n of ns) {
+      out.push(n);
+      if (n.children.length) walk(n.children);
+    }
+  };
+  walk(tree);
+  return out;
 }

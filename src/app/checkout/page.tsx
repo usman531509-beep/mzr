@@ -7,8 +7,9 @@ import { useSession } from "next-auth/react";
 import { ArrowLeft, Loader2, ShoppingBag } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
 import {
-  Elements, CardElement, useStripe, useElements,
+  Elements, CardNumberElement, useStripe, useElements,
 } from "@stripe/react-stripe-js";
+import { StripeCardFields } from "@/components/StripeCardFields";
 
 import { useCart, cartTotals, type CartItem } from "@/lib/cart-store";
 import { Badge } from "@/components/ui/badge";
@@ -511,7 +512,7 @@ function StripePaymentForm({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!stripe || !elements) return;
-    const card = elements.getElement(CardElement);
+    const card = elements.getElement(CardNumberElement);
     if (!card) return;
     setBusy(true);
     onPaying(true);
@@ -549,29 +550,14 @@ function StripePaymentForm({
   };
 
   return (
-    <form onSubmit={submit} className="space-y-4">
-      <div className="rounded-md border border-border bg-card px-3 py-3">
-        <CardElement
-          options={{
-            style: {
-              base: {
-                fontSize: "15px",
-                color: "#fff",
-                fontFamily: "inherit",
-                "::placeholder": { color: "#9ca3af" },
-              },
-              invalid: { color: "#f87171" },
-            },
-            hidePostalCode: false,
-          }}
-        />
-      </div>
-      <Button type="submit" disabled={!stripe || busy} className="w-full" size="lg">
-        {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+    <form onSubmit={submit} className="space-y-5">
+      <StripeCardFields />
+      <Button type="submit" disabled={!stripe || busy} className="w-full gap-2" size="lg">
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
         {busy ? "Processing payment…" : `Pay ${fmtMoney(total)}`}
       </Button>
       <p className="text-center text-[11px] text-muted-foreground">
-        Powered by Stripe · we never see your card details.
+        Secured by Stripe — we never see your card details.
       </p>
     </form>
   );
