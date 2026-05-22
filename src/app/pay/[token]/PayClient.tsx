@@ -3,24 +3,21 @@
 import { useEffect, useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import {
-  Elements, CardNumberElement, useStripe, useElements,
+  Elements, PaymentElement, useStripe, useElements,
 } from "@stripe/react-stripe-js";
 import { Loader2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { StripeCardFields } from "@/components/StripeCardFields";
 import { fmtMoney } from "@/lib/format";
 import { useCart } from "@/lib/cart-store";
 
 const STRIPE_PK = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 const stripePromise = STRIPE_PK ? loadStripe(STRIPE_PK) : null;
 
-// Split-field card form via Stripe's CardNumber/Expiry/CVC elements. We use
-// these (rather than PaymentElement) deliberately: PaymentElement bundles
-// Stripe Link, which fires an "enter the OTP from your email" modal whenever
-// the recipient's email is recognised across any other Stripe shop. For an
-// admin-issued pay link the simplest, most predictable experience is just
-// "type card, click pay". Every test card still works (4242 4242 4242 4242
-// for success, etc.).
+// Stripe's hosted PaymentElement. With the PaymentIntent restricted to
+// `payment_method_types: ["card"]` (see /api/pay/[token]/intent), Stripe
+// hides Link / wallets and renders only the polished card form, including
+// its built-in dev-mode test-card autofill picker. We lean on this rather
+// than hand-building card inputs so the look matches the rest of Stripe.
 
 export function PayClient({
   token, total, orderId,
@@ -86,16 +83,28 @@ export function PayClient({
   }
 
   return (
-    <Elements stripe={stripePromise}>
-      <PayForm clientSecret={clientSecret} token={token} total={total} orderId={orderId} />
+    <Elements
+      stripe={stripePromise}
+      options={{
+        clientSecret,
+        appearance: {
+          theme: "night",
+          variables: {
+            colorPrimary: "#e8151b",
+            borderRadius: "8px",
+            fontSizeBase: "15px",
+          },
+        },
+      }}
+    >
+      <PayForm token={token} total={total} orderId={orderId} />
     </Elements>
   );
 }
 
 function PayForm({
-  clientSecret, token, total, orderId,
+  token, total, orderId,
 }: {
-  clientSecret: string;
   token: string;
   total: number;
   orderId: string;
@@ -109,24 +118,21 @@ function PayForm({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!stripe || !elements) return;
-    const card = elements.getElement(CardNumberElement);
-    if (!card) return;
     setBusy(true);
     setError(null);
-    const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
-      clientSecret,
-      { payment_method: { card } },
-    );
+    const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: `${window.location.origin}/pay/${token}?paid=1`,
+      },
+      redirect: "if_required",
+    });
     if (stripeError) {
       setError(stripeError.message ?? "Payment failed. Please try again.");
       setBusy(false);
       return;
     }
     if (paymentIntent && paymentIntent.status === "succeeded") {
-      // Mark our DB as paid immediately. Without this, the redirect below
-      // would re-render the form because the order is still PENDING until
-      // the Stripe webhook fires — and the webhook may be delayed or not
-      // configured locally. The endpoint is idempotent with the webhook.
       try {
         await fetch(`/api/pay/${token}/confirm`, {
           method: "POST",
@@ -134,25 +140,27 @@ function PayForm({
           body: JSON.stringify({ paymentIntentId: paymentIntent.id }),
         });
       } catch {
-        // Non-fatal — the webhook will close the loop server-side either way.
+        // Webhook will reconcile if the direct call failed.
       }
-      // The items the customer just paid for are usually the same ones
-      // still sitting in their local cart (the cart isn't cleared until
-      // payment completes). Wipe it so they don't see ghost items after
-      // returning to the store.
       clearCart();
       window.location.href = `/pay/${token}?paid=1`;
       return;
     }
-    // 3DS / other actions are handled automatically by confirmCardPayment;
-    // any non-succeeded terminal state surfaces via `error` above.
     setBusy(false);
     void orderId;
   };
 
   return (
     <form onSubmit={submit} className="space-y-5">
-      <StripeCardFields />
+      <PaymentElement
+        options={{
+          layout: "tabs",
+          // Letting Stripe collect country/postal-code itself sidesteps the
+          // "you said never but didn't pass it in confirmParams" error from
+          // `fields.billingDetails.address: "never"`. Wallets stay disabled.
+          wallets: { applePay: "never", googlePay: "never" },
+        }}
+      />
 
       {error && (
         <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -164,18 +172,6 @@ function PayForm({
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-3.5 w-3.5" />}
         {busy ? "Processing…" : `Pay ${fmtMoney(total)}`}
       </Button>
-
-      <details className="rounded-md border border-border bg-muted/30 px-3 py-2 text-[12px] text-muted-foreground">
-        <summary className="cursor-pointer select-none font-medium">
-          Test card numbers
-        </summary>
-        <ul className="mt-2 space-y-0.5 font-mono">
-          <li><strong className="text-foreground">4242 4242 4242 4242</strong> — succeeds</li>
-          <li><strong className="text-foreground">4000 0027 6000 3184</strong> — requires 3D Secure</li>
-          <li><strong className="text-foreground">4000 0000 0000 0002</strong> — declined</li>
-          <li>Any future expiry, any CVC.</li>
-        </ul>
-      </details>
 
       <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
         <Lock className="h-3 w-3" /> Secured by Stripe — we never see your card details.

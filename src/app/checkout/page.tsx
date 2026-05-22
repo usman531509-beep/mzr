@@ -7,9 +7,8 @@ import { useSession } from "next-auth/react";
 import { ArrowLeft, Loader2, ShoppingBag } from "lucide-react";
 import { loadStripe } from "@stripe/stripe-js";
 import {
-  Elements, CardNumberElement, useStripe, useElements,
+  Elements, PaymentElement, useStripe, useElements,
 } from "@stripe/react-stripe-js";
-import { StripeCardFields } from "@/components/StripeCardFields";
 
 import { useCart, cartTotals, type CartItem } from "@/lib/cart-store";
 import { Badge } from "@/components/ui/badge";
@@ -297,7 +296,11 @@ export default function CheckoutPage() {
 
             {/* Shipping form */}
             {step === "shipping" && (
-              <form onSubmit={adminOnBehalf ? submitAdminOrder : continueToPayment} className="space-y-4">
+              <form
+                id="checkout-shipping-form"
+                onSubmit={adminOnBehalf ? submitAdminOrder : continueToPayment}
+                className="space-y-4"
+              >
                 <div className="grid gap-3 sm:grid-cols-2">
                   {/* Contact */}
                   <Field label="Full name" value={form.customerName}
@@ -401,14 +404,10 @@ export default function CheckoutPage() {
                     />
                   </div>
                 </div>
-                <Button type="submit" disabled={submitting} className="w-full" size="lg">
-                  {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {submitting
-                    ? (adminOnBehalf ? "Placing order…" : "Starting payment…")
-                    : adminOnBehalf
-                      ? `Place order — ${fmtMoney(displayTotals.total)}`
-                      : `Continue to payment — ${fmtMoney(displayTotals.total)}`}
-                </Button>
+                {/* Submit button lives outside the form (below the order
+                    summary) so it sits under the totals on mobile. The
+                    `form="checkout-shipping-form"` attribute on that button
+                    links it back to this form. */}
               </form>
             )}
 
@@ -422,9 +421,21 @@ export default function CheckoutPage() {
                 >
                   <ArrowLeft className="h-3 w-3" /> Edit shipping details
                 </button>
-                <Elements stripe={stripePromise}>
+                <Elements
+                  stripe={stripePromise}
+                  options={{
+                    clientSecret,
+                    appearance: {
+                      theme: "night",
+                      variables: {
+                        colorPrimary: "#e8151b",
+                        borderRadius: "8px",
+                        fontSizeBase: "15px",
+                      },
+                    },
+                  }}
+                >
                   <StripePaymentForm
-                    clientSecret={clientSecret}
                     orderId={orderId!}
                     total={displayTotals.total}
                     onError={(m) => setErr(m)}
@@ -485,6 +496,22 @@ export default function CheckoutPage() {
             <Row label="VAT (20%)" value={fmtMoney(displayTotals.tax)} />
             <Separator />
             <Row label="Total" value={fmtMoney(displayTotals.total)} bold />
+            {step === "shipping" && (
+              <Button
+                type="submit"
+                form="checkout-shipping-form"
+                disabled={submitting}
+                className="mt-2 w-full"
+                size="lg"
+              >
+                {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                {submitting
+                  ? (adminOnBehalf ? "Placing order…" : "Starting payment…")
+                  : adminOnBehalf
+                    ? `Place order — ${fmtMoney(displayTotals.total)}`
+                    : `Continue to payment — ${fmtMoney(displayTotals.total)}`}
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -496,9 +523,8 @@ export default function CheckoutPage() {
 }
 
 function StripePaymentForm({
-  clientSecret, orderId, total, onError, onPaying, onSuccess,
+  orderId, total, onError, onPaying, onSuccess,
 }: {
-  clientSecret: string;
   orderId: string;
   total: number;
   onError: (msg: string) => void;
@@ -512,16 +538,17 @@ function StripePaymentForm({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!stripe || !elements) return;
-    const card = elements.getElement(CardNumberElement);
-    if (!card) return;
     setBusy(true);
     onPaying(true);
     onError("");
 
-    const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
-      clientSecret,
-      { payment_method: { card } },
-    );
+    const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: `${window.location.origin}/checkout/success?id=${orderId}`,
+      },
+      redirect: "if_required",
+    });
 
     if (stripeError) {
       onError(stripeError.message ?? "Payment failed. Please try again.");
@@ -551,7 +578,15 @@ function StripePaymentForm({
 
   return (
     <form onSubmit={submit} className="space-y-5">
-      <StripeCardFields />
+      <PaymentElement
+        options={{
+          layout: "tabs",
+          // Letting Stripe collect country/postal-code itself sidesteps the
+          // "you said never but didn't pass it in confirmParams" error from
+          // `fields.billingDetails.address: "never"`. Wallets stay disabled.
+          wallets: { applePay: "never", googlePay: "never" },
+        }}
+      />
       <Button type="submit" disabled={!stripe || busy} className="w-full gap-2" size="lg">
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
         {busy ? "Processing payment…" : `Pay ${fmtMoney(total)}`}
