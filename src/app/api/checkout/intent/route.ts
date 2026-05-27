@@ -125,6 +125,12 @@ export async function POST(req: Request) {
   // 2) In a transaction: assign an order number, create the order + items,
   //    reserve FIFO stock, and persist the PENDING Payment row tied to the
   //    PaymentIntent. The webhook flips this to SUCCEEDED on completion.
+  //
+  // The transaction runs N stock decrements + N FIFO consumes + a retail
+  // refresh per touched product, all sequentially. On production with
+  // cross-region DB latency this can easily run past Prisma's default 5s
+  // interactive-transaction window and crash with "Transaction not found".
+  // The maxWait/timeout bump below matches the admin order-create flow.
   try {
     const result = await prisma.$transaction(async (tx) => {
       const orderNumber = await nextOrderNumber(tx);
@@ -189,7 +195,7 @@ export async function POST(req: Request) {
       });
 
       return created;
-    });
+    }, { maxWait: 10_000, timeout: 30_000 });
 
     return NextResponse.json({
       orderId: result.id,
