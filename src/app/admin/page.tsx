@@ -4,7 +4,7 @@ import { Package, ShoppingCart, Users, DollarSign, BadgePercent, Receipt, Trendi
 import { prisma } from "@/lib/prisma";
 import { fmtMoney } from "@/lib/format";
 import { StatCard } from "@/components/admin/StatCard";
-import { DashboardClient } from "@/components/admin/DashboardClient";
+import { DashboardClient, type DashboardCategory } from "@/components/admin/DashboardClient";
 import { RevenueLineChart } from "@/components/admin/RevenueLineChart";
 import { StatusPieChart } from "@/components/admin/StatusPieChart";
 import { CategoryBarChart } from "@/components/admin/CategoryBarChart";
@@ -88,8 +88,12 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
     // Recent orders panel still shows every order (regardless of status) so
     // admins can take action on pending / paid / shipped ones.
     prisma.order.findMany({ where: orderRangeFilter, orderBy: { createdAt: "desc" }, take: 5 }),
+    // Dashboard preview only — the full catalogue lives on /admin/products
+    // with its own pagination + search. Cap at 10 newest with the relations
+    // the card UI needs, nothing more.
     prisma.product.findMany({
       orderBy: { createdAt: "desc" },
+      take: 10,
       include: { brand: true, category: true, compatibilities: true },
     }),
     prisma.brand.findMany({ orderBy: { name: "asc" } }),
@@ -97,7 +101,14 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
       orderBy: [{ depth: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
       select: {
         id: true, name: true, slug: true, parentId: true, path: true, depth: true,
-        _count: { select: { children: true } },
+        _count: {
+          select: {
+            children: true,
+            // Roll up active-product counts here so the dashboard doesn't
+            // need to load every product just to compute category totals.
+            products: { where: { active: true } },
+          },
+        },
       },
     }),
     prisma.bikeModel.findMany({
@@ -274,26 +285,18 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 10);
 
-  const productsByCat = new Map<string, typeof products>();
-  for (const p of products) {
-    const arr = productsByCat.get(p.categoryId) ?? [];
-    arr.push(p);
-    productsByCat.set(p.categoryId, arr);
-  }
-
-  const categoriesData = categories.map((c) => {
-    const list = productsByCat.get(c.id) ?? [];
-    return {
+  // Category counts come straight from Postgres via _count above; the
+  // "recent parts in this category" inline lists from the old dashboard
+  // were dropped to keep the overview lightweight.
+  const categoriesData = categories
+    .map((c) => ({
       id: c.id,
       name: c.name,
       slug: c.slug,
-      productCount: list.length,
-      recent: list.slice(0, 3).map((p) => ({
-        id: p.id, name: p.name, price: p.price.toString(), stock: p.stock,
-        image: p.images[0] ?? null,
-      })),
-    };
-  });
+      productCount: c._count.products,
+      recent: [] as DashboardCategory["recent"],
+    }))
+    .sort((a, b) => b.productCount - a.productCount);
 
   const productsForClient = products.map((p) => ({
     id: p.id,
@@ -306,6 +309,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
     category: p.category.name,
     categorySlug: p.category.slug,
     featured: p.featured,
+    demanding: p.demanding,
     active: p.active,
     image: p.images[0] ?? null,
     description: p.description,

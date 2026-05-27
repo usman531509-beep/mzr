@@ -1,14 +1,23 @@
 import Link from "next/link";
+import { Star } from "lucide-react";
 import { ProductCard, type ProductCardData } from "@/components/ProductCard";
 
 export function FeaturedProducts({ products }: { products: ProductCardData[] }) {
   if (products.length === 0) return null;
   return (
     <section className="mx-auto max-w-site px-[var(--gutter)] py-16">
-      <div className="mb-9 flex items-end justify-between gap-5">
+      <div className="mb-9 flex flex-wrap items-end justify-between gap-5">
         <div>
-          <div className="eyebrow mb-2">Hand-picked</div>
-          <h2 className="section-h2">Featured <em>parts</em></h2>
+          <div className="eyebrow mb-2 inline-flex items-center gap-1.5">
+            <Star className="h-3 w-3" /> Hand-picked
+          </div>
+          <h2 className="section-h2">
+            Featured <em>parts</em>
+          </h2>
+          <p className="mt-1 max-w-md text-[13px] text-white/55">
+            Workshop favourites — the parts we recommend most often when riders
+            walk in with a problem to solve.
+          </p>
         </div>
         <Link
           href="/products"

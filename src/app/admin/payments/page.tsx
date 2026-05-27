@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { fmtMoney } from "@/lib/format";
 import { Card, CardContent } from "@/components/ui/card";
+import { Pagination } from "@/components/Pagination";
+import { parsePagination } from "@/lib/pagination";
 import { StatCard } from "@/components/admin/StatCard";
 import { PaymentsClient } from "@/components/admin/PaymentsClient";
 import { CheckCircle2, CreditCard, Clock4, XCircle } from "lucide-react";
@@ -29,11 +31,14 @@ export default async function PaymentsPage({ searchParams }: { searchParams: SP 
       | "PENDING" | "SUCCEEDED" | "FAILED" | "CANCELED" | "REFUNDED";
   }
 
-  const [payments, totals] = await Promise.all([
+  const { page, pageSize, skip, take } = parsePagination(sp, { defaultSize: 25 });
+
+  const [payments, total, totals] = await Promise.all([
     prisma.payment.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      take: 300,
+      skip,
+      take,
       include: {
         order: {
           select: {
@@ -44,6 +49,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: SP 
         user: { select: { email: true, name: true } },
       },
     }),
+    prisma.payment.count({ where }),
     prisma.payment.groupBy({
       by: ["status"],
       _count: { _all: true },
@@ -122,6 +128,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: SP 
                 : null,
             }))}
           />
+          <Pagination total={total} pageSize={pageSize} currentPage={page} />
         </CardContent>
       </Card>
     </div>

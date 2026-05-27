@@ -1,8 +1,16 @@
 import { prisma } from "@/lib/prisma";
+import { parsePagination } from "@/lib/pagination";
 import { OrdersClient } from "./client";
 
-export default async function AdminOrders() {
-  const [orders, couriers] = await Promise.all([
+type SP = Promise<Record<string, string | string[] | undefined>>;
+
+export const dynamic = "force-dynamic";
+
+export default async function AdminOrders({ searchParams }: { searchParams: SP }) {
+  const sp = await searchParams;
+  const { page, pageSize, skip, take } = parsePagination(sp, { defaultSize: 25 });
+
+  const [orders, total, couriers] = await Promise.all([
     prisma.order.findMany({
       orderBy: { createdAt: "desc" },
       include: {
@@ -14,8 +22,6 @@ export default async function AdminOrders() {
                 oemNumber: true,
                 brand: { select: { name: true } },
                 compatibilities: {
-                  // The order sheet only renders the top 3 fitments — fetching
-                  // more inflates the JOIN result with rows we never display.
                   take: 3,
                   orderBy: { yearTo: "desc" },
                   select: {
@@ -32,8 +38,10 @@ export default async function AdminOrders() {
         createdByAdmin: { select: { name: true, email: true } },
         courier: { select: { id: true, name: true, trackingUrl: true } },
       },
-      take: 100,
+      skip,
+      take,
     }),
+    prisma.order.count(),
     prisma.courier.findMany({
       where: { active: true },
       orderBy: { name: "asc" },
@@ -44,6 +52,7 @@ export default async function AdminOrders() {
   return (
     <OrdersClient
       couriers={couriers}
+      pagination={{ page, pageSize, total }}
       initial={orders.map((o) => ({
         id: o.id,
         orderNumber: o.orderNumber,
@@ -54,7 +63,6 @@ export default async function AdminOrders() {
         customer: o.customerName,
         email: o.customerEmail,
         phone: o.customerPhone,
-        // One-line condensed address used in compact contexts (cards, tooltips).
         address: [
           o.shippingAddress,
           o.shippingAddressLine2,

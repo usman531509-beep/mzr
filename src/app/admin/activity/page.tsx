@@ -3,6 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Activity as ActivityIcon } from "lucide-react";
 import { AdminFilterBar } from "@/components/admin/AdminFilterBar";
+import { Pagination } from "@/components/Pagination";
+import { parsePagination } from "@/lib/pagination";
 import type { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -139,18 +141,23 @@ export default async function ActivityPage({ searchParams }: { searchParams: SP 
   if (moduleKey) where.moduleKey = moduleKey;
   if (role === "ADMIN" || role === "MANAGER" || role === "STAFF") where.userRole = role;
 
-  const logs = await prisma.activityLog.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-    take: 200,
-  });
+  const { page, pageSize, skip, take } = parsePagination(sp, { defaultSize: 50 });
+  const [logs, total] = await Promise.all([
+    prisma.activityLog.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take,
+    }),
+    prisma.activityLog.count({ where }),
+  ]);
 
   return (
     <div className="space-y-4 p-4 lg:p-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Activity log</h1>
         <p className="text-sm text-muted-foreground">
-          Back-office activity from admins, managers and staff. Latest 200 entries.
+          Back-office activity from admins, managers and staff.
         </p>
       </div>
 
@@ -229,6 +236,12 @@ export default async function ActivityPage({ searchParams }: { searchParams: SP 
                 </li>
               ))}
             </ol>
+            <Pagination
+              total={total}
+              pageSize={pageSize}
+              currentPage={page}
+              className="px-4 pb-2"
+            />
           </CardContent>
         </Card>
       )}

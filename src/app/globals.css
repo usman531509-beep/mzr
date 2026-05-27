@@ -259,3 +259,22 @@ body { line-height: 1.5; overflow-x: hidden; }
      and lots of side padding — A4 with 0.5in margins fits nicely). */
   @page { margin: 12mm; }
 }
+
+/* ---- Infinite-loop marquee (used by TrustStrip) ---------------------- */
+/* The track contains TWO identical copies of the items side by side.
+   Translating from 0 to -50% scrolls through the first copy; when the
+   animation snaps back to 0, the second copy is in the exact same visual
+   place, so the loop has no visible seam. Pauses on hover so customers
+   can read items they care about. */
+@keyframes trust-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.trust-marquee-track {
+  animation: trust-marquee 36s linear infinite;
+  will-change: transform;
+}
+.trust-marquee:hover .trust-marquee-track { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .trust-marquee-track { animation: none; }
+}

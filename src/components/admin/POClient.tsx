@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import {
   ClipboardList, Eye, FileText, Printer, Trash2,
 } from "lucide-react";
+import { confirmAction } from "@/lib/confirm-store";
 import { fmtMoney } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -82,7 +83,13 @@ export function POClient({ rows }: { rows: PORow[] }) {
   };
 
   const del = async (id: string, ref: string) => {
-    if (!confirm(`Delete ${ref}?`)) return;
+    const ok = await confirmAction({
+      title: `Delete ${ref}?`,
+      description: "Removes this purchase order and its lines. Received stock layers stay untouched.",
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
     const res = await fetch(`/api/admin/purchase-orders/${id}`, { method: "DELETE" });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.ok) {

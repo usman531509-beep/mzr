@@ -13,6 +13,8 @@ import { AdminFilterBar } from "@/components/admin/AdminFilterBar";
 import { UserActiveToggle } from "@/components/admin/UserActiveToggle";
 import { NewUserButton, EditUserButton } from "@/components/admin/UsersActions";
 import { UserPermissionsButton } from "@/components/admin/UserPermissionsButton";
+import { Pagination } from "@/components/Pagination";
+import { parsePagination } from "@/lib/pagination";
 import { auth } from "@/auth";
 import { Briefcase } from "lucide-react";
 import type { Prisma } from "@prisma/client";
@@ -44,10 +46,13 @@ export default async function UsersPage({ searchParams }: { searchParams: SP }) 
   if (activeFilter === "yes") where.active = true;
   else if (activeFilter === "no") where.active = false;
 
-  const [users, session] = await Promise.all([
+  const { page, pageSize, skip, take } = parsePagination(sp, { defaultSize: 25 });
+  const [users, total, session] = await Promise.all([
     prisma.user.findMany({
       where,
       orderBy: { createdAt: "desc" },
+      skip,
+      take,
       include: {
         _count: { select: { orders: true } },
         cart: {
@@ -74,6 +79,7 @@ export default async function UsersPage({ searchParams }: { searchParams: SP }) 
         },
       },
     }),
+    prisma.user.count({ where }),
     auth(),
   ]);
   const currentAdminId = session?.user?.id;
@@ -250,6 +256,12 @@ export default async function UsersPage({ searchParams }: { searchParams: SP }) 
               })}
             </TableBody>
           </Table>
+          <Pagination
+            total={total}
+            pageSize={pageSize}
+            currentPage={page}
+            className="px-3 pb-3"
+          />
         </Card>
       )}
     </div>

@@ -7,6 +7,7 @@ import {
   ChevronLeft, ChevronRight, FolderPlus, Pencil, Plus, Search, Trash2, X,
 } from "lucide-react";
 
+import { confirmAction } from "@/lib/confirm-store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -121,7 +122,13 @@ export function CategoriesClient({ initial }: { initial: CategoryTreeNode[] }) {
   };
 
   const del = async (node: CategoryTreeNode) => {
-    if (!confirm(`Delete "${node.name}"?`)) return;
+    const ok = await confirmAction({
+      title: `Delete "${node.name}"?`,
+      description: "Categories with sub-categories or products can't be deleted — move them first.",
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
     const res = await fetch(`/api/admin/categories?id=${node.id}`, { method: "DELETE" });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) { toast.error(data.error ?? "Failed to delete"); return; }

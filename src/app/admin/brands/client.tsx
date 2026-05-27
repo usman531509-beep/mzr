@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Pencil, Plus, Search, Trash2, X } from "lucide-react";
 
+import { confirmAction } from "@/lib/confirm-store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -70,7 +71,13 @@ export function BrandsClient({ initial }: { initial: Row[] }) {
   };
 
   const del = async (id: string, label: string) => {
-    if (!confirm(`Delete "${label}"?`)) return;
+    const ok = await confirmAction({
+      title: `Delete "${label}"?`,
+      description: "Brands with linked products or bike models can't be deleted — those would orphan. Remove or reassign first.",
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
     const res = await fetch(`/api/admin/brands?id=${id}`, { method: "DELETE" });
     if (res.ok) { toast.success("Brand deleted"); router.refresh(); }
     else toast.error("Failed to delete");

@@ -6,10 +6,13 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, MoreHorizontal, Pencil, Trash2, ExternalLink, Search, X } from "lucide-react";
 
+import { confirmAction } from "@/lib/confirm-store";
+import { Pagination } from "@/components/Pagination";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   Table, TableHeader, TableHead, TableRow, TableBody, TableCell,
 } from "@/components/ui/table";
@@ -26,12 +29,13 @@ import {
 import type { DashboardProduct } from "@/components/admin/DashboardClient";
 
 export function ProductsPageClient({
-  products, brands, categories, models,
+  products, brands, categories, models, pagination,
 }: {
   products: DashboardProduct[];
   brands: Brand[];
   categories: Category[];
   models: BikeModel[];
+  pagination: { page: number; pageSize: number; total: number };
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -73,6 +77,7 @@ export function ProductsPageClient({
       if (filterStatus === "active"   && !p.active)   return false;
       if (filterStatus === "inactive" &&  p.active)   return false;
       if (filterStatus === "featured" && !p.featured) return false;
+      if (filterStatus === "demanding" && !p.demanding) return false;
       if (filterStock === "in"  && p.stock <= 0) return false;
       if (filterStock === "out" && p.stock !== 0) return false;
       if (filterStock === "low" && (p.stock <= 0 || p.stock > LOW_STOCK_THRESHOLD)) return false;
@@ -105,13 +110,50 @@ export function ProductsPageClient({
     return sorted;
   }, [products, q, filterCat, filterBrand, filterStatus, filterStock, sortBy]);
 
+  // Tracks which rows are mid-toggle so the Switch shows as disabled and we
+  // don't fire duplicate PATCHes if the admin double-taps. Re-rendered table
+  // values come back from router.refresh().
+  const [toggling, setToggling] = useState<Record<string, boolean>>({});
+
+  const toggleActive = async (id: string, current: boolean) => {
+    if (toggling[id]) return;
+    setToggling((m) => ({ ...m, [id]: true }));
+    try {
+      const res = await fetch(`/api/admin/products/${id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ active: !current }),
+      });
+      const data = await res.json().catch(() => ({} as { error?: string }));
+      if (!res.ok) {
+        toast.error(data.error ?? "Could not update");
+        return;
+      }
+      toast.success(current ? "Product deactivated" : "Product activated");
+      router.refresh();
+    } finally {
+      setToggling((m) => ({ ...m, [id]: false }));
+    }
+  };
+
   const del = async (id: string, name: string) => {
-    if (!confirm(`Delete "${name}"?`)) return;
+    const ok = await confirmAction({
+      title: `Delete "${name}"?`,
+      description: "Products with order history can't be hard-deleted — deactivate them instead.",
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
     const res = await fetch(`/api/admin/products/${id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({} as { error?: string }));
     if (res.ok) {
       toast.success("Part deleted");
       router.refresh();
-    } else toast.error("Failed to delete");
+      return;
+    }
+    // Surface the API's friendly reason (e.g. "has order history — deactivate
+    // it instead") so the admin doesn't see a generic 500.
+    toast.error(data.error ?? "Failed to delete");
   };
 
   return (
@@ -178,6 +220,7 @@ export function ProductsPageClient({
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="inactive">Inactive</SelectItem>
                 <SelectItem value="featured">Featured</SelectItem>
+                <SelectItem value="demanding">In demand</SelectItem>
               </SelectContent>
             </Select>
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
@@ -213,13 +256,14 @@ export function ProductsPageClient({
                   <TableHead>Fitments</TableHead>
                   <TableHead className="text-right">Price</TableHead>
                   <TableHead className="text-right">Stock</TableHead>
+                  <TableHead className="text-center">Active</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center text-sm text-muted-foreground">
                       No parts match these filters.
                     </TableCell>
                   </TableRow>
@@ -237,6 +281,7 @@ export function ProductsPageClient({
                           <div className="flex items-center gap-1.5">
                             <span className="truncate font-medium">{p.name}</span>
                             {p.featured && <Badge variant="warning" className="text-[9px]">Featured</Badge>}
+                            {p.demanding && <Badge className="bg-red/15 text-red ring-1 ring-inset ring-red/30 text-[9px] hover:bg-red/15">In demand</Badge>}
                             {!p.active && <Badge variant="secondary" className="text-[9px]">Inactive</Badge>}
                           </div>
                           {(p.sku || p.oemNumber) && (
@@ -253,6 +298,14 @@ export function ProductsPageClient({
                     <TableCell className="text-sm text-muted-foreground">{p.compatibilities.length}</TableCell>
                     <TableCell className="text-right font-medium">{fmtMoney(p.price)}</TableCell>
                     <TableCell className={`text-right ${p.stock === 0 ? "text-destructive" : ""}`}>{p.stock}</TableCell>
+                    <TableCell className="text-center">
+                      <Switch
+                        checked={p.active}
+                        disabled={!!toggling[p.id]}
+                        onCheckedChange={() => toggleActive(p.id, p.active)}
+                        aria-label={p.active ? "Deactivate product" : "Activate product"}
+                      />
+                    </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -280,6 +333,11 @@ export function ProductsPageClient({
               </TableBody>
             </Table>
           </div>
+          <Pagination
+            total={pagination.total}
+            pageSize={pagination.pageSize}
+            currentPage={pagination.page}
+          />
         </CardContent>
       </Card>
 
@@ -301,6 +359,7 @@ export function ProductsPageClient({
           brandId: editing.brandId,
           categoryId: editing.categoryId,
           featured: editing.featured,
+          demanding: editing.demanding,
           active: editing.active,
           images: editing.images,
           compatibilities: editing.compatibilities,

@@ -1,12 +1,23 @@
 import { prisma } from "@/lib/prisma";
+import { parsePagination } from "@/lib/pagination";
 import { ProductsPageClient } from "@/components/admin/ProductsPageClient";
 
-export default async function AdminProductsPage() {
-  const [products, brands, categories, models] = await Promise.all([
+type SP = Promise<Record<string, string | string[] | undefined>>;
+
+export const dynamic = "force-dynamic";
+
+export default async function AdminProductsPage({ searchParams }: { searchParams: SP }) {
+  const sp = await searchParams;
+  const { page, pageSize, skip, take } = parsePagination(sp, { defaultSize: 25 });
+
+  const [products, total, brands, categories, models] = await Promise.all([
     prisma.product.findMany({
       orderBy: { createdAt: "desc" },
       include: { brand: true, category: true, compatibilities: true },
+      skip,
+      take,
     }),
+    prisma.product.count(),
     prisma.brand.findMany({ orderBy: { name: "asc" } }),
     prisma.category.findMany({
       orderBy: [{ depth: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
@@ -23,6 +34,7 @@ export default async function AdminProductsPage() {
 
   return (
     <ProductsPageClient
+      pagination={{ page, pageSize, total }}
       products={products.map((p) => ({
         id: p.id,
         name: p.name,
@@ -34,6 +46,7 @@ export default async function AdminProductsPage() {
         category: p.category.name,
         categorySlug: p.category.slug,
         featured: p.featured,
+        demanding: p.demanding,
         active: p.active,
         image: p.images[0] ?? null,
         description: p.description,

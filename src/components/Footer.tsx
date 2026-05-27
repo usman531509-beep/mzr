@@ -8,7 +8,7 @@ export function Footer({ tree = [] }: { tree?: NavCategoryNode[] }) {
   const shopLinks = tree
     .filter((c) => c.productCount > 0)
     .slice(0, 6)
-    .map((c) => ({ l: c.name, h: `/category/${c.path}` }));
+    .map((c) => ({ l: c.name, h: `/products?category=${c.path}` }));
   return (
     <footer className="border-t border-white/10 bg-[#040405] px-[var(--gutter)] py-16">
       <div className="mx-auto max-w-site">
@@ -24,7 +24,7 @@ export function Footer({ tree = [] }: { tree?: NavCategoryNode[] }) {
               />
             </Link>
             <p className="mt-4 max-w-[310px] text-[13px] font-light leading-relaxed text-white/40">
-              Genuine and aftermarket spares for every popular bike. Filter by your model and year — only see what fits.
+              Genuine and aftermarket spares for every popular bike. Filter by your model and year only see what fits.
             </p>
             <address className="mt-5 not-italic text-[12.5px] leading-loose text-white/40">
               <strong className="text-[13px] font-semibold text-white/85">Customer support</strong><br />

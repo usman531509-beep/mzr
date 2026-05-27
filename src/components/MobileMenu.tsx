@@ -79,7 +79,7 @@ export function MobileMenu({
               matches.map((n) => (
                 <Link
                   key={n.id}
-                  href={`/category/${n.path}`}
+                  href={`/products?category=${n.path}`}
                   onClick={onClose}
                   className="flex items-center justify-between gap-3 rounded-md border border-white/10 bg-ink-800 px-4 py-3 transition hover:border-red hover:bg-ink-700"
                 >
@@ -169,7 +169,7 @@ function CategoryRow({
     <li className={isTop ? "border-b border-white/10" : ""}>
       <div className="flex items-stretch">
         <Link
-          href={`/category/${node.path}`}
+          href={`/products?category=${node.path}`}
           onClick={onNavigate}
           className={
             isTop

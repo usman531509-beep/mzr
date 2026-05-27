@@ -175,12 +175,12 @@ export function Hero({ brands, models }: { brands: Brand[]; models: Model[] }) {
               </div>
             )}
 
-            <div className="flex items-center justify-between border-t border-white/10 bg-black/25 px-6 py-3">
+            {/* <div className="flex items-center justify-between border-t border-white/10 bg-black/25 px-6 py-3">
               <span className="text-[13px] text-white/85">Don't know your model?</span>
               <a href="#" className="font-head text-[13px] font-bold uppercase tracking-wider text-red transition hover:opacity-70">
                 Search by VIN →
               </a>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

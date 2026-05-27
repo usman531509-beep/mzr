@@ -9,8 +9,12 @@ import { fmtMoney } from "@/lib/format";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Pagination } from "@/components/Pagination";
+import { parsePagination } from "@/lib/pagination";
 
 export const dynamic = "force-dynamic";
+
+type SP = Promise<Record<string, string | string[] | undefined>>;
 
 const STATUS_META: Record<string, { label: string; icon: typeof CheckCircle2; className: string }> = {
   SUCCEEDED: { label: "Paid",      icon: CheckCircle2, className: "bg-emerald-500/15 text-emerald-300 ring-emerald-500/30" },
@@ -20,38 +24,45 @@ const STATUS_META: Record<string, { label: string; icon: typeof CheckCircle2; cl
   REFUNDED:  { label: "Refunded",  icon: RotateCcw,    className: "bg-blue-500/15 text-blue-300 ring-blue-500/30" },
 };
 
-export default async function MyPaymentsPage() {
+export default async function MyPaymentsPage({ searchParams }: { searchParams: SP }) {
   const session = await auth();
   if (!session?.user?.id) return null;
+  const sp = await searchParams;
+  const { page, pageSize, skip, take } = parsePagination(sp, { defaultSize: 10 });
 
   // Match payments either by userId (signed-in customer) OR by an order
   // whose customerEmail equals theirs — covers guest checkouts they
   // completed before signing in.
-  const payments = await prisma.payment.findMany({
-    where: {
-      OR: [
-        { userId: session.user.id },
-        { order: { customerEmail: session.user.email ?? "" } },
-      ],
-    },
-    orderBy: { createdAt: "desc" },
-    include: {
-      order: {
-        select: {
-          id: true, orderNumber: true, status: true,
-          total: true, createdAt: true,
+  const where = {
+    OR: [
+      { userId: session.user.id },
+      { order: { customerEmail: session.user.email ?? "" } },
+    ],
+  };
+  const [payments, total] = await Promise.all([
+    prisma.payment.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take,
+      include: {
+        order: {
+          select: {
+            id: true, orderNumber: true, status: true,
+            total: true, createdAt: true,
+          },
         },
       },
-    },
-    take: 100,
-  });
+    }),
+    prisma.payment.count({ where }),
+  ]);
 
   return (
     <div className="space-y-4">
       <header>
         <h1 className="text-2xl font-bold tracking-tight">My payments</h1>
         <p className="text-sm text-muted-foreground">
-          {payments.length} payment{payments.length === 1 ? "" : "s"} on record.
+          {total} payment{total === 1 ? "" : "s"} on record.
         </p>
       </header>
 
@@ -121,6 +132,7 @@ export default async function MyPaymentsPage() {
               </Card>
             );
           })}
+          <Pagination total={total} pageSize={pageSize} currentPage={page} />
         </div>
       )}
     </div>

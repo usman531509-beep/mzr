@@ -10,24 +10,35 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { CreditCard, ExternalLink, ShieldCheck, Truck } from "lucide-react";
 import { InvoiceDialog } from "@/components/InvoiceDialog";
+import { Pagination } from "@/components/Pagination";
+import { parsePagination } from "@/lib/pagination";
 
 // Per-request render so each customer sees their own orders (and any tracking
 // info added since their last visit) without stale cached HTML.
 export const dynamic = "force-dynamic";
 
-export default async function OrdersPage() {
+type SP = Promise<Record<string, string | string[] | undefined>>;
+
+export default async function OrdersPage({ searchParams }: { searchParams: SP }) {
   const session = await auth();
   if (!session?.user) return null;
+  const sp = await searchParams;
+  const { page, pageSize, skip, take } = parsePagination(sp, { defaultSize: 10 });
 
-  const orders = await prisma.order.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: "desc" },
-    include: {
-      items: true,
-      createdByAdmin: { select: { name: true, email: true } },
-      courier: { select: { name: true, trackingUrl: true } },
-    },
-  });
+  const [orders, total] = await Promise.all([
+    prisma.order.findMany({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take,
+      include: {
+        items: true,
+        createdByAdmin: { select: { name: true, email: true } },
+        courier: { select: { name: true, trackingUrl: true } },
+      },
+    }),
+    prisma.order.count({ where: { userId: session.user.id } }),
+  ]);
 
   // Lazily backfill missing paymentTokens on PENDING orders so the customer
   // can always resume payment from this page — covers historical orders
@@ -47,7 +58,7 @@ export default async function OrdersPage() {
     <div className="space-y-4">
       <header>
         <h1 className="text-2xl font-bold tracking-tight">My orders</h1>
-        <p className="text-sm text-muted-foreground">{orders.length} order{orders.length === 1 ? "" : "s"} placed.</p>
+        <p className="text-sm text-muted-foreground">{total} order{total === 1 ? "" : "s"} placed.</p>
       </header>
 
       {orders.length === 0 ? (
@@ -192,6 +203,7 @@ export default async function OrdersPage() {
               </CardContent>
             </Card>
           ))}
+          <Pagination total={total} pageSize={pageSize} currentPage={page} />
         </div>
       )}
     </div>

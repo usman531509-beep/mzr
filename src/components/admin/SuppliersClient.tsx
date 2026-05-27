@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { History, Loader2, Mail, MapPin, Pencil, Phone, Plus, Trash2, Truck } from "lucide-react";
+import { confirmAction } from "@/lib/confirm-store";
 import { fmtMoney } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,7 +58,13 @@ export function SuppliersClient({ rows }: { rows: Row[] }) {
   const [history, setHistory] = useState<Row | null>(null);
 
   const del = async (id: string, name: string) => {
-    if (!confirm(`Delete supplier "${name}"?`)) return;
+    const ok = await confirmAction({
+      title: `Delete supplier "${name}"?`,
+      description: "Suppliers with existing purchase orders can't be deleted — those would orphan.",
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
     const res = await fetch(`/api/admin/suppliers/${id}`, { method: "DELETE" });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.ok) {

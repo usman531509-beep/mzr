@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Check, Copy, Eye, ExternalLink, FileText, Pencil, Plus, Printer, Search, ShieldCheck, Truck, X } from "lucide-react";
 
+import { Pagination } from "@/components/Pagination";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -80,9 +81,11 @@ const STATUS_TRIGGER: Record<string, string> = {
 export function OrdersClient({
   initial,
   couriers,
+  pagination,
 }: {
   initial: OrderRow[];
   couriers: CourierOption[];
+  pagination: { page: number; pageSize: number; total: number };
 }) {
   const router = useRouter();
   const [open, setOpen] = useState<OrderRow | null>(null);
@@ -241,6 +244,12 @@ export function OrdersClient({
               ))}
             </TableBody>
           </Table>
+          <Pagination
+            total={pagination.total}
+            pageSize={pagination.pageSize}
+            currentPage={pagination.page}
+            className="px-3 pb-2"
+          />
         </CardContent>
       </Card>
 

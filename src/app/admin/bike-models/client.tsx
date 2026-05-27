@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Pencil, Plus, Search, Trash2, X } from "lucide-react";
 
+import { confirmAction } from "@/lib/confirm-store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -98,7 +99,13 @@ export function BikeModelsClient({
   };
 
   const del = async (id: string, label: string) => {
-    if (!confirm(`Delete "${label}"?`)) return;
+    const ok = await confirmAction({
+      title: `Delete "${label}"?`,
+      description: "Removes this bike model and any product fitments linked to it. This can't be undone.",
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
     const res = await fetch(`/api/admin/bike-models?id=${id}`, { method: "DELETE" });
     if (res.ok) { toast.success("Bike model deleted"); router.refresh(); }
     else toast.error("Failed to delete");

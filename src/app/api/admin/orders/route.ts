@@ -126,6 +126,11 @@ export async function POST(req: Request) {
       : null;
 
   try {
+    // Default Prisma interactive-transaction window is 5s. The order-create
+    // flow runs nextOrderNumber + create + stock decrement + FIFO consume +
+    // retail refresh per line — on production with cross-region DB latency
+    // this can easily run past 5s and crash with "Transaction not found".
+    // Bump generously so the whole flow fits in one transaction.
     const order = await prisma.$transaction(async (tx) => {
       const orderNumber = await nextOrderNumber(tx);
       const created = await tx.order.create({
@@ -183,7 +188,7 @@ export async function POST(req: Request) {
         });
       }
       return created;
-    });
+    }, { maxWait: 10_000, timeout: 30_000 });
     await logActivity(session, {
       action: "created",
       moduleKey: "order",

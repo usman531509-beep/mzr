@@ -182,6 +182,10 @@ model Product {
   sku             String?                @unique
   oemNumber       String?                @db.VarChar(64)
   featured        Boolean                @default(false)
+  // Admin-curated "in demand" flag. Surfaces a dedicated home-page banner
+  // with the products the shop wants to promote right now (separate from
+  // `featured`, which drives the catalogue-wide Featured strip).
+  demanding       Boolean                @default(false)
   active          Boolean                @default(true)
   brandId         String
   brand           Brand                  @relation(fields: [brandId], references: [id])
@@ -199,6 +203,7 @@ model Product {
   @@index([brandId])
   @@index([categoryId])
   @@index([featured])
+  @@index([demanding])
   @@index([active])
 }
 

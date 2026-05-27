@@ -266,21 +266,25 @@ function toBrandItem(b: NavBrand) {
 }
 
 // Turn the category tree into a column-per-top-level mega-menu layout.
-// Each top-level node is a column with its name as the heading; its direct
-// children are the link items, deep-linking to /category/<full-path>.
-// Empty top-levels (no descendants with active products) are hidden.
+// Each top-level node becomes a column; its direct children are the link
+// items. Every category the admin has created is surfaced — even ones with
+// zero products yet — so the navbar matches the admin's category list.
+// Links deep-link into /products?category=<path> so navigation stays inside
+// the single /products route (no full reload between categories).
 function treeToColumns(tree: NavCategoryNode[]): MegaColumn[] {
-  return tree
-    .filter((root) => root.productCount > 0)
-    .map((root) => ({
-      heading: root.name,
-      items: root.children.length > 0
-        ? root.children
-            .filter((c) => c.productCount > 0)
-            .map((c) => ({ label: c.name, href: `/category/${c.path}` }))
-        : [{ label: `Browse ${root.name}`, href: `/category/${root.path}` }],
-    }))
-    .filter((col) => col.items.length > 0);
+  if (tree.length === 0) return [];
+  return tree.map((root) => ({
+    heading: root.name,
+    items: root.children.length > 0
+      ? root.children.map((c) => ({
+          label: c.name,
+          href: `/products?category=${c.path}`,
+        }))
+      : [{
+          label: `Browse ${root.name}`,
+          href: `/products?category=${root.path}`,
+        }],
+  }));
 }
 
 function chunk<T>(arr: T[], cols: number): MegaColumn[] {

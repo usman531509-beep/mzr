@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { confirmAction } from "@/lib/confirm-store";
 import { fmtMoney } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,7 +67,13 @@ export function ExpensesClient({
   const startEdit = (e: Expense) => { setEditing(e); setOpen(true); };
 
   const remove = async (id: string, title: string) => {
-    if (!confirm(`Delete expense "${title}"?`)) return;
+    const ok = await confirmAction({
+      title: `Delete expense "${title}"?`,
+      description: "Removes this expense from the books permanently.",
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
     const res = await fetch(`/api/admin/expenses/${id}`, { method: "DELETE" });
     if (res.ok) {
       toast.success("Expense deleted");

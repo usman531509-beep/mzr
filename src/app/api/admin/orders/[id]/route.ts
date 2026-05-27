@@ -102,7 +102,7 @@ export async function PATCH(
           ...shipmentData,
         },
       });
-    });
+    }, { maxWait: 10_000, timeout: 30_000 });
 
     if (prevStatus !== updated.status) {
       await logActivity(await auth(), {

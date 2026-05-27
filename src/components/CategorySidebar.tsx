@@ -118,7 +118,7 @@ function CategoryRow({
           <span className="block h-11 w-8 shrink-0" />
         )}
         <Link
-          href={`/category/${node.path}`}
+          href={`/products?category=${node.path}`}
           className={cn(
             "flex-1 truncate py-2.5 pr-2 text-[18px] transition",
             isSelected

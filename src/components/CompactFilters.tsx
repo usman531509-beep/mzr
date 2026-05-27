@@ -140,16 +140,16 @@ export function CompactFilters({
     });
   };
 
-  // Category change is special — it switches the route. Picking a path
-  // sends you to /category/<path>; picking "all categories" sends you back
-  // to /products. Other filters (brand/model/year/q) come along for the ride.
+  // Category change stays on /products and just updates the query string.
+  // No full route change → no page reload → snappier drilldown. The server
+  // handles descendant rollup based on `?category=<path>`.
   const setCategory = (path: string) => {
     const params = new URLSearchParams(searchParams.toString());
-    params.delete("category");
+    if (path) params.set("category", path);
+    else params.delete("category");
     const qs = params.toString();
-    const target = path ? `/category/${path}` : "/products";
     startTransition(() => {
-      router.push(`${target}${qs ? `?${qs}` : ""}`, { scroll: false });
+      router.push(`/products${qs ? `?${qs}` : ""}`, { scroll: false });
       router.refresh();
     });
   };

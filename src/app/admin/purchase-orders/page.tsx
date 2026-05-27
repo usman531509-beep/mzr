@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { AdminFilterBar } from "@/components/admin/AdminFilterBar";
 import { POClient } from "@/components/admin/POClient";
+import { Pagination } from "@/components/Pagination";
+import { parsePagination } from "@/lib/pagination";
 import type { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +32,9 @@ export default async function PurchaseOrdersPage({ searchParams }: { searchParam
   }
   if (supplierId) where.supplierId = supplierId;
 
-  const [pos, suppliers] = await Promise.all([
+  const { page, pageSize, skip, take } = parsePagination(sp, { defaultSize: 25 });
+
+  const [pos, total, suppliers] = await Promise.all([
     prisma.purchaseOrder.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -48,8 +52,10 @@ export default async function PurchaseOrdersPage({ searchParams }: { searchParam
         },
         createdByAdmin: { select: { name: true, email: true } },
       },
-      take: 200,
+      skip,
+      take,
     }),
+    prisma.purchaseOrder.count({ where }),
     prisma.supplier.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
 
@@ -116,6 +122,12 @@ export default async function PurchaseOrdersPage({ searchParams }: { searchParam
               createdAt: p.createdAt.toISOString(),
               createdBy: p.createdByAdmin?.name ?? p.createdByAdmin?.email ?? null,
             }))}
+          />
+          <Pagination
+            total={total}
+            pageSize={pageSize}
+            currentPage={page}
+            className="px-3 pb-2"
           />
         </CardContent>
       </Card>

@@ -52,6 +52,21 @@ BEGIN
   END IF;
 
   ----------------------------------------------------------------------------
+  -- Product.demanding — admin-curated "in demand" flag that drives the
+  -- home-page promo banner. Nullable + default false, but pre-creating means
+  -- the column exists before any user-facing route reads it.
+  ----------------------------------------------------------------------------
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'Product'
+  ) THEN
+    ALTER TABLE "Product"
+      ADD COLUMN IF NOT EXISTS "demanding" BOOLEAN NOT NULL DEFAULT false;
+    CREATE INDEX IF NOT EXISTS "Product_demanding_idx"
+      ON "Product"("demanding");
+  END IF;
+
+  ----------------------------------------------------------------------------
   -- Order.paymentToken — opaque resume token for unpaid orders.
   -- Nullable, so db push could add this itself, but pre-creating means
   -- the column + unique index exist before any user-facing route reads it.

@@ -80,7 +80,7 @@ export default async function ProductPage({
             { label: "All Categories", href: "/products" },
             ...ancestors.map((a) => ({
               label: a.name,
-              href: `/category/${a.path}`,
+              href: `/products?category=${a.path}`,
             })),
             { label: p.name },
           ]}

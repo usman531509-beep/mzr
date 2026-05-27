@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Loader2, X } from "lucide-react";
+import { toast } from "sonner";
+import { confirmAction } from "@/lib/confirm-store";
 import { Button } from "@/components/ui/button";
 
 export function TradeRequestActions({ id }: { id: string }) {
@@ -11,7 +13,15 @@ export function TradeRequestActions({ id }: { id: string }) {
   const [busyAction, setBusyAction] = useState<"approve" | "reject" | null>(null);
 
   const decide = async (action: "approve" | "reject") => {
-    if (action === "reject" && !confirm("Reject this trade application?")) return;
+    if (action === "reject") {
+      const ok = await confirmAction({
+        title: "Reject this trade application?",
+        description: "The applicant will keep their account but won't get the trade pricing tier.",
+        confirmLabel: "Reject",
+        destructive: true,
+      });
+      if (!ok) return;
+    }
     setBusyAction(action);
     try {
       const res = await fetch(`/api/trade-requests/${id}`, {
@@ -20,7 +30,7 @@ export function TradeRequestActions({ id }: { id: string }) {
         body: JSON.stringify({ action }),
       });
       if (!res.ok) {
-        alert("Could not update the request.");
+        toast.error("Could not update the request.");
         return;
       }
       startTransition(() => router.refresh());

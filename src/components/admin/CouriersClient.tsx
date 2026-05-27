@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ExternalLink, Loader2, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
+import { confirmAction } from "@/lib/confirm-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +32,13 @@ export function CouriersClient({ rows }: { rows: Row[] }) {
   const [creating, setCreating] = useState(false);
 
   const del = async (id: string, name: string) => {
-    if (!confirm(`Delete courier "${name}"?`)) return;
+    const ok = await confirmAction({
+      title: `Delete courier "${name}"?`,
+      description: "Couriers attached to historical orders can't be deleted.",
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
     const res = await fetch(`/api/admin/couriers/${id}`, { method: "DELETE" });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.ok) {

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import { confirmAction } from "@/lib/confirm-store";
 import {
   Boxes, Layers, Package, Pencil, Plus, Search, Trash2, Wrench, X,
 } from "lucide-react";
@@ -67,11 +68,15 @@ export function StockReceivedClient({
   const handleDelete = async (r: LayerRow) => {
     const consumed = r.qtyReceived - r.qtyRemaining;
     const label = `${r.product.name} (${r.qtyReceived} unit${r.qtyReceived === 1 ? "" : "s"})`;
-    if (!confirm(
-      consumed > 0
-        ? `Delete batch?\n${label}\n\n${consumed} unit${consumed === 1 ? "" : "s"} already sold — deletion will fail. Continue?`
-        : `Delete batch?\n${label}\nThis removes ${r.qtyReceived} unit${r.qtyReceived === 1 ? "" : "s"} from stock.`,
-    )) return;
+    const ok = await confirmAction({
+      title: "Delete batch?",
+      description: consumed > 0
+        ? `${label}. ${consumed} unit${consumed === 1 ? "" : "s"} already sold — the API will reject this delete.`
+        : `${label}. This removes ${r.qtyReceived} unit${r.qtyReceived === 1 ? "" : "s"} from stock.`,
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
     setDeletingId(r.id);
     try {
       const res = await fetch(`/api/admin/stock-received/${r.id}`, { method: "DELETE" });

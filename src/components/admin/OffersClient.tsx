@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, Megaphone, Pencil, Plus, Trash2 } from "lucide-react";
 
+import { confirmAction } from "@/lib/confirm-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -59,7 +60,13 @@ export function OffersClient({ rows }: { rows: Row[] }) {
   const [creating, setCreating] = useState(false);
 
   const del = async (id: string, label: string) => {
-    if (!confirm(`Delete offer "${label}"?`)) return;
+    const ok = await confirmAction({
+      title: `Delete offer "${label}"?`,
+      description: "Removes the offer permanently. Use the Active toggle if you only want to hide it temporarily.",
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
     const res = await fetch(`/api/admin/offers/${id}`, { method: "DELETE" });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.ok) {

@@ -2,6 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatCard } from "@/components/admin/StatCard";
 import { StockReceivedClient } from "@/components/admin/StockReceivedClient";
+import { Pagination } from "@/components/Pagination";
+import { parsePagination } from "@/lib/pagination";
 import { Boxes, DollarSign, Layers, PackageCheck } from "lucide-react";
 import { fmtMoney } from "@/lib/format";
 import type { Prisma } from "@prisma/client";
@@ -30,17 +32,21 @@ export default async function StockReceivedPage({ searchParams }: { searchParams
   if (status === "remaining") where.qtyRemaining = { gt: 0 };
   else if (status === "depleted") where.qtyRemaining = 0;
 
-  const [layers, allLayers, products] = await Promise.all([
+  const { page, pageSize, skip, take } = parsePagination(sp, { defaultSize: 25 });
+
+  const [layers, total, allLayers, products] = await Promise.all([
     prisma.stockLayer.findMany({
       where,
       orderBy: [{ receivedAt: "desc" }, { createdAt: "desc" }],
-      take: 500,
+      skip,
+      take,
       include: {
         product: {
           select: { id: true, name: true, slug: true, sku: true, images: true },
         },
       },
     }),
+    prisma.stockLayer.count({ where }),
     // KPIs are scoped to the same source set as the page (manual + initial)
     // so the inventory value cards reflect what's visible.
     prisma.stockLayer.findMany({
@@ -152,6 +158,7 @@ export default async function StockReceivedPage({ searchParams }: { searchParams
       <Card>
         <CardContent className="p-4 lg:p-5">
           <StockReceivedClient rows={rows} products={productOptions} />
+          <Pagination total={total} pageSize={pageSize} currentPage={page} />
         </CardContent>
       </Card>
     </div>

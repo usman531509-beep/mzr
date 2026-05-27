@@ -7,6 +7,7 @@ import {
   CheckCircle2, Home, Loader2, MapPin, Pencil, Plus, Star, Trash2,
 } from "lucide-react";
 
+import { confirmAction } from "@/lib/confirm-store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -58,7 +59,13 @@ export function AddressesClient({ initial }: { initial: AddressRow[] }) {
   };
 
   const del = async (a: AddressRow) => {
-    if (!confirm(`Delete "${a.label || a.recipientName}"?`)) return;
+    const ok = await confirmAction({
+      title: `Delete "${a.label || a.recipientName}"?`,
+      description: "Removes this saved address. Past orders that already shipped to it are unaffected.",
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
     setBusyId(a.id);
     try {
       const res = await fetch(`/api/account/addresses/${a.id}`, { method: "DELETE" });

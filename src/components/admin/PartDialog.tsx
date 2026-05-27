@@ -45,6 +45,7 @@ export type PartFormValues = {
   brandId: string;
   categoryId: string;
   featured: boolean;
+  demanding: boolean;
   active: boolean;
 };
 
@@ -63,6 +64,7 @@ const schema = z.object({
   brandId: z.string().min(1, "Pick a brand"),
   categoryId: z.string().min(1, "Pick a category"),
   featured: z.boolean().default(false),
+  demanding: z.boolean().default(false),
   active: z.boolean().default(true),
 });
 
@@ -78,7 +80,7 @@ export type PartDialogProps = {
     name: string; description: string; price: number; costPrice: number | null; stock: number;
     sku: string | null; oemNumber: string | null;
     brandId: string; categoryId: string;
-    featured: boolean; active: boolean;
+    featured: boolean; demanding: boolean; active: boolean;
     images: string[]; compatibilities: Compat[];
   };
   // Pre-select category when opened from a category card
@@ -101,7 +103,7 @@ export function PartDialog({
       name: "", description: "", price: 0, costPrice: null, stock: 0, sku: "", oemNumber: "",
       brandId: brands[0]?.id ?? "",
       categoryId: defaultCategoryId ?? "",
-      featured: false, active: true,
+      featured: false, demanding: false, active: true,
     },
   });
 
@@ -120,6 +122,7 @@ export function PartDialog({
         brandId: existing.brandId,
         categoryId: existing.categoryId,
         featured: existing.featured,
+        demanding: existing.demanding,
         active: existing.active,
       });
       setImages(existing.images);
@@ -129,7 +132,7 @@ export function PartDialog({
         name: "", description: "", price: 0, costPrice: null, stock: 0, sku: "", oemNumber: "",
         brandId: brands[0]?.id ?? "",
         categoryId: defaultCategoryId ?? "",
-        featured: false, active: true,
+        featured: false, demanding: false, active: true,
       });
       setImages([]);
       setCompats([]);
@@ -274,7 +277,7 @@ export function PartDialog({
                 Manufacturer's part number — helps buyers cross-reference fitment.
               </p>
             </div>
-            <div className="flex items-end gap-6 pb-1">
+            <div className="flex flex-wrap items-end gap-6 pb-1">
               <Controller
                 control={form.control}
                 name="featured"
@@ -282,6 +285,16 @@ export function PartDialog({
                   <label className="flex items-center gap-2 text-sm">
                     <Checkbox checked={field.value} onCheckedChange={(v) => field.onChange(!!v)} />
                     Featured
+                  </label>
+                )}
+              />
+              <Controller
+                control={form.control}
+                name="demanding"
+                render={({ field }) => (
+                  <label className="flex items-center gap-2 text-sm" title="Surface on the home page 'In demand' banner">
+                    <Checkbox checked={field.value} onCheckedChange={(v) => field.onChange(!!v)} />
+                    In demand
                   </label>
                 )}
               />

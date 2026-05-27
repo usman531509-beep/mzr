@@ -10,6 +10,7 @@ import { Footer } from "@/components/Footer";
 import { GlobalOverlays } from "@/components/GlobalOverlays";
 import { MobileBottomBar } from "@/components/MobileBottomBar";
 import { SiteChrome } from "@/components/SiteChrome";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CartScope } from "@/components/CartScope";
 import { WishlistScope } from "@/components/WishlistScope";
 import { ForcePasswordChange } from "@/components/ForcePasswordChange";
@@ -36,7 +37,7 @@ const monoUi = Rajdhani({
 export const metadata: Metadata = {
   title: { default: "MZR Parts — Motorbike Spares & Accessories", template: "%s · MZR Parts" },
   description:
-    "Genuine and aftermarket motorbike spare parts. Filter by your bike model and year — only see what fits.",
+    "Genuine and aftermarket motorbike spare parts. Filter by your bike model and year only see what fits.",
   keywords: ["motorbike parts", "spare parts", "motorcycle", "bike accessories"],
 };
 
@@ -52,6 +53,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <CartScope />
           <WishlistScope />
           <ForcePasswordChange />
+          {/* Promise-based replacement for window.confirm() — shared by every
+              delete button across the app. */}
+          <ConfirmDialog />
           {/* Storefront chrome — hidden on /pay/<token> via SiteChrome. */}
           <SiteChrome>
             <Topbar />

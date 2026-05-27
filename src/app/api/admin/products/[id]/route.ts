@@ -27,6 +27,7 @@ const schema = z.object({
   brandId: z.string().optional(),
   categoryId: z.string().optional(),
   featured: z.boolean().optional(),
+  demanding: z.boolean().optional(),
   active: z.boolean().optional(),
   sku: z.string().nullable().optional(),
   oemNumber: z.string().max(64).nullable().optional(),
@@ -110,7 +111,7 @@ export async function PATCH(
 
   const changes: Record<string, { from: unknown; to: unknown }> = {};
   if (before && after) {
-    const fields = ["name", "description", "sku", "oemNumber", "featured", "active"] as const;
+    const fields = ["name", "description", "sku", "oemNumber", "featured", "demanding", "active"] as const;
     for (const f of fields) {
       if ((before as Record<string, unknown>)[f] !== (after as Record<string, unknown>)[f]) {
         changes[f] = { from: (before as Record<string, unknown>)[f], to: (after as Record<string, unknown>)[f] };
@@ -162,15 +163,47 @@ export async function DELETE(
   ctx: { params: Promise<{ id: string }> },
 ) {
   const { id } = await ctx.params;
-  const before = await prisma.product.findUnique({ where: { id }, select: { name: true } });
-  await prisma.product.delete({ where: { id } });
+  const before = await prisma.product.findUnique({
+    where: { id },
+    select: {
+      name: true,
+      _count: { select: { orderItems: true } },
+    },
+  });
+  if (!before) {
+    return NextResponse.json({ error: "Product not found" }, { status: 404 });
+  }
+  // Hard-delete is blocked once the product has order history — OrderItem
+  // references it under an onDelete: Restrict relation, and we want to keep
+  // the order book intact for accounting. Admins should deactivate instead.
+  if (before._count.orderItems > 0) {
+    return NextResponse.json(
+      {
+        error:
+          "This product has order history and can't be permanently deleted. Deactivate it instead so it stops appearing on the storefront while keeping the historical orders intact.",
+      },
+      { status: 409 },
+    );
+  }
+  try {
+    await prisma.product.delete({ where: { id } });
+  } catch (e) {
+    // Catch any remaining FK restriction (e.g. stock-layer cost allocations
+    // that pre-date the order-items count above) and surface a clean message
+    // instead of a 500.
+    const msg = e instanceof Error ? e.message : "Could not delete product";
+    return NextResponse.json(
+      { error: `Could not delete: ${msg}. Try deactivating the product instead.` },
+      { status: 409 },
+    );
+  }
   revalidatePath("/");
   revalidatePath("/products");
   revalidateTag(NAV_CACHE_TAG);
   await logActivity(await auth(), {
     action: "deleted",
     moduleKey: "product",
-    target: before?.name ?? id,
+    target: before.name,
     targetId: id,
   });
   return NextResponse.json({ ok: true });
