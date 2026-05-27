@@ -44,29 +44,43 @@ export function CategoryPicker({
     return m;
   }, [categories]);
 
-  // chain[0] = top-level pick, chain[1] = its child, etc. Only the leaf is
-  // emitted up to `onChange`.
-  const [chain, setChain] = useState<string[]>([]);
-
-  // Sync internal chain from external `value` (edit mode or external reset).
-  useEffect(() => {
-    if (!value) { setChain([]); return; }
+  // The chain (root → … → leaf) is *derived* synchronously from the external
+  // `value`. Using useMemo here (rather than useState + useEffect) means the
+  // chain is already correct on the very first render after the parent
+  // form.reset fires in edit mode — no race where the Selects briefly paint
+  // empty and then never refresh.
+  const externalChain = useMemo<string[]>(() => {
+    if (!value) return [];
     const target = byId.get(value);
-    if (!target) { setChain([]); return; }
-    // Walk up parent chain to build the full path of ids root→leaf.
+    if (!target) return [];
     const path: string[] = [];
     let cur: PickerCategory | undefined = target;
     while (cur) {
       path.unshift(cur.id);
       cur = cur.parentId ? byId.get(cur.parentId) : undefined;
     }
-    setChain(path);
+    return path;
   }, [value, byId]);
+
+  // Local "in-progress" chain. Used while the customer is mid-drilldown on a
+  // non-leaf (which clears the external `value` until they hit a leaf), so
+  // the dropdowns keep showing their parent picks.
+  //
+  // We only reset the draft when the external value transitions to a NEW
+  // non-empty id (e.g. the parent form opens a different product for edit
+  // and calls form.reset). We do NOT reset when value goes to empty —
+  // that's the user picking a non-leaf, where the draft is the only thing
+  // remembering their partial selection.
+  const [draftChain, setDraftChain] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (value) setDraftChain(null);
+  }, [value]);
+  const chain = draftChain ?? externalChain;
 
   const setLevel = (idx: number, id: string) => {
     const next = chain.slice(0, idx);
     if (id) next[idx] = id;
-    setChain(next);
+    setDraftChain(next);
     // Emit value only when the selection is a leaf (no children).
     const picked = id ? byId.get(id) : undefined;
     if (picked && picked.childCount === 0) {

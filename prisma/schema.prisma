@@ -359,9 +359,15 @@ model TradeAccountRequest {
   vatNumber       String?
   businessType    String?
   monthlyVolume   String?
+  // UK postal address. `address` is line 1 (kept under the existing name so
+  // legacy rows + the admin "address" display continue to work). The other
+  // four fields were added when we standardised on UK address capture.
   address         String
+  addressLine2    String?
   city            String?
-  country         String?
+  county          String?
+  postcode        String?
+  country         String?            @default("United Kingdom")
   notes           String?
   // Decision
   status          TradeRequestStatus @default(PENDING)

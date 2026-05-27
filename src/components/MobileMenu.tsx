@@ -2,8 +2,21 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import {
+  Briefcase, ChevronRight, MapPin, Package, Sparkles,
+  type LucideIcon,
+} from "lucide-react";
 import type { NavCategoryNode } from "@/lib/nav-cache";
+
+// Storefront nav links that exist on the desktop navbar but don't fit
+// into the shortcuts-grid format (which is just Best deals / New in).
+// Surfaced here so mobile users have parity with the desktop header.
+const NAV_LINKS: Array<{ Icon: LucideIcon; label: string; href: string }> = [
+  { Icon: Package,   label: "All products", href: "/products" },
+  { Icon: Sparkles,  label: "New in",       href: "/products?sort=new" },
+  { Icon: MapPin,    label: "Track order",  href: "/track" },
+  { Icon: Briefcase, label: "Trade account", href: "/trade-account" },
+];
 
 // Fixed action shortcuts that always sit above the category list.
 type Shortcut = { icon: string; label: string; href: string };
@@ -109,6 +122,28 @@ export function MobileMenu({
                 ))}
               </div>
             )}
+
+            {/* Storefront nav links — mirrors the desktop top-nav so a
+                mobile customer can jump straight to all products, track
+                an order, or open a trade account without hunting. */}
+            <div className="mb-4 overflow-hidden rounded-lg border border-white/10 bg-ink-800/40">
+              {NAV_LINKS.map(({ Icon, label, href }) => (
+                <Link
+                  key={label}
+                  href={href}
+                  onClick={onClose}
+                  className="flex items-center gap-3 border-b border-white/5 px-4 py-3 text-white/85 transition last:border-b-0 hover:bg-ink-700 hover:text-white"
+                >
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/10 bg-ink-700 text-red">
+                    <Icon className="h-3.5 w-3.5" />
+                  </span>
+                  <span className="font-head text-[14px] font-bold uppercase tracking-wide">
+                    {label}
+                  </span>
+                  <ChevronRight className="ml-auto h-4 w-4 text-white/40" />
+                </Link>
+              ))}
+            </div>
 
             {/* Top-level categories — each row expandable into its tree.
                 Show every category the admin has created, even with zero

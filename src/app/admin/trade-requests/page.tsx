@@ -5,6 +5,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { TradeRequestActions } from "@/components/admin/TradeRequestActions";
+import { TradeRequestView } from "@/components/admin/TradeRequestView";
 import { AdminFilterBar } from "@/components/admin/AdminFilterBar";
 import { Briefcase } from "lucide-react";
 import type { Prisma } from "@prisma/client";
@@ -104,7 +105,7 @@ function Section({
                 <TableHead>Volume</TableHead>
                 <TableHead>Submitted</TableHead>
                 <TableHead>Status</TableHead>
-                {showActions && <TableHead className="text-right">Actions</TableHead>}
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -121,8 +122,17 @@ function Section({
                       {[r.businessType, r.vatNumber && `VAT: ${r.vatNumber}`]
                         .filter(Boolean).join(" · ")}
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      {[r.address, r.city, r.country].filter(Boolean).join(", ")}
+                    <div className="text-xs leading-relaxed text-muted-foreground">
+                      {/* UK postal address — line 1 / line 2 / city / county
+                          / postcode / country. Empty parts collapse. */}
+                      {[
+                        r.address,
+                        r.addressLine2,
+                        r.city,
+                        r.county,
+                        r.postcode,
+                        r.country,
+                      ].filter(Boolean).join(", ")}
                     </div>
                   </TableCell>
                   <TableCell className="text-sm">{r.monthlyVolume ?? "—"}</TableCell>
@@ -132,11 +142,35 @@ function Section({
                   <TableCell>
                     <StatusBadge status={r.status} />
                   </TableCell>
-                  {showActions && (
-                    <TableCell className="text-right">
-                      <TradeRequestActions id={r.id} />
-                    </TableCell>
-                  )}
+                  <TableCell className="text-right">
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <TradeRequestView
+                        request={{
+                          id: r.id,
+                          status: r.status,
+                          createdAt: r.createdAt.toISOString(),
+                          contactName: r.contactName,
+                          email: r.email,
+                          phone: r.phone,
+                          companyName: r.companyName,
+                          companyWebsite: r.companyWebsite,
+                          vatNumber: r.vatNumber,
+                          businessType: r.businessType,
+                          monthlyVolume: r.monthlyVolume,
+                          address: r.address,
+                          addressLine2: r.addressLine2,
+                          city: r.city,
+                          county: r.county,
+                          postcode: r.postcode,
+                          country: r.country,
+                          notes: r.notes,
+                          decisionNote: r.decisionNote,
+                          decidedAt: r.decidedAt?.toISOString() ?? null,
+                        }}
+                      />
+                      {showActions && <TradeRequestActions id={r.id} />}
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

@@ -67,6 +67,23 @@ BEGIN
   END IF;
 
   ----------------------------------------------------------------------------
+  -- TradeAccountRequest — UK address fields. The form was extended to
+  -- capture full UK postal addresses (line 2, county, postcode) on top of
+  -- the original `address`/`city`/`country` triple.
+  ----------------------------------------------------------------------------
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'TradeAccountRequest'
+  ) THEN
+    ALTER TABLE "TradeAccountRequest"
+      ADD COLUMN IF NOT EXISTS "addressLine2" TEXT;
+    ALTER TABLE "TradeAccountRequest"
+      ADD COLUMN IF NOT EXISTS "county" TEXT;
+    ALTER TABLE "TradeAccountRequest"
+      ADD COLUMN IF NOT EXISTS "postcode" TEXT;
+  END IF;
+
+  ----------------------------------------------------------------------------
   -- Order.paymentToken — opaque resume token for unpaid orders.
   -- Nullable, so db push could add this itself, but pre-creating means
   -- the column + unique index exist before any user-facing route reads it.
