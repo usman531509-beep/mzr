@@ -104,7 +104,7 @@ export function Hero({ brands, models }: { brands: Brand[]; models: Model[] }) {
           </p>
 
           <div className="hero-in delay-3 flex flex-wrap gap-3.5">
-            <a href="#categories" className="btn-red">
+            <a href="/products" className="btn-red">
               Shop all parts
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <line x1="5" y1="12" x2="19" y2="12" />
