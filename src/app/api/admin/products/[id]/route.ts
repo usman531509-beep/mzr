@@ -25,6 +25,7 @@ const schema = z.object({
     )
     .optional(),
   brandId: z.string().optional(),
+  productBrandId: z.string().nullable().optional(),
   categoryId: z.string().optional(),
   featured: z.boolean().optional(),
   demanding: z.boolean().optional(),
@@ -71,6 +72,7 @@ export async function PATCH(
     where: { id },
     include: {
       brand: { select: { name: true } },
+      productBrand: { select: { name: true } },
       category: { select: { name: true } },
       compatibilities: true,
     },
@@ -104,6 +106,7 @@ export async function PATCH(
     where: { id },
     include: {
       brand: { select: { name: true } },
+      productBrand: { select: { name: true } },
       category: { select: { name: true } },
       compatibilities: true,
     },
@@ -134,6 +137,12 @@ export async function PATCH(
     if (before.brandId !== after.brandId) {
       changes.brand = { from: before.brand?.name ?? before.brandId, to: after.brand?.name ?? after.brandId };
     }
+    if (before.productBrandId !== after.productBrandId) {
+      changes.productBrand = {
+        from: before.productBrand?.name ?? before.productBrandId ?? "—",
+        to:   after.productBrand?.name  ?? after.productBrandId  ?? "—",
+      };
+    }
     if (before.categoryId !== after.categoryId) {
       changes.category = { from: before.category?.name ?? before.categoryId, to: after.category?.name ?? after.categoryId };
     }
@@ -158,6 +167,11 @@ export async function PATCH(
   return NextResponse.json(product);
 }
 
+// Soft-delete. OrderItem.product is a Restrict relation so a real DELETE
+// fails the moment the product has any order history — and even if it
+// didn't, hard-deleting would wipe the audit trail. We stamp deletedAt
+// instead and every storefront/admin/cart query filters those out. Restore
+// lives at POST /api/admin/products/[id]/restore.
 export async function DELETE(
   _req: Request,
   ctx: { params: Promise<{ id: string }> },
@@ -165,38 +179,18 @@ export async function DELETE(
   const { id } = await ctx.params;
   const before = await prisma.product.findUnique({
     where: { id },
-    select: {
-      name: true,
-      _count: { select: { orderItems: true } },
-    },
+    select: { name: true, deletedAt: true },
   });
   if (!before) {
     return NextResponse.json({ error: "Product not found" }, { status: 404 });
   }
-  // Hard-delete is blocked once the product has order history — OrderItem
-  // references it under an onDelete: Restrict relation, and we want to keep
-  // the order book intact for accounting. Admins should deactivate instead.
-  if (before._count.orderItems > 0) {
-    return NextResponse.json(
-      {
-        error:
-          "This product has order history and can't be permanently deleted. Deactivate it instead so it stops appearing on the storefront while keeping the historical orders intact.",
-      },
-      { status: 409 },
-    );
+  if (before.deletedAt) {
+    return NextResponse.json({ ok: true, alreadyDeleted: true });
   }
-  try {
-    await prisma.product.delete({ where: { id } });
-  } catch (e) {
-    // Catch any remaining FK restriction (e.g. stock-layer cost allocations
-    // that pre-date the order-items count above) and surface a clean message
-    // instead of a 500.
-    const msg = e instanceof Error ? e.message : "Could not delete product";
-    return NextResponse.json(
-      { error: `Could not delete: ${msg}. Try deactivating the product instead.` },
-      { status: 409 },
-    );
-  }
+  await prisma.product.update({
+    where: { id },
+    data: { deletedAt: new Date() },
+  });
   revalidatePath("/");
   revalidatePath("/products");
   revalidateTag(NAV_CACHE_TAG);

@@ -10,6 +10,7 @@ import { WishlistSheet } from "@/components/WishlistSheet";
 import type { NavCategoryNode } from "@/lib/nav-cache";
 
 type Brand = { id: string; name: string; slug: string };
+type ProductBrand = { id: string; name: string; slug: string };
 type Model = { id: string; name: string; brandId: string; yearStart: number; yearEnd: number };
 
 // Renders the three overlay-style UIs in one place, driven by the global
@@ -17,9 +18,10 @@ type Model = { id: string; name: string; brandId: string; yearStart: number; yea
 // against the same store, so a single instance of each overlay is enough.
 
 export function GlobalOverlays({
-  brands, models, tree = [],
+  brands, productBrands = [], models, tree = [],
 }: {
   brands: Brand[];
+  productBrands?: ProductBrand[];
   models: Model[];
   tree?: NavCategoryNode[];
 }) {
@@ -53,6 +55,7 @@ export function GlobalOverlays({
         onClose={closeMenu}
         tree={tree}
         brands={brands.map((b) => ({ name: b.name, slug: b.slug }))}
+        productBrands={productBrands.map((b) => ({ name: b.name, slug: b.slug }))}
         shortcuts={shortcuts}
       />
       <FinderSheet   open={finderOpen} onClose={closeFinder} brands={brands} models={models} />

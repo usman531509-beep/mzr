@@ -26,8 +26,8 @@ const PLACEHOLDER =
 // the same request, so wrapping in React.cache() collapses the two calls
 // into a single Prisma round-trip.
 const getProduct = cache((slug: string) =>
-  prisma.product.findUnique({
-    where: { slug },
+  prisma.product.findFirst({
+    where: { slug, deletedAt: null },
     include: {
       brand: true,
       category: true,

@@ -16,6 +16,7 @@ export async function GET(req: Request) {
 
   const where = {
     active: true,
+    deletedAt: null,
     OR: [
       { name:      { contains: q, mode: "insensitive" as const } },
       { oemNumber: { contains: q, mode: "insensitive" as const } },

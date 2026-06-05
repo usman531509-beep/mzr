@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/popover";
 
 type Brand = { id: string; name: string; slug: string };
+type ProductBrand = { id: string; name: string; slug: string };
 // Tree-shaped — we render the dropdown with depth-based indentation and use
 // the full `path` as the value so picking a parent category like "brake"
 // rolls up products from every descendant. `count` is the rolled-up active-
@@ -40,10 +41,12 @@ type BikeModel = {
 
 export function CompactFilters({
   brands,
+  productBrands = [],
   models,
   categories = [],
 }: {
   brands: Brand[];
+  productBrands?: ProductBrand[];
   models: BikeModel[];
   categories?: Category[];
 }) {
@@ -62,10 +65,11 @@ export function CompactFilters({
   const queryCategory = searchParams.get("category") ?? "";
   const activeCategoryValue = pathBasedCategoryPath || queryCategory;
 
-  const brandSlug = searchParams.get("brand") ?? "";
-  const modelId   = searchParams.get("model") ?? "";
-  const year      = searchParams.get("year")  ?? "";
-  const q         = searchParams.get("q")     ?? "";
+  const brandSlug        = searchParams.get("brand")        ?? "";
+  const productBrandSlug = searchParams.get("productBrand") ?? "";
+  const modelId          = searchParams.get("model")        ?? "";
+  const year             = searchParams.get("year")         ?? "";
+  const q                = searchParams.get("q")            ?? "";
 
   // Local input state for the search box, kept in sync with the URL.
   // Debounced push so we don't fire a request on every keystroke.
@@ -113,6 +117,10 @@ export function CompactFilters({
   const selectedBrand = useMemo(
     () => brands.find((b) => b.slug === brandSlug),
     [brandSlug, brands],
+  );
+  const selectedProductBrand = useMemo(
+    () => productBrands.find((b) => b.slug === productBrandSlug),
+    [productBrandSlug, productBrands],
   );
   const selectedModel = useMemo(
     () => models.find((m) => m.id === modelId),
@@ -163,8 +171,9 @@ export function CompactFilters({
     });
   };
 
-  const anyActive = !!(activeCategoryValue || brandSlug || modelId || year || q);
+  const anyActive = !!(activeCategoryValue || brandSlug || productBrandSlug || modelId || year || q);
   const noBrands = brands.length === 0;
+  const noProductBrands = productBrands.length === 0;
 
   return (
     <div className="flex flex-wrap items-center gap-2.5">
@@ -219,9 +228,9 @@ export function CompactFilters({
         />
       </FilterChip>
 
-      {/* Brand */}
+      {/* Bike brand — the motorcycle make the part fits (Honda, Yamaha…). */}
       <FilterChip
-        label="Brand"
+        label="Bike brand"
         value={selectedBrand?.name}
         clearable={!!brandSlug}
         onClear={() => pushUrl({ brand: null, model: null, year: null })}
@@ -230,12 +239,32 @@ export function CompactFilters({
         <List
           searchable
           items={[
-            { value: "", label: "All brands" },
+            { value: "", label: "All bike brands" },
             ...brands.map((b) => ({ value: b.slug, label: b.name })),
           ]}
           selected={brandSlug}
           onSelect={(v) => pushUrl({ brand: v || null, model: null, year: null })}
           empty="No brands yet"
+        />
+      </FilterChip>
+
+      {/* Product brand — manufacturer of the part itself (Brembo, NGK, EBC…). */}
+      <FilterChip
+        label="Product brand"
+        value={selectedProductBrand?.name}
+        clearable={!!productBrandSlug}
+        onClear={() => pushUrl({ productBrand: null })}
+        disabled={noProductBrands}
+      >
+        <List
+          searchable
+          items={[
+            { value: "", label: "All product brands" },
+            ...productBrands.map((b) => ({ value: b.slug, label: b.name })),
+          ]}
+          selected={productBrandSlug}
+          onSelect={(v) => pushUrl({ productBrand: v || null })}
+          empty="No product brands yet"
         />
       </FilterChip>
 

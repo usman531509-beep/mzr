@@ -70,20 +70,32 @@ export async function POST(req: Request) {
   }
 }
 
+// Soft-delete a category. Categories cascade products via the FK; hard
+// delete fails any time the subtree has order/PO history. We stamp
+// deletedAt and filter the row from every storefront + admin list. The
+// live-children / live-products check is preserved so admins can't strand
+// a populated subtree — they must move or delete the contents first.
 export async function DELETE(req: Request) {
   const id = new URL(req.url).searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 
-  // Block delete if the category has children or products. The admin must
-  // move/remove them first — this prevents accidentally orphaning a subtree.
   const cat = await prisma.category.findUnique({
     where: { id },
     select: {
       name: true,
-      _count: { select: { children: true, products: true } },
+      deletedAt: true,
+      _count: {
+        select: {
+          children: { where: { deletedAt: null } },
+          products: { where: { deletedAt: null } },
+        },
+      },
     },
   });
   if (!cat) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (cat.deletedAt) {
+    return NextResponse.json({ ok: true, alreadyDeleted: true });
+  }
   if (cat._count.children > 0) {
     return NextResponse.json(
       { error: "This category has sub-categories. Delete or move them first." },
@@ -97,7 +109,10 @@ export async function DELETE(req: Request) {
     );
   }
 
-  await prisma.category.delete({ where: { id } });
+  await prisma.category.update({
+    where: { id },
+    data: { deletedAt: new Date() },
+  });
   revalidateTag(NAV_CACHE_TAG);
   await logActivity(await auth(), {
     action: "deleted",

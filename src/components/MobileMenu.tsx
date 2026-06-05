@@ -30,12 +30,14 @@ export function MobileMenu({
   onClose,
   tree = [],
   brands = [],
+  productBrands = [],
   shortcuts = [],
 }: {
   open: boolean;
   onClose: () => void;
   tree?: NavCategoryNode[];
   brands?: BrandsGroup["brands"];
+  productBrands?: BrandsGroup["brands"];
   shortcuts?: Shortcut[];
 }) {
   const [q, setQ] = useState("");
@@ -159,14 +161,34 @@ export function MobileMenu({
               ))}
             </ul>
 
-            {/* Brands group — flat list at the bottom. */}
+            {/* Bike-brand group — Honda, Yamaha, etc. */}
             {brands.length > 0 && (
-              <CollapsibleSection title="Brands" icon="🏷️">
+              <CollapsibleSection title="By bike brands" icon="🏍️">
                 <ul className="space-y-0.5 pl-3">
                   {brands.map((b) => (
                     <li key={b.slug}>
                       <Link
                         href={`/products?brand=${b.slug}`}
+                        onClick={onClose}
+                        className="flex items-center gap-2 py-2.5 text-[15px] text-white/75 transition hover:translate-x-1 hover:text-white"
+                      >
+                        <span className="h-1.5 w-1.5 rounded-full bg-white/30" />
+                        {b.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </CollapsibleSection>
+            )}
+
+            {/* Part-manufacturer group — Brembo, NGK, EBC, etc. */}
+            {productBrands.length > 0 && (
+              <CollapsibleSection title="By parts brands" icon="🛠️">
+                <ul className="space-y-0.5 pl-3">
+                  {productBrands.map((b) => (
+                    <li key={b.slug}>
+                      <Link
+                        href={`/products?productBrand=${b.slug}`}
                         onClick={onClose}
                         className="flex items-center gap-2 py-2.5 text-[15px] text-white/75 transition hover:translate-x-1 hover:text-white"
                       >

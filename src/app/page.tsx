@@ -29,7 +29,7 @@ export default async function HomePage() {
       getTradeContext(),
       getNavData(),
       prisma.product.findMany({
-        where: { featured: true, active: true },
+        where: { featured: true, active: true, deletedAt: null },
         include: {
           brand: true,
           category: true,
@@ -42,7 +42,7 @@ export default async function HomePage() {
         take: 8,
       }),
       prisma.product.findMany({
-        where: { active: true },
+        where: { active: true, deletedAt: null },
         include: {
           brand: true,
           category: true,
@@ -57,7 +57,7 @@ export default async function HomePage() {
       // Admin-curated "in demand" picks. Lighter payload than the other
       // product strips — only the fields the banner actually renders.
       prisma.product.findMany({
-        where: { demanding: true, active: true },
+        where: { demanding: true, active: true, deletedAt: null },
         select: {
           id: true, slug: true, name: true, price: true, stock: true,
           images: true,
@@ -70,11 +70,11 @@ export default async function HomePage() {
         orderBy: { name: "asc" },
         select: {
           id: true, name: true, slug: true, logoUrl: true,
-          _count: { select: { products: { where: { active: true } } } },
+          _count: { select: { products: { where: { active: true, deletedAt: null } } } },
         },
       }),
       prisma.category.findMany({
-        where: { depth: 0 },
+        where: { depth: 0, deletedAt: null },
         select: { id: true, imageUrl: true },
       }),
     ]);

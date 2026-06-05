@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  ChevronLeft, ChevronRight, FolderPlus, Pencil, Plus, Search, Trash2, X,
+  ChevronLeft, ChevronRight, FolderPlus, Pencil, Plus, RotateCcw, Search, Trash2, X,
 } from "lucide-react";
 
 import { confirmAction } from "@/lib/confirm-store";
@@ -28,12 +28,29 @@ type EditState = {
 
 const MAX_DEPTH = 4;
 
-export function CategoriesClient({ initial }: { initial: CategoryTreeNode[] }) {
+type DeletedCategoryRow = {
+  id: string;
+  name: string;
+  path: string;
+  depth: number;
+  deletedAt: string;
+  liveProductCount: number;
+};
+
+export function CategoriesClient({
+  initial, deleted,
+}: {
+  initial: CategoryTreeNode[];
+  deleted: DeletedCategoryRow[];
+}) {
   const router = useRouter();
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<EditState | null>(null);
   const [busy, setBusy] = useState(false);
+  // Toggle between the live tree explorer and the flat soft-delete bin. Kept
+  // client-side because both lists come pre-loaded from the server.
+  const [view, setView] = useState<"live" | "deleted">("live");
 
   // Flatten the tree into a lookup so we can resolve `currentId` to its
   // children, ancestors, and own row without recursing every render.
@@ -124,7 +141,7 @@ export function CategoriesClient({ initial }: { initial: CategoryTreeNode[] }) {
   const del = async (node: CategoryTreeNode) => {
     const ok = await confirmAction({
       title: `Delete "${node.name}"?`,
-      description: "Categories with sub-categories or products can't be deleted — move them first.",
+      description: "The category will be moved to the Deleted tab. Sub-categories or products attached to it must be moved out first. You can restore it from the Deleted tab.",
       confirmLabel: "Delete",
       destructive: true,
     });
@@ -132,9 +149,17 @@ export function CategoriesClient({ initial }: { initial: CategoryTreeNode[] }) {
     const res = await fetch(`/api/admin/categories?id=${node.id}`, { method: "DELETE" });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) { toast.error(data.error ?? "Failed to delete"); return; }
-    toast.success("Category deleted");
+    toast.success("Category moved to the Deleted tab");
     // Step out if we just deleted the current node.
     if (currentId === node.id) setCurrentId(node.parentId ?? null);
+    router.refresh();
+  };
+
+  const restore = async (row: DeletedCategoryRow) => {
+    const res = await fetch(`/api/admin/categories/${row.id}/restore`, { method: "POST" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { toast.error(data.error ?? "Failed to restore"); return; }
+    toast.success(`"${row.name}" restored`);
     router.refresh();
   };
 
@@ -148,6 +173,83 @@ export function CategoriesClient({ initial }: { initial: CategoryTreeNode[] }) {
         </p>
       </header>
 
+      <div
+        role="tablist"
+        aria-label="Category view"
+        className="inline-flex rounded-md border border-border bg-background p-0.5"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={view === "live"}
+          onClick={() => setView("live")}
+          className={`inline-flex h-8 items-center gap-2 rounded-[5px] px-3 text-xs font-medium transition ${
+            view === "live"
+              ? "bg-primary text-primary-foreground shadow"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Live
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={view === "deleted"}
+          onClick={() => setView("deleted")}
+          className={`inline-flex h-8 items-center gap-2 rounded-[5px] px-3 text-xs font-medium transition ${
+            view === "deleted"
+              ? "bg-destructive text-destructive-foreground shadow"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Trash2 className="h-3 w-3" />
+          Deleted
+          <span className={`rounded px-1.5 py-0.5 text-[10px] ${
+            view === "deleted" ? "bg-destructive-foreground/15" : "bg-muted text-muted-foreground"
+          }`}>{deleted.length}</span>
+        </button>
+      </div>
+
+      {view === "deleted" ? (
+        <Card>
+          <CardContent className="p-0">
+            {deleted.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 p-10 text-center text-sm text-muted-foreground">
+                <Trash2 className="h-7 w-7" />
+                No deleted categories. Anything you delete from the Live tab will land here.
+              </div>
+            ) : (
+              <ul className="divide-y divide-border">
+                {deleted.map((d) => (
+                  <li key={d.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium">{d.name}</div>
+                      <div className="font-mono text-[11px] text-muted-foreground">
+                        /{d.path}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        Deleted {new Date(d.deletedAt).toLocaleDateString("en-GB", { dateStyle: "medium" })}
+                        {d.liveProductCount > 0 && (
+                          <> · {d.liveProductCount} live product{d.liveProductCount === 1 ? "" : "s"} still attached</>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => restore(d)}
+                      className="h-8 gap-1.5"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" /> Restore
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+      <>
       <div className="relative max-w-sm">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -289,6 +391,8 @@ export function CategoriesClient({ initial }: { initial: CategoryTreeNode[] }) {
             </CardContent>
           </Card>
         </>
+      )}
+      </>
       )}
 
       <Dialog open={!!editing} onOpenChange={(v) => { if (!v) setEditing(null); }}>

@@ -21,8 +21,15 @@ export type NavCategoryNode = {
 
 export const getNavData = unstable_cache(
   async () => {
-    const [brands, models, categoryRows, productCategoryPaths] = await Promise.all([
+    const [brands, productBrands, models, categoryRows, productCategoryPaths] = await Promise.all([
       prisma.brand.findMany({
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, slug: true },
+      }),
+      // Independent of bike-brand (Honda, Yamaha) — these are part
+      // manufacturers (Brembo, NGK, EBC). Used by the storefront nav and
+      // the /products filter chip.
+      prisma.productBrand.findMany({
         orderBy: { name: "asc" },
         select: { id: true, name: true, slug: true },
       }),
@@ -33,6 +40,7 @@ export const getNavData = unstable_cache(
         },
       }),
       prisma.category.findMany({
+        where: { deletedAt: null },
         orderBy: [{ depth: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
         select: {
           id: true, name: true, slug: true, parentId: true, path: true, depth: true,
@@ -41,7 +49,7 @@ export const getNavData = unstable_cache(
       // Pull each active product's category path so we can roll counts up the
       // tree in one pass. One round-trip beats N count() queries.
       prisma.product.findMany({
-        where: { active: true },
+        where: { active: true, deletedAt: null },
         select: { category: { select: { path: true } } },
       }),
     ]);
@@ -88,8 +96,8 @@ export const getNavData = unstable_cache(
       count: counts.get(r.path) ?? 0,
     }));
 
-    return { brands, models, categories: flat, tree };
+    return { brands, productBrands, models, categories: flat, tree };
   },
-  ["nav-data-v2-tree"],
+  ["nav-data-v3-product-brands"],
   { revalidate: 300, tags: [NAV_CACHE_TAG] },
 );

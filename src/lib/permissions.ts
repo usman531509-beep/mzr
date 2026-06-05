@@ -11,6 +11,7 @@ export type ModuleKey =
   | "stock"
   | "categories"
   | "brands"
+  | "product-brands"
   | "bike-models"
   | "orders"
   | "expenses"
@@ -37,7 +38,8 @@ export const ADMIN_MODULES: ModuleDef[] = [
   { key: "products",       label: "Products",       href: "/admin/products",         group: "Catalogue" },
   { key: "stock",          label: "Stock",          href: "/admin/stock",            group: "Catalogue" },
   { key: "categories",     label: "Categories",     href: "/admin/categories",       group: "Catalogue" },
-  { key: "brands",         label: "Brands",         href: "/admin/brands",           group: "Catalogue" },
+  { key: "brands",         label: "Bike Brands",    href: "/admin/brands",           group: "Catalogue" },
+  { key: "product-brands", label: "Product Brands", href: "/admin/product-brands",   group: "Catalogue" },
   { key: "bike-models",    label: "Bike Models",    href: "/admin/bike-models",      group: "Catalogue" },
   { key: "orders",         label: "Orders",         href: "/admin/orders",           group: "Sales" },
   { key: "payments",       label: "Payments",       href: "/admin/payments",         group: "Sales" },

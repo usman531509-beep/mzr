@@ -10,7 +10,15 @@ export async function GET() {
 
   const wishlist = await prisma.wishlist.findUnique({
     where: { userId: session.user.id },
-    include: { items: { orderBy: { createdAt: "desc" } } },
+    include: {
+      items: {
+        orderBy: { createdAt: "desc" },
+        // Drop wishlist lines whose product was soft-deleted in the admin —
+        // the snapshot row stays in the DB for audit, but customers see the
+        // wishlist as if the item never existed.
+        where: { product: { deletedAt: null } },
+      },
+    },
   });
 
   return NextResponse.json({
@@ -37,8 +45,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "productId required" }, { status: 400 });
   }
 
-  const product = await prisma.product.findUnique({
-    where: { id: body.productId },
+  const product = await prisma.product.findFirst({
+    where: { id: body.productId, deletedAt: null },
     include: { brand: true },
   });
   if (!product) return NextResponse.json({ ok: false, error: "Product not found" }, { status: 404 });

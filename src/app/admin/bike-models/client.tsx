@@ -126,10 +126,6 @@ export function BikeModelsClient({
             <DialogHeader><DialogTitle>New bike model</DialogTitle></DialogHeader>
             <form onSubmit={create} className="space-y-3">
               <div className="space-y-1.5">
-                <Label>Model name</Label>
-                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. CBR 250R" required />
-              </div>
-              <div className="space-y-1.5">
                 <Label>Brand</Label>
                 <Select value={form.brandId} onValueChange={(v) => setForm({ ...form, brandId: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -137,6 +133,10 @@ export function BikeModelsClient({
                     {brands.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Model name</Label>
+                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. CBR 250R" required />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
@@ -231,10 +231,6 @@ export function BikeModelsClient({
           <DialogHeader><DialogTitle>Edit bike model</DialogTitle></DialogHeader>
           <form onSubmit={update} className="space-y-3">
             <div className="space-y-1.5">
-              <Label>Model name</Label>
-              <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required />
-            </div>
-            <div className="space-y-1.5">
               <Label>Brand</Label>
               <Select value={editForm.brandId} onValueChange={(v) => setEditForm({ ...editForm, brandId: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -242,6 +238,10 @@ export function BikeModelsClient({
                   {brands.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Model name</Label>
+              <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">

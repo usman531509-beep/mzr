@@ -55,7 +55,7 @@ export default async function StockReceivedPage({ searchParams }: { searchParams
     }),
     // Product list for the "Add stock" dialog's picker.
     prisma.product.findMany({
-      where: { active: true },
+      where: { active: true, deletedAt: null },
       orderBy: { name: "asc" },
       select: {
         id: true, name: true, sku: true, stock: true,

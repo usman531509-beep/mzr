@@ -67,13 +67,18 @@ export async function POST(req: Request) {
   }
 
   const [products, trade] = await Promise.all([
+    // Soft-deleted products are rejected here — placing a new order with one
+    // would be a server-side bug, since the storefront filters them out.
     prisma.product.findMany({
-      where: { id: { in: data.items.map((i) => i.productId) } },
+      where: { id: { in: data.items.map((i) => i.productId) }, deletedAt: null },
     }),
     onBehalfTrade ? Promise.resolve(onBehalfTrade) : getTradeContext(),
   ]);
   if (products.length !== data.items.length) {
-    return NextResponse.json({ error: "Unknown product in cart" }, { status: 400 });
+    return NextResponse.json(
+      { error: "One or more items in your cart are no longer available. Refresh the cart and try again." },
+      { status: 400 },
+    );
   }
 
   // Validate stock up front so we can fail fast before doing any layer reads.

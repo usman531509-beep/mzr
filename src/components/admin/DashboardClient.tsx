@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { fmtMoney } from "@/lib/format";
 import {
-  PartDialog, type Brand, type Category, type BikeModel,
+  PartDialog, type Brand, type ProductBrand, type Category, type BikeModel,
 } from "@/components/admin/PartDialog";
 
 export type DashboardCategory = {
@@ -25,7 +25,7 @@ export type DashboardProduct = {
   featured: boolean; demanding: boolean; active: boolean;
   image: string | null;
   description: string;
-  brandId: string; categoryId: string;
+  brandId: string; productBrandId: string | null; categoryId: string;
   sku: string | null;
   oemNumber: string | null;
   images: string[];
@@ -43,11 +43,12 @@ const CATEGORY_PREVIEW = 6;
 const PRODUCT_PREVIEW = 10;
 
 export function DashboardClient({
-  categoriesData, products, brands, categories, models,
+  categoriesData, products, brands, productBrands, categories, models,
 }: {
   categoriesData: DashboardCategory[];
   products: DashboardProduct[];
   brands: Brand[];
+  productBrands: ProductBrand[];
   categories: Category[];
   models: BikeModel[];
 }) {
@@ -193,6 +194,7 @@ export function DashboardClient({
         open={open}
         onOpenChange={setOpen}
         brands={brands}
+        productBrands={productBrands}
         categories={categories}
         models={models}
         defaultCategoryId={defaultCategoryId}

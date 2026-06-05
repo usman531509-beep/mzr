@@ -17,7 +17,7 @@ export default async function StockPage({ searchParams }: { searchParams: SP }) 
   const brandId = typeof sp.brand === "string" ? sp.brand : "";
   const categoryId = typeof sp.category === "string" ? sp.category : "";
 
-  const where: Prisma.ProductWhereInput = { active: true };
+  const where: Prisma.ProductWhereInput = { active: true, deletedAt: null };
   if (q) {
     where.OR = [
       { name:      { contains: q, mode: "insensitive" } },
@@ -38,15 +38,15 @@ export default async function StockPage({ searchParams }: { searchParams: SP }) 
       },
     }),
     prisma.brand.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    prisma.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    prisma.product.count({ where: { active: true, stock: 0 } }),
+    prisma.category.findMany({ where: { deletedAt: null }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.product.count({ where: { active: true, stock: 0, deletedAt: null } }),
     // Low-stock count is computed from a comparison against another column,
     // which Prisma can't express directly; fetch the small set and count.
     prisma.product.findMany({
-      where: { active: true, stock: { gt: 0 } },
+      where: { active: true, stock: { gt: 0 }, deletedAt: null },
       select: { id: true, stock: true, lowStockThreshold: true, price: true, costPrice: true },
     }),
-    prisma.product.count({ where: { active: true } }),
+    prisma.product.count({ where: { active: true, deletedAt: null } }),
   ]);
 
   const lowCount = lowList.filter((p) => p.stock <= p.lowStockThreshold).length;

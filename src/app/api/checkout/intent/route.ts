@@ -45,13 +45,18 @@ export async function POST(req: Request) {
   const data = parsed.data;
 
   const [products, trade] = await Promise.all([
+    // Only live products survive. A soft-deleted product in the cart shows
+    // up as "unknown" so the customer is forced to remove it before paying.
     prisma.product.findMany({
-      where: { id: { in: data.items.map((i) => i.productId) } },
+      where: { id: { in: data.items.map((i) => i.productId) }, deletedAt: null },
     }),
     getTradeContext(),
   ]);
   if (products.length !== data.items.length) {
-    return NextResponse.json({ error: "Unknown product in cart" }, { status: 400 });
+    return NextResponse.json(
+      { error: "One or more items in your cart are no longer available. Refresh the cart and try again." },
+      { status: 400 },
+    );
   }
   for (const i of data.items) {
     const p = products.find((p) => p.id === i.productId)!;

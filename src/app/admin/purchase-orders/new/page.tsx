@@ -14,7 +14,7 @@ export default async function NewPOPage() {
       select: { id: true, name: true },
     }),
     prisma.product.findMany({
-      where: { active: true },
+      where: { active: true, deletedAt: null },
       orderBy: { name: "asc" },
       select: {
         id: true, name: true, sku: true, oemNumber: true,
@@ -27,7 +27,7 @@ export default async function NewPOPage() {
       take: 1000,
     }),
     prisma.brand.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    prisma.category.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.category.findMany({ where: { deletedAt: null }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
     prisma.bikeModel.findMany({
       orderBy: [{ brandId: "asc" }, { name: "asc" }],
       select: { id: true, name: true, brandId: true, yearStart: true, yearEnd: true },

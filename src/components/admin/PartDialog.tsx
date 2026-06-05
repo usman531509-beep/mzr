@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { CategoryPicker, type PickerCategory } from "@/components/admin/CategoryPicker";
 
 export type Brand = { id: string; name: string };
+export type ProductBrand = { id: string; name: string };
 export type Category = PickerCategory & { slug: string };
 export type BikeModel = {
   id: string; name: string; brandId: string;
@@ -43,6 +44,7 @@ export type PartFormValues = {
   sku: string;
   oemNumber: string;
   brandId: string;
+  productBrandId: string;
   categoryId: string;
   featured: boolean;
   demanding: boolean;
@@ -61,7 +63,8 @@ const schema = z.object({
   stock: z.coerce.number().int().min(0, "Stock cannot be negative"),
   sku: z.string().optional().default(""),
   oemNumber: z.string().max(64).optional().default(""),
-  brandId: z.string().min(1, "Pick a brand"),
+  brandId: z.string().min(1, "Pick a bike brand"),
+  productBrandId: z.string().optional().default(""),
   categoryId: z.string().min(1, "Pick a category"),
   featured: z.boolean().default(false),
   demanding: z.boolean().default(false),
@@ -72,6 +75,7 @@ export type PartDialogProps = {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   brands: Brand[];
+  productBrands: ProductBrand[];
   categories: Category[];
   models: BikeModel[];
   // Optional existing part for edit mode
@@ -79,7 +83,7 @@ export type PartDialogProps = {
     id: string;
     name: string; description: string; price: number; costPrice: number | null; stock: number;
     sku: string | null; oemNumber: string | null;
-    brandId: string; categoryId: string;
+    brandId: string; productBrandId: string | null; categoryId: string;
     featured: boolean; demanding: boolean; active: boolean;
     images: string[]; compatibilities: Compat[];
   };
@@ -89,7 +93,7 @@ export type PartDialogProps = {
 };
 
 export function PartDialog({
-  open, onOpenChange, brands, categories, models, existing, defaultCategoryId, onSaved,
+  open, onOpenChange, brands, productBrands, categories, models, existing, defaultCategoryId, onSaved,
 }: PartDialogProps) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -102,6 +106,7 @@ export function PartDialog({
     defaultValues: {
       name: "", description: "", price: 0, costPrice: null, stock: 0, sku: "", oemNumber: "",
       brandId: brands[0]?.id ?? "",
+      productBrandId: "",
       categoryId: defaultCategoryId ?? "",
       featured: false, demanding: false, active: true,
     },
@@ -120,6 +125,7 @@ export function PartDialog({
         sku: existing.sku ?? "",
         oemNumber: existing.oemNumber ?? "",
         brandId: existing.brandId,
+        productBrandId: existing.productBrandId ?? "",
         categoryId: existing.categoryId,
         featured: existing.featured,
         demanding: existing.demanding,
@@ -131,6 +137,7 @@ export function PartDialog({
       form.reset({
         name: "", description: "", price: 0, costPrice: null, stock: 0, sku: "", oemNumber: "",
         brandId: brands[0]?.id ?? "",
+        productBrandId: "",
         categoryId: defaultCategoryId ?? "",
         featured: false, demanding: false, active: true,
       });
@@ -173,6 +180,7 @@ export function PartDialog({
       ...values,
       sku: values.sku || null,
       oemNumber: values.oemNumber || null,
+      productBrandId: values.productBrandId || null,
       images,
       compatibilities: compats,
     };
@@ -234,19 +242,42 @@ export function PartDialog({
             </div>
             <div className="hidden sm:block" />
             <div className="space-y-1.5">
-              <Label>Brand</Label>
+              <Label>Bike brand</Label>
               <Controller
                 control={form.control}
                 name="brandId"
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger><SelectValue placeholder="Select brand" /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Select bike brand" /></SelectTrigger>
                     <SelectContent>
                       {brands.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 )}
               />
+              <p className="text-[11px] text-muted-foreground">Which motorcycle make this part fits (Honda, Yamaha…).</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>
+                Product brand <span className="text-muted-foreground">(optional)</span>
+              </Label>
+              <Controller
+                control={form.control}
+                name="productBrandId"
+                render={({ field }) => (
+                  <Select
+                    value={field.value || "__none"}
+                    onValueChange={(v) => field.onChange(v === "__none" ? "" : v)}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Select product brand" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none">— None —</SelectItem>
+                      {productBrands.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              <p className="text-[11px] text-muted-foreground">Who manufactures the part itself (Brembo, NGK, EBC…).</p>
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Category</Label>

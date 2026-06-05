@@ -41,8 +41,10 @@ export async function POST(req: Request) {
   });
   if (!target?.active) return NextResponse.json({ ok: false, error: "Customer not found" }, { status: 400 });
 
+  // Soft-deleted products are silently dropped — any line whose productId
+  // doesn't come back is treated as missing (priced 0) by the lookup below.
   const products = await prisma.product.findMany({
-    where: { id: { in: items.map((i) => i.productId) } },
+    where: { id: { in: items.map((i) => i.productId) }, deletedAt: null },
     select: { id: true, price: true, categoryId: true },
   });
 

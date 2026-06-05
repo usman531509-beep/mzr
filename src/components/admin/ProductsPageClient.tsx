@@ -4,7 +4,9 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus, MoreHorizontal, Pencil, Trash2, ExternalLink, Search, X } from "lucide-react";
+import {
+  Plus, MoreHorizontal, Pencil, Trash2, ExternalLink, Search, X, RotateCcw,
+} from "lucide-react";
 
 import { confirmAction } from "@/lib/confirm-store";
 import { Pagination } from "@/components/Pagination";
@@ -24,15 +26,21 @@ import {
 } from "@/components/ui/select";
 import { fmtMoney } from "@/lib/format";
 import {
-  PartDialog, type Brand, type Category, type BikeModel,
+  PartDialog, type Brand, type ProductBrand, type Category, type BikeModel,
 } from "@/components/admin/PartDialog";
 import type { DashboardProduct } from "@/components/admin/DashboardClient";
 
 export function ProductsPageClient({
-  products, brands, categories, models, pagination,
+  view, deletedCount, products, brands, productBrands, categories, models, pagination,
 }: {
+  // "live" is the default: active + inactive products. "deleted" loads the
+  // soft-delete bin with a Restore action. Switching tabs causes a server
+  // navigation so pagination + counts stay consistent.
+  view: "live" | "deleted";
+  deletedCount: number;
   products: DashboardProduct[];
   brands: Brand[];
+  productBrands: ProductBrand[];
   categories: Category[];
   models: BikeModel[];
   pagination: { page: number; pageSize: number; total: number };
@@ -41,8 +49,21 @@ export function ProductsPageClient({
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<DashboardProduct | undefined>();
   const [q, setQ] = useState("");
+  const [activeView, setActiveView] = useState<"active" | "inactive">("active");
+  const isDeletedView = view === "deleted";
+
+  // Switch between the live catalogue (?view absent) and the soft-delete bin
+  // (?view=deleted) via a real navigation so pagination/counts come from the
+  // server, not from client-side filtering of a partial dataset.
+  const switchView = (next: "live" | "deleted") => {
+    if (next === view) return;
+    const params = new URLSearchParams();
+    if (next === "deleted") params.set("view", "deleted");
+    router.push(`/admin/products${params.toString() ? `?${params}` : ""}`);
+  };
   const [filterCat, setFilterCat] = useState("all");
   const [filterBrand, setFilterBrand] = useState("all");
+  const [filterProductBrand, setFilterProductBrand] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterStock, setFilterStock] = useState("all");
   const [sortBy, setSortBy] = useState<
@@ -52,12 +73,14 @@ export function ProductsPageClient({
 
   const anyFilter =
     !!q || filterCat !== "all" || filterBrand !== "all" ||
+    filterProductBrand !== "all" ||
     filterStatus !== "all" || filterStock !== "all" || sortBy !== "newest";
 
   const resetFilters = () => {
     setQ("");
     setFilterCat("all");
     setFilterBrand("all");
+    setFilterProductBrand("all");
     setFilterStatus("all");
     setFilterStock("all");
     setSortBy("newest");
@@ -72,10 +95,20 @@ export function ProductsPageClient({
     const LOW_STOCK_THRESHOLD = 5;
 
     const matched = products.filter((p) => {
+      // In the soft-delete bin, every row is by definition "deleted" — the
+      // Active/Inactive sub-toggle doesn't apply. In the live view, hide
+      // inactive rows from the Active tab and vice versa.
+      if (!isDeletedView) {
+        if (activeView === "active"   && !p.active) return false;
+        if (activeView === "inactive" &&  p.active) return false;
+      }
       if (filterCat !== "all" && p.categorySlug !== filterCat) return false;
       if (filterBrand !== "all" && p.brandId !== filterBrand) return false;
-      if (filterStatus === "active"   && !p.active)   return false;
-      if (filterStatus === "inactive" &&  p.active)   return false;
+      if (filterProductBrand !== "all") {
+        if (filterProductBrand === "__none") {
+          if (p.productBrandId != null) return false;
+        } else if (p.productBrandId !== filterProductBrand) return false;
+      }
       if (filterStatus === "featured" && !p.featured) return false;
       if (filterStatus === "demanding" && !p.demanding) return false;
       if (filterStock === "in"  && p.stock <= 0) return false;
@@ -108,7 +141,38 @@ export function ProductsPageClient({
       case "stock-desc": sorted.sort((a, b) => b.stock - a.stock); break;
     }
     return sorted;
-  }, [products, q, filterCat, filterBrand, filterStatus, filterStock, sortBy]);
+  }, [products, q, activeView, isDeletedView, filterCat, filterBrand, filterProductBrand, filterStatus, filterStock, sortBy]);
+
+  // Active/inactive counts ignore the active-view toggle itself but respect
+  // every other filter — so the pill badges show how many would appear on the
+  // opposite tab without losing the rest of the admin's filter context.
+  const { activeCount, inactiveCount } = useMemo(() => {
+    const tokens = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const LOW_STOCK_THRESHOLD = 5;
+    let a = 0, i = 0;
+    for (const p of products) {
+      if (filterCat !== "all" && p.categorySlug !== filterCat) continue;
+      if (filterBrand !== "all" && p.brandId !== filterBrand) continue;
+      if (filterProductBrand !== "all") {
+        if (filterProductBrand === "__none") {
+          if (p.productBrandId != null) continue;
+        } else if (p.productBrandId !== filterProductBrand) continue;
+      }
+      if (filterStatus === "featured" && !p.featured) continue;
+      if (filterStatus === "demanding" && !p.demanding) continue;
+      if (filterStock === "in"  && p.stock <= 0) continue;
+      if (filterStock === "out" && p.stock !== 0) continue;
+      if (filterStock === "low" && (p.stock <= 0 || p.stock > LOW_STOCK_THRESHOLD)) continue;
+      if (tokens.length > 0) {
+        const haystack = [p.name, p.brand, p.category, p.sku ?? "", p.oemNumber ?? ""].join(" ").toLowerCase();
+        let miss = false;
+        for (const t of tokens) if (!haystack.includes(t)) { miss = true; break; }
+        if (miss) continue;
+      }
+      if (p.active) a++; else i++;
+    }
+    return { activeCount: a, inactiveCount: i };
+  }, [products, q, filterCat, filterBrand, filterProductBrand, filterStatus, filterStock]);
 
   // Tracks which rows are mid-toggle so the Switch shows as disabled and we
   // don't fire duplicate PATCHes if the admin double-taps. Re-rendered table
@@ -139,7 +203,7 @@ export function ProductsPageClient({
   const del = async (id: string, name: string) => {
     const ok = await confirmAction({
       title: `Delete "${name}"?`,
-      description: "Products with order history can't be hard-deleted — deactivate them instead.",
+      description: "The product will be moved to the Deleted tab. It disappears from the storefront, search, and cart, but every existing order keeps its history. You can restore it from the Deleted tab.",
       confirmLabel: "Delete",
       destructive: true,
     });
@@ -147,13 +211,22 @@ export function ProductsPageClient({
     const res = await fetch(`/api/admin/products/${id}`, { method: "DELETE" });
     const data = await res.json().catch(() => ({} as { error?: string }));
     if (res.ok) {
-      toast.success("Part deleted");
+      toast.success("Product moved to the Deleted tab");
       router.refresh();
       return;
     }
-    // Surface the API's friendly reason (e.g. "has order history — deactivate
-    // it instead") so the admin doesn't see a generic 500.
     toast.error(data.error ?? "Failed to delete");
+  };
+
+  const restore = async (id: string, name: string) => {
+    const res = await fetch(`/api/admin/products/${id}/restore`, { method: "POST" });
+    const data = await res.json().catch(() => ({} as { error?: string }));
+    if (res.ok) {
+      toast.success(`"${name}" restored`);
+      router.refresh();
+      return;
+    }
+    toast.error(data.error ?? "Failed to restore");
   };
 
   return (
@@ -161,15 +234,82 @@ export function ProductsPageClient({
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Products</h1>
-          <p className="text-sm text-muted-foreground">{products.length} parts in catalogue.</p>
+          <p className="text-sm text-muted-foreground">
+            {isDeletedView
+              ? `${pagination.total} deleted part${pagination.total === 1 ? "" : "s"}. Restoring puts them back in the catalogue.`
+              : `${products.length} parts in catalogue.`}
+          </p>
         </div>
-        <Button onClick={() => { setEditing(undefined); setOpen(true); }}>
-          <Plus className="h-3.5 w-3.5" /> New part
-        </Button>
+        {!isDeletedView && (
+          <Button onClick={() => { setEditing(undefined); setOpen(true); }}>
+            <Plus className="h-3.5 w-3.5" /> New part
+          </Button>
+        )}
       </header>
 
       <Card>
         <CardContent className="p-4">
+          {/* Three-state tablist:
+                Active / Inactive → live catalogue, client-side split
+                Deleted          → soft-delete bin, server-side fetched
+              Clicking Active or Inactive while in the deleted view triggers a
+              real navigation back to the live page. */}
+          <div
+            role="tablist"
+            aria-label="Product status"
+            className="mb-3 inline-flex rounded-md border border-border bg-background p-0.5"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={!isDeletedView && activeView === "active"}
+              onClick={() => { if (isDeletedView) switchView("live"); setActiveView("active"); }}
+              className={`inline-flex h-8 items-center gap-2 rounded-[5px] px-3 text-xs font-medium transition ${
+                !isDeletedView && activeView === "active"
+                  ? "bg-primary text-primary-foreground shadow"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Active
+              <span className={`rounded px-1.5 py-0.5 text-[10px] ${
+                !isDeletedView && activeView === "active" ? "bg-primary-foreground/15" : "bg-muted text-muted-foreground"
+              }`}>{isDeletedView ? "—" : activeCount}</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={!isDeletedView && activeView === "inactive"}
+              onClick={() => { if (isDeletedView) switchView("live"); setActiveView("inactive"); }}
+              className={`inline-flex h-8 items-center gap-2 rounded-[5px] px-3 text-xs font-medium transition ${
+                !isDeletedView && activeView === "inactive"
+                  ? "bg-primary text-primary-foreground shadow"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Inactive
+              <span className={`rounded px-1.5 py-0.5 text-[10px] ${
+                !isDeletedView && activeView === "inactive" ? "bg-primary-foreground/15" : "bg-muted text-muted-foreground"
+              }`}>{isDeletedView ? "—" : inactiveCount}</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={isDeletedView}
+              onClick={() => switchView("deleted")}
+              className={`inline-flex h-8 items-center gap-2 rounded-[5px] px-3 text-xs font-medium transition ${
+                isDeletedView
+                  ? "bg-destructive text-destructive-foreground shadow"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Trash2 className="h-3 w-3" />
+              Deleted
+              <span className={`rounded px-1.5 py-0.5 text-[10px] ${
+                isDeletedView ? "bg-destructive-foreground/15" : "bg-muted text-muted-foreground"
+              }`}>{deletedCount}</span>
+            </button>
+          </div>
+
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <div className="relative min-w-[240px] flex-1 max-w-md">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -198,10 +338,18 @@ export function ProductsPageClient({
               </SelectContent>
             </Select>
             <Select value={filterBrand} onValueChange={setFilterBrand}>
-              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Brand" /></SelectTrigger>
+              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Bike brand" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All brands</SelectItem>
+                <SelectItem value="all">All bike brands</SelectItem>
                 {brands.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={filterProductBrand} onValueChange={setFilterProductBrand}>
+              <SelectTrigger className="w-[170px]"><SelectValue placeholder="Product brand" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All product brands</SelectItem>
+                <SelectItem value="__none">Untagged</SelectItem>
+                {productBrands.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={filterStock} onValueChange={setFilterStock}>
@@ -217,8 +365,6 @@ export function ProductsPageClient({
               <SelectTrigger className="w-[150px]"><SelectValue placeholder="Status" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
                 <SelectItem value="featured">Featured</SelectItem>
                 <SelectItem value="demanding">In demand</SelectItem>
               </SelectContent>
@@ -256,7 +402,7 @@ export function ProductsPageClient({
                   <TableHead>Fitments</TableHead>
                   <TableHead className="text-right">Price</TableHead>
                   <TableHead className="text-right">Stock</TableHead>
-                  <TableHead className="text-center">Active</TableHead>
+                  <TableHead className="text-center">{isDeletedView ? "Status" : "Active"}</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
@@ -264,7 +410,13 @@ export function ProductsPageClient({
                 {filtered.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center text-sm text-muted-foreground">
-                      No parts match these filters.
+                      {anyFilter
+                        ? "No parts match these filters."
+                        : isDeletedView
+                          ? "No deleted parts. Anything you delete from the Active or Inactive tab will land here."
+                          : activeView === "inactive"
+                            ? "No inactive parts. Deactivating a part will move it here."
+                            : "No active parts yet."}
                     </TableCell>
                   </TableRow>
                 ) : filtered.map((p) => (
@@ -282,7 +434,13 @@ export function ProductsPageClient({
                             <span className="truncate font-medium">{p.name}</span>
                             {p.featured && <Badge variant="warning" className="text-[9px]">Featured</Badge>}
                             {p.demanding && <Badge className="bg-red/15 text-red ring-1 ring-inset ring-red/30 text-[9px] hover:bg-red/15">In demand</Badge>}
-                            {!p.active && <Badge variant="secondary" className="text-[9px]">Inactive</Badge>}
+                            {/* The active/inactive view toggle already implies
+                                this for the inactive tab — only show the badge
+                                if an inactive row somehow surfaces on the
+                                active tab (shouldn't, but defensive). */}
+                            {!p.active && activeView !== "inactive" && (
+                              <Badge variant="secondary" className="text-[9px]">Inactive</Badge>
+                            )}
                           </div>
                           {(p.sku || p.oemNumber) && (
                             <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
@@ -299,34 +457,49 @@ export function ProductsPageClient({
                     <TableCell className="text-right font-medium">{fmtMoney(p.price)}</TableCell>
                     <TableCell className={`text-right ${p.stock === 0 ? "text-destructive" : ""}`}>{p.stock}</TableCell>
                     <TableCell className="text-center">
-                      <Switch
-                        checked={p.active}
-                        disabled={!!toggling[p.id]}
-                        onCheckedChange={() => toggleActive(p.id, p.active)}
-                        aria-label={p.active ? "Deactivate product" : "Activate product"}
-                      />
+                      {isDeletedView ? (
+                        <Badge variant="secondary" className="text-[10px]">Deleted</Badge>
+                      ) : (
+                        <Switch
+                          checked={p.active}
+                          disabled={!!toggling[p.id]}
+                          onCheckedChange={() => toggleActive(p.id, p.active)}
+                          aria-label={p.active ? "Deactivate product" : "Activate product"}
+                        />
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link href={`/products/${p.slug}`} target="_blank">
-                              <ExternalLink className="h-3.5 w-3.5" /> View on store
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => { setEditing(p); setOpen(true); }}>
-                            <Pencil className="h-3.5 w-3.5" /> Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => del(p.id, p.name)} className="text-destructive focus:text-destructive">
-                            <Trash2 className="h-3.5 w-3.5" /> Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      {isDeletedView ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => restore(p.id, p.name)}
+                          className="h-8 gap-1.5"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" /> Restore
+                        </Button>
+                      ) : (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link href={`/products/${p.slug}`} target="_blank">
+                                <ExternalLink className="h-3.5 w-3.5" /> View on store
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => { setEditing(p); setOpen(true); }}>
+                              <Pencil className="h-3.5 w-3.5" /> Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => del(p.id, p.name)} className="text-destructive focus:text-destructive">
+                              <Trash2 className="h-3.5 w-3.5" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -345,6 +518,7 @@ export function ProductsPageClient({
         open={open}
         onOpenChange={setOpen}
         brands={brands}
+        productBrands={productBrands}
         categories={categories}
         models={models}
         existing={editing && {
@@ -357,6 +531,7 @@ export function ProductsPageClient({
           sku: editing.sku,
           oemNumber: editing.oemNumber,
           brandId: editing.brandId,
+          productBrandId: editing.productBrandId,
           categoryId: editing.categoryId,
           featured: editing.featured,
           demanding: editing.demanding,

@@ -120,8 +120,9 @@ export async function recomputeSubtreePaths(
 export async function getAncestors(categoryId: string): Promise<
   Array<{ id: string; name: string; slug: string; path: string }>
 > {
-  const node = await prisma.category.findUnique({
-    where: { id: categoryId },
+  // Storefront caller — a soft-deleted category should have no breadcrumb.
+  const node = await prisma.category.findFirst({
+    where: { id: categoryId, deletedAt: null },
     select: { path: true },
   });
   if (!node) return [];
@@ -132,7 +133,7 @@ export async function getAncestors(categoryId: string): Promise<
     paths.push(segments.slice(0, i + 1).join("/"));
   }
   const rows = await prisma.category.findMany({
-    where: { path: { in: paths } },
+    where: { path: { in: paths }, deletedAt: null },
     select: { id: true, name: true, slug: true, path: true, depth: true },
     orderBy: { depth: "asc" },
   });
@@ -144,8 +145,8 @@ export async function getAncestors(categoryId: string): Promise<
 export async function findByPath(segments: string[]) {
   if (!segments.length) return null;
   const path = segments.join("/");
-  return prisma.category.findUnique({
-    where: { path },
+  return prisma.category.findFirst({
+    where: { path, deletedAt: null },
     select: {
       id: true, name: true, slug: true, path: true, depth: true,
       parentId: true, description: true, imageUrl: true,
@@ -156,12 +157,20 @@ export async function findByPath(segments: string[]) {
 // Load the entire tree in one query and assemble it into a nested structure.
 // Cheap: a single findMany + an in-memory pass.
 export async function loadTree(): Promise<CategoryTreeNode[]> {
+  // Soft-deleted nodes are hidden — the admin "Deleted" tab loads them
+  // through a separate query.
   const rows = await prisma.category.findMany({
+    where: { deletedAt: null },
     orderBy: [{ depth: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
     select: {
       id: true, name: true, slug: true, parentId: true, path: true,
       depth: true, sortOrder: true, description: true, imageUrl: true,
-      _count: { select: { products: { where: { active: true } }, children: true } },
+      _count: {
+        select: {
+          products: { where: { active: true, deletedAt: null } },
+          children: { where: { deletedAt: null } },
+        },
+      },
     },
   });
   const byId = new Map<string, CategoryTreeNode>();
@@ -193,12 +202,16 @@ export async function loadTree(): Promise<CategoryTreeNode[]> {
   return roots;
 }
 
-// Throws if categoryId has any children. Products may only attach to a leaf.
+// Throws if categoryId has any (live) children. Products may only attach to
+// a leaf — soft-deleted children don't count, an admin can re-tag a category
+// as a leaf once its children are deleted.
 export async function assertLeafForProduct(
   tx: Prisma.TransactionClient,
   categoryId: string,
 ): Promise<void> {
-  const childCount = await tx.category.count({ where: { parentId: categoryId } });
+  const childCount = await tx.category.count({
+    where: { parentId: categoryId, deletedAt: null },
+  });
   if (childCount > 0) {
     throw new Error("Products can only be assigned to leaf categories (no children).");
   }
@@ -218,7 +231,7 @@ export async function countMatchingProductsBySubtree(
   // One query for everything that matches the filter, then bucket the
   // resulting category paths into the candidate subtrees. Beats N queries.
   const matches = await prisma.product.findMany({
-    where: baseWhere,
+    where: { ...baseWhere, deletedAt: null },
     select: { category: { select: { path: true } } },
   });
   for (const c of candidates) counts.set(c.path, 0);
@@ -239,7 +252,7 @@ export async function countMatchingProductsBySubtree(
 export async function rollupProductCounts(): Promise<Map<string, number>> {
   // Single query: for each active product, fetch its category's path.
   const rows = await prisma.product.findMany({
-    where: { active: true },
+    where: { active: true, deletedAt: null },
     select: { category: { select: { path: true } } },
   });
   const counts = new Map<string, number>();

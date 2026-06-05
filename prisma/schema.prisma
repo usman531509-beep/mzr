@@ -116,9 +116,25 @@ model Brand {
   name      String      @unique
   slug      String      @unique
   logoUrl   String?
+  // A `Brand` now plays two roles. Originally it was both the bike-make
+  // (Honda, Yamaha) AND the part manufacturer (Honda OEM); the admin UI
+  // calls this "Bike Brands". Standalone part manufacturers (Brembo, NGK,
+  // EBC) live in the separate `ProductBrand` model below.
   products  Product[]
   bikeModels BikeModel[]
   createdAt DateTime    @default(now())
+}
+
+// Manufacturer of a product (Brembo, NGK, EBC, K&N). Independent of the
+// bike-make brand a part fits on. Optional on `Product.productBrandId` so
+// existing rows keep working until they're tagged.
+model ProductBrand {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  slug      String    @unique
+  logoUrl   String?
+  products  Product[]
+  createdAt DateTime  @default(now())
 }
 
 model Category {
@@ -141,6 +157,12 @@ model Category {
   products    Product[]
   tradeDiscount TradeDiscount?
   createdAt   DateTime  @default(now())
+  // Soft-delete tombstone. Categories with order/PO history can't be hard-
+  // deleted (FK restrict on Product → Category → OrderItem). When admin
+  // "deletes" a category we just stamp this column and filter it out of every
+  // storefront + admin list. The slug/path uniqueness still applies, so a
+  // soft-deleted category's name can't be reused until it's restored.
+  deletedAt   DateTime?
 
   // Slug uniqueness is scoped to a parent — "bearings" can exist under both
   // "engine" and "wheels". The global `path` uniqueness above prevents
@@ -148,6 +170,7 @@ model Category {
   @@unique([parentId, slug])
   @@index([parentId])
   @@index([path])
+  @@index([deletedAt])
 }
 
 model BikeModel {
@@ -189,6 +212,10 @@ model Product {
   active          Boolean                @default(true)
   brandId         String
   brand           Brand                  @relation(fields: [brandId], references: [id])
+  // Manufacturer of the part itself (Brembo, NGK, EBC). Optional so admins
+  // can tag in their own time; existing rows stay untouched until edited.
+  productBrandId  String?
+  productBrand    ProductBrand?          @relation(fields: [productBrandId], references: [id], onDelete: SetNull)
   categoryId      String
   category        Category               @relation(fields: [categoryId], references: [id])
   compatibilities ProductCompatibility[]
@@ -199,12 +226,20 @@ model Product {
   stockLayers     StockLayer[]
   createdAt       DateTime               @default(now())
   updatedAt       DateTime               @updatedAt
+  // Soft-delete tombstone. Products with order history can't be hard-deleted
+  // because OrderItem.product is a Restrict relation, so "delete" in the
+  // admin sets this column. Soft-deleted rows are hidden from the storefront,
+  // cart, search, wishlist, and admin lists; only the "Deleted" admin tab
+  // shows them, with a Restore action.
+  deletedAt       DateTime?
 
   @@index([brandId])
+  @@index([productBrandId])
   @@index([categoryId])
   @@index([featured])
   @@index([demanding])
   @@index([active])
+  @@index([deletedAt])
 }
 
 model ProductCompatibility {

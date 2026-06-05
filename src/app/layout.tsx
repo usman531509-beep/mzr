@@ -43,8 +43,9 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const [session, nav] = await Promise.all([auth(), getNavData()]);
-  const { brands, models, tree } = nav;
-  const navBrands = brands.map((b) => ({ name: b.name, slug: b.slug }));
+  const { brands, productBrands, models, tree } = nav;
+  const navBrands = brands.map((b: { name: string; slug: string }) => ({ name: b.name, slug: b.slug }));
+  const navProductBrands = productBrands.map((b: { name: string; slug: string }) => ({ name: b.name, slug: b.slug }));
 
   return (
     <html lang="en" className={`${body.variable} ${head.variable} ${monoUi.variable}`}>
@@ -59,12 +60,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           {/* Storefront chrome — hidden on /pay/<token> via SiteChrome. */}
           <SiteChrome>
             <Topbar />
-            <Header tree={tree} brands={navBrands} />
+            <Header tree={tree} brands={navBrands} productBrands={navProductBrands} />
           </SiteChrome>
           <main className="flex-1">{children}</main>
           <SiteChrome>
             <Footer tree={tree} />
-            <GlobalOverlays brands={brands} models={models} tree={tree} />
+            <GlobalOverlays brands={brands} productBrands={productBrands} models={models} tree={tree} />
             <MobileBottomBar />
           </SiteChrome>
         </SessionProvider>

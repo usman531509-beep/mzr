@@ -67,6 +67,46 @@ BEGIN
   END IF;
 
   ----------------------------------------------------------------------------
+  -- ProductBrand — manufacturer of the part (Brembo, NGK, EBC). Lives
+  -- alongside the existing `Brand` table which is now reserved for bike-
+  -- make brands (Honda, Yamaha) used by BikeModel and Product.brand.
+  ----------------------------------------------------------------------------
+  CREATE TABLE IF NOT EXISTS "ProductBrand" (
+    "id"        TEXT      PRIMARY KEY,
+    "name"      TEXT      NOT NULL,
+    "slug"      TEXT      NOT NULL,
+    "logoUrl"   TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS "ProductBrand_name_key"
+    ON "ProductBrand"("name");
+  CREATE UNIQUE INDEX IF NOT EXISTS "ProductBrand_slug_key"
+    ON "ProductBrand"("slug");
+
+  -- Product.productBrandId — nullable so existing rows keep working until
+  -- an admin tags them. Soft FK so deleting the brand orphans the column
+  -- to NULL rather than blocking the delete.
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'Product'
+  ) THEN
+    ALTER TABLE "Product"
+      ADD COLUMN IF NOT EXISTS "productBrandId" TEXT;
+    CREATE INDEX IF NOT EXISTS "Product_productBrandId_idx"
+      ON "Product"("productBrandId");
+    -- Add the FK in a guarded DO block so re-runs don't conflict.
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_constraint
+      WHERE conname = 'Product_productBrandId_fkey'
+    ) THEN
+      ALTER TABLE "Product"
+        ADD CONSTRAINT "Product_productBrandId_fkey"
+        FOREIGN KEY ("productBrandId") REFERENCES "ProductBrand"("id")
+        ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+  END IF;
+
+  ----------------------------------------------------------------------------
   -- TradeAccountRequest — UK address fields. The form was extended to
   -- capture full UK postal addresses (line 2, county, postcode) on top of
   -- the original `address`/`city`/`country` triple.
@@ -81,6 +121,28 @@ BEGIN
       ADD COLUMN IF NOT EXISTS "county" TEXT;
     ALTER TABLE "TradeAccountRequest"
       ADD COLUMN IF NOT EXISTS "postcode" TEXT;
+  END IF;
+
+  ----------------------------------------------------------------------------
+  -- Product.deletedAt / Category.deletedAt — soft-delete tombstones. Products
+  -- and categories that have order history can't be hard-deleted (FK Restrict
+  -- on OrderItem.product), so the admin "Delete" action now stamps deletedAt
+  -- and filters those rows out of every storefront + admin list. Nullable +
+  -- no default, so `db push` can apply this safely to populated tables.
+  ----------------------------------------------------------------------------
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'Product'
+  ) THEN
+    ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "deletedAt" TIMESTAMP(3);
+    CREATE INDEX IF NOT EXISTS "Product_deletedAt_idx" ON "Product"("deletedAt");
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'Category'
+  ) THEN
+    ALTER TABLE "Category" ADD COLUMN IF NOT EXISTS "deletedAt" TIMESTAMP(3);
+    CREATE INDEX IF NOT EXISTS "Category_deletedAt_idx" ON "Category"("deletedAt");
   END IF;
 
   ----------------------------------------------------------------------------

@@ -53,11 +53,17 @@ export async function POST(req: Request) {
   const targetUser = await prisma.user.findUnique({ where: { id: data.userId } });
   if (!targetUser) return NextResponse.json({ error: "User not found" }, { status: 400 });
 
+  // Admin can't place orders for soft-deleted products either — they
+  // shouldn't appear in the picker, but reject defensively in case the
+  // admin had the page open before a delete happened in another tab.
   const products = await prisma.product.findMany({
-    where: { id: { in: data.items.map((i) => i.productId) } },
+    where: { id: { in: data.items.map((i) => i.productId) }, deletedAt: null },
   });
   if (products.length !== data.items.length) {
-    return NextResponse.json({ error: "Unknown product" }, { status: 400 });
+    return NextResponse.json(
+      { error: "One or more selected products are no longer available." },
+      { status: 400 },
+    );
   }
 
   // If the customer is trade-approved, apply category discounts authoritatively.

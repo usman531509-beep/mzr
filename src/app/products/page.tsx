@@ -32,7 +32,10 @@ export default async function ProductsPage({
   const categoryParam = typeof sp.category === "string" ? sp.category : undefined;
   const activeCategoryNode = categoryParam
     ? await prisma.category.findFirst({
-        where: { OR: [{ path: categoryParam }, { slug: categoryParam }] },
+        where: {
+          deletedAt: null,
+          OR: [{ path: categoryParam }, { slug: categoryParam }],
+        },
         select: {
           id: true, name: true, slug: true, path: true, description: true,
         },
@@ -41,6 +44,7 @@ export default async function ProductsPage({
     : null;
 
   const brandSlug = typeof sp.brand === "string" ? sp.brand : undefined;
+  const productBrandSlug = typeof sp.productBrand === "string" ? sp.productBrand : undefined;
   const modelId = typeof sp.model === "string" ? sp.model : undefined;
   const yearStr = typeof sp.year === "string" ? sp.year : undefined;
   let yearSingle: number | undefined;
@@ -52,7 +56,7 @@ export default async function ProductsPage({
   }
   const q = typeof sp.q === "string" ? sp.q : undefined;
 
-  const where: Prisma.ProductWhereInput = { active: true };
+  const where: Prisma.ProductWhereInput = { active: true, deletedAt: null };
   const and: Prisma.ProductWhereInput[] = [];
 
   // Category filter: roll up to include the node itself + every descendant.
@@ -66,6 +70,7 @@ export default async function ProductsPage({
     });
   }
   if (brandSlug) where.brand = { slug: brandSlug };
+  if (productBrandSlug) where.productBrand = { slug: productBrandSlug };
   if (q) {
     and.push({
       OR: [
@@ -96,7 +101,7 @@ export default async function ProductsPage({
   if (and.length) where.AND = and;
 
   // Brands / categories / models come from the shared 5-minute cache.
-  const [trade, nav, products, activeBrand, ancestors] = await Promise.all([
+  const [trade, nav, products, activeBrand, ancestors, productBrands, activeProductBrand] = await Promise.all([
     getTradeContext(),
     getNavData(),
     prisma.product.findMany({
@@ -116,6 +121,15 @@ export default async function ProductsPage({
       ? prisma.brand.findUnique({ where: { slug: brandSlug }, select: { name: true } })
       : null,
     activeCategoryNode ? getAncestors(activeCategoryNode.id) : Promise.resolve([]),
+    // Product brands are a tiny table (Brembo, NGK, EBC…) — uncached fetch
+    // is fine and lets us add new ones without waiting for nav-cache TTL.
+    prisma.productBrand.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, slug: true },
+    }),
+    productBrandSlug
+      ? prisma.productBrand.findUnique({ where: { slug: productBrandSlug }, select: { name: true } })
+      : null,
   ]);
   const brands = nav.brands;
   const allCategories = nav.categories;
@@ -129,14 +143,16 @@ export default async function ProductsPage({
     ? `${activeCategoryNode.name} parts`
     : activeBrand?.name
       ? `${activeBrand.name} parts`
-      : q
-        ? `Search · "${q}"`
-        : "Spare parts";
+      : activeProductBrand?.name
+        ? `${activeProductBrand.name} parts`
+        : q
+          ? `Search · "${q}"`
+          : "Spare parts";
 
   // Drill-in strip: when filtering by brand/model/year/q without a category,
   // surface every top-level subtree that still has at least one match.
   const showSubcategoryChips =
-    !activeCategoryNode && Boolean(brandSlug || modelId || q);
+    !activeCategoryNode && Boolean(brandSlug || productBrandSlug || modelId || q);
   const subcategoryChips = showSubcategoryChips
     ? await (async () => {
         const candidates = nav.tree.map((n) => ({ id: n.id, name: n.name, path: n.path }));
@@ -152,6 +168,7 @@ export default async function ProductsPage({
   const preservedParams = (() => {
     const params = new URLSearchParams();
     if (brandSlug) params.set("brand", brandSlug);
+    if (productBrandSlug) params.set("productBrand", productBrandSlug);
     if (modelId) params.set("model", modelId);
     if (yearStr) params.set("year", yearStr);
     if (q) params.set("q", q);
@@ -202,7 +219,12 @@ export default async function ProductsPage({
             </div>
 
             <div className="mb-5 border-y border-border py-3">
-              <CompactFilters brands={brands} models={allModels} categories={allCategories} />
+              <CompactFilters
+                brands={brands}
+                productBrands={productBrands}
+                models={allModels}
+                categories={allCategories}
+              />
             </div>
 
             {subcategoryChips.length > 0 && (

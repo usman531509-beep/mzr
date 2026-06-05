@@ -72,12 +72,12 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
   // round-trip (~70ms when the DB is in another region).
   const [
     productsCount, ordersCount, usersCount, revenueAgg,
-    recentOrders, products, brands, categories, models,
+    recentOrders, products, brands, productBrands, categories, models,
     statusCounts, ordersForChart, orderItemsAgg,
     expensesAgg, oosCount, stockProducts, pendingAgg,
     lifetimeRevenueAgg, lifetimeOrdersCount,
   ] = await Promise.all([
-    prisma.product.count(),
+    prisma.product.count({ where: { deletedAt: null } }),
     // Financial metrics only count orders that have actually been delivered.
     prisma.order.count({ where: { ...orderRangeFilter, status: "DELIVERED" } }),
     prisma.user.count({ where: { role: "USER" } }),
@@ -92,21 +92,24 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
     // with its own pagination + search. Cap at 10 newest with the relations
     // the card UI needs, nothing more.
     prisma.product.findMany({
+      where: { deletedAt: null },
       orderBy: { createdAt: "desc" },
       take: 10,
       include: { brand: true, category: true, compatibilities: true },
     }),
     prisma.brand.findMany({ orderBy: { name: "asc" } }),
+    prisma.productBrand.findMany({ orderBy: { name: "asc" } }),
     prisma.category.findMany({
+      where: { deletedAt: null },
       orderBy: [{ depth: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
       select: {
         id: true, name: true, slug: true, parentId: true, path: true, depth: true,
         _count: {
           select: {
-            children: true,
+            children: { where: { deletedAt: null } },
             // Roll up active-product counts here so the dashboard doesn't
             // need to load every product just to compute category totals.
-            products: { where: { active: true } },
+            products: { where: { active: true, deletedAt: null } },
           },
         },
       },
@@ -141,11 +144,11 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
       _sum: { amount: true },
       _count: { _all: true },
     }),
-    prisma.product.count({ where: { active: true, stock: 0 } }),
+    prisma.product.count({ where: { active: true, stock: 0, deletedAt: null } }),
     // All active products with stock — used for current low-stock count and
     // to value the inventory at retail.
     prisma.product.findMany({
-      where: { active: true },
+      where: { active: true, deletedAt: null },
       select: { id: true, name: true, stock: true, lowStockThreshold: true, price: true },
     }),
     // Pending orders are NOT range-scoped — admins always need to see all
@@ -314,6 +317,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
     image: p.images[0] ?? null,
     description: p.description,
     brandId: p.brandId,
+    productBrandId: p.productBrandId,
     categoryId: p.categoryId,
     sku: p.sku,
     oemNumber: p.oemNumber,
@@ -543,6 +547,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
         categoriesData={categoriesData}
         products={productsForClient}
         brands={brands.map((b) => ({ id: b.id, name: b.name }))}
+        productBrands={productBrands.map((b) => ({ id: b.id, name: b.name }))}
         categories={categories.map((c) => ({
           id: c.id, name: c.name, slug: c.slug,
           parentId: c.parentId, path: c.path, childCount: c._count.children,

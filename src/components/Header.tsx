@@ -15,13 +15,16 @@ import {
 import type { NavCategoryNode } from "@/lib/nav-cache";
 
 type NavBrand = { name: string; slug: string };
+type NavProductBrand = { name: string; slug: string };
 
 export function Header({
   tree = [],
   brands = [],
+  productBrands = [],
 }: {
   tree?: NavCategoryNode[];
   brands?: NavBrand[];
+  productBrands?: NavProductBrand[];
 }) {
   const { data: session } = useSession();
   const items = useCart((s) => s.items);
@@ -37,6 +40,7 @@ export function Header({
   // top-level has no children, we still surface it as a single-item column.
   const partsCols = treeToColumns(tree);
   const brandsCols = chunk(brands.map(toBrandItem), 2);
+  const productBrandsCols = chunk(productBrands.map(toProductBrandItem), 2);
 
   return (
     <>
@@ -69,11 +73,15 @@ export function Header({
               <SimpleLink href="/products" label="Parts" />
             )}
             {brandsCols.length > 0 ? (
-              <NavItem label="Brands">
+              <NavItem label="By bike brands">
                 <MegaMenu columns={brandsCols} width="narrow" />
               </NavItem>
             ) : null}
-            <SimpleLink href="/products?sort=new" label="New In" />
+            {productBrandsCols.length > 0 ? (
+              <NavItem label="By parts brands">
+                <MegaMenu columns={productBrandsCols} width="narrow" />
+              </NavItem>
+            ) : null}
             <SimpleLink href="/products" label="All Products" />
           </nav>
 
@@ -218,7 +226,7 @@ export function Header({
 function NavItem({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="nav-item relative flex items-stretch">
-      <button className="flex h-full items-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-3.5 text-[13.5px] font-medium text-white/85 transition hover:border-red hover:text-white">
+      <button className="flex h-full items-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-3.5 text-[12.5px] font-semibold uppercase tracking-[0.08em] text-white/85 transition hover:border-red hover:text-white">
         {label}
         <span className="text-[9px] opacity-50">▼</span>
       </button>
@@ -231,7 +239,7 @@ function SimpleLink({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}
-      className="flex h-full items-center whitespace-nowrap border-b-2 border-transparent px-3.5 text-[13.5px] font-medium text-white/85 transition hover:border-red hover:text-white"
+      className="flex h-full items-center whitespace-nowrap border-b-2 border-transparent px-3.5 text-[12.5px] font-semibold uppercase tracking-[0.08em] text-white/85 transition hover:border-red hover:text-white"
     >
       {label}
     </Link>
@@ -263,6 +271,12 @@ function ActionBtn({
 
 function toBrandItem(b: NavBrand) {
   return { label: b.name, href: `/products?brand=${b.slug}` };
+}
+
+// Part-manufacturer dropdown (Brembo, NGK, EBC…). Deep-links into /products
+// with ?productBrand=<slug> so the storefront filter chip picks it up.
+function toProductBrandItem(b: NavProductBrand) {
+  return { label: b.name, href: `/products?productBrand=${b.slug}` };
 }
 
 // Turn the category tree into a column-per-top-level mega-menu layout.
