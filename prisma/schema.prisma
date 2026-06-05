@@ -488,6 +488,12 @@ model OrderItem {
   // DELIVERED — one row per StockLayer consumed by this line. Cleared
   // (deleted) on transition out of DELIVERED.
   costAllocations OrderItemCostAllocation[]
+
+  // Order invoice loads OrderItems by orderId; product-delete checks scan
+  // OrderItems by productId. Without these indexes both end up as seq-scans
+  // on a table that grows monotonically with every sale.
+  @@index([orderId])
+  @@index([productId])
 }
 
 model Supplier {

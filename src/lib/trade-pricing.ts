@@ -1,3 +1,5 @@
+import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -7,27 +9,44 @@ export type TradeContext = {
   discounts: Map<string, number>;
 };
 
-/** Server-only. Resolves the current viewer's trade context once per request. */
-export async function getTradeContext(): Promise<TradeContext> {
+// Trade-discount rules are admin-set and change rarely. Cache the whole
+// table for 10 minutes, tagged so admin mutations can bust it on demand.
+// Without this, every storefront render did a fresh findMany even though
+// the data is essentially read-only.
+export const TRADE_DISCOUNT_CACHE_TAG = "trade-discounts";
+const getTradeDiscountRows = unstable_cache(
+  async () => prisma.tradeDiscount.findMany({
+    select: { categoryId: true, percent: true },
+  }),
+  ["trade-discounts-v1"],
+  { revalidate: 600, tags: [TRADE_DISCOUNT_CACHE_TAG] },
+);
+
+/** Server-only. Resolves the current viewer's trade context.
+ *  Wrapped in React.cache so multiple consumers in the same render tree
+ *  share a single trip — e.g. layout + page both call this and only one
+ *  auth() + Prisma lookup actually fires. */
+export const getTradeContext = cache(async (): Promise<TradeContext> => {
   const session = await auth();
   if (!session?.user?.id) return { isTrader: false, discounts: new Map() };
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { tradeApproved: true, active: true },
-  });
+  // User lookup must stay live (tradeApproved flips when admin approves an
+  // application) but the discount rules can come straight from cache.
+  const [user, rows] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { tradeApproved: true, active: true },
+    }),
+    getTradeDiscountRows(),
+  ]);
   if (!user?.active || !user.tradeApproved) {
     return { isTrader: false, discounts: new Map() };
   }
-
-  const rows = await prisma.tradeDiscount.findMany({
-    select: { categoryId: true, percent: true },
-  });
   return {
     isTrader: true,
     discounts: new Map(rows.map((r) => [r.categoryId, r.percent])),
   };
-}
+});
 
 /** Applies the trade discount (if any) for a given product + context.
  *  `categoryId` is nullable to handle orphaned products whose category was

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity-log";
+import { TRADE_DISCOUNT_CACHE_TAG } from "@/lib/trade-pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +27,7 @@ export async function PUT(req: Request) {
 
   if (!percent || percent < 0) {
     await prisma.tradeDiscount.deleteMany({ where: { categoryId: body.categoryId } });
+    revalidateTag(TRADE_DISCOUNT_CACHE_TAG);
     await logActivity(session, {
       action: "discount-removed",
       moduleKey: "trade-discount",
@@ -42,6 +45,7 @@ export async function PUT(req: Request) {
     create: { categoryId: body.categoryId, percent },
     update: { percent },
   });
+  revalidateTag(TRADE_DISCOUNT_CACHE_TAG);
   await logActivity(session, {
     action: "discount-set",
     moduleKey: "trade-discount",

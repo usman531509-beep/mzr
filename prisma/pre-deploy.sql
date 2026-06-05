@@ -175,4 +175,19 @@ BEGIN
     CREATE UNIQUE INDEX IF NOT EXISTS "Order_paymentToken_key"
       ON "Order"("paymentToken");
   END IF;
+
+  ----------------------------------------------------------------------------
+  -- OrderItem index gaps. Foreign-key declarations don't create indexes in
+  -- Postgres, so OrderItem(orderId) and OrderItem(productId) lookups were
+  -- seq-scanning a monotonically-growing table on every invoice render and
+  -- on every product-delete safety check. CONCURRENTLY isn't supported
+  -- inside a DO block; the IF NOT EXISTS guard keeps re-runs cheap.
+  ----------------------------------------------------------------------------
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'OrderItem'
+  ) THEN
+    CREATE INDEX IF NOT EXISTS "OrderItem_orderId_idx"   ON "OrderItem"("orderId");
+    CREATE INDEX IF NOT EXISTS "OrderItem_productId_idx" ON "OrderItem"("productId");
+  END IF;
 END$$;
