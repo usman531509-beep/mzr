@@ -1,4 +1,3 @@
 {
-  "_comment": "lhr1 = London. Co-located with the Supabase UK (eu-west-2) DB so every server-rendered request avoids a transcontinental DB round-trip per Prisma call. Pages with ~10 queries used to cost ~1.5s in network alone when the function ran in Mumbai.",
   "regions": ["lhr1"]
 }
