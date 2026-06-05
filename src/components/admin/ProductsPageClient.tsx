@@ -102,7 +102,11 @@ export function ProductsPageClient({
         if (activeView === "active"   && !p.active) return false;
         if (activeView === "inactive" &&  p.active) return false;
       }
-      if (filterCat !== "all" && p.categorySlug !== filterCat) return false;
+      if (filterCat === "__uncategorised") {
+        if (p.categoryId != null) return false;
+      } else if (filterCat !== "all" && p.categorySlug !== filterCat) {
+        return false;
+      }
       if (filterBrand !== "all" && p.brandId !== filterBrand) return false;
       if (filterProductBrand !== "all") {
         if (filterProductBrand === "__none") {
@@ -117,7 +121,7 @@ export function ProductsPageClient({
 
       if (tokens.length > 0) {
         const haystack = [
-          p.name, p.brand, p.category,
+          p.name, p.brand, p.category ?? "",
           p.sku ?? "", p.oemNumber ?? "",
         ].join(" ").toLowerCase();
         for (const t of tokens) {
@@ -151,7 +155,11 @@ export function ProductsPageClient({
     const LOW_STOCK_THRESHOLD = 5;
     let a = 0, i = 0;
     for (const p of products) {
-      if (filterCat !== "all" && p.categorySlug !== filterCat) continue;
+      if (filterCat === "__uncategorised") {
+        if (p.categoryId != null) continue;
+      } else if (filterCat !== "all" && p.categorySlug !== filterCat) {
+        continue;
+      }
       if (filterBrand !== "all" && p.brandId !== filterBrand) continue;
       if (filterProductBrand !== "all") {
         if (filterProductBrand === "__none") {
@@ -164,7 +172,7 @@ export function ProductsPageClient({
       if (filterStock === "out" && p.stock !== 0) continue;
       if (filterStock === "low" && (p.stock <= 0 || p.stock > LOW_STOCK_THRESHOLD)) continue;
       if (tokens.length > 0) {
-        const haystack = [p.name, p.brand, p.category, p.sku ?? "", p.oemNumber ?? ""].join(" ").toLowerCase();
+        const haystack = [p.name, p.brand, p.category ?? "", p.sku ?? "", p.oemNumber ?? ""].join(" ").toLowerCase();
         let miss = false;
         for (const t of tokens) if (!haystack.includes(t)) { miss = true; break; }
         if (miss) continue;
@@ -334,6 +342,7 @@ export function ProductsPageClient({
               <SelectTrigger className="w-[160px]"><SelectValue placeholder="Category" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All categories</SelectItem>
+                <SelectItem value="__uncategorised">Uncategorised</SelectItem>
                 {categories.map((c) => <SelectItem key={c.id} value={c.slug}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -451,7 +460,23 @@ export function ProductsPageClient({
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm">{p.category}</TableCell>
+                    <TableCell className="text-sm">
+                      {p.category ?? (
+                        <span
+                          className="inline-flex items-center gap-1 rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-300"
+                          title={
+                            p.savedCategoryName
+                              ? `Category "${p.savedCategoryName}" was deleted. Restoring it rehomes this product; reassigning manually clears the link.`
+                              : "Category was deleted. Reassign to surface this product in any category nav."
+                          }
+                        >
+                          Uncategorised
+                          {p.savedCategoryName && (
+                            <span className="text-muted-foreground/80"> · was {p.savedCategoryName}</span>
+                          )}
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-sm">{p.brand}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{p.compatibilities.length}</TableCell>
                     <TableCell className="text-right font-medium">{fmtMoney(p.price)}</TableCell>

@@ -59,6 +59,9 @@ export const getNavData = unstable_cache(
     // "brake", "brake/motorcycle-brake-pads", and "brake/.../organic".
     const counts = new Map<string, number>();
     for (const p of productCategoryPaths) {
+      // Orphaned products don't roll up into the nav — they're only
+      // reachable via "All products" / search.
+      if (!p.category) continue;
       const segs = p.category.path.split("/");
       for (let i = 1; i <= segs.length; i++) {
         const key = segs.slice(0, i).join("/");

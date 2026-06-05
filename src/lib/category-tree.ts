@@ -236,6 +236,9 @@ export async function countMatchingProductsBySubtree(
   });
   for (const c of candidates) counts.set(c.path, 0);
   for (const row of matches) {
+    // Orphaned products (category soft-deleted) don't contribute to any
+    // subtree count — they only surface under the "All products" view.
+    if (!row.category) continue;
     const p = row.category.path;
     for (const c of candidates) {
       if (p === c.path || p.startsWith(`${c.path}/`)) {
@@ -257,6 +260,7 @@ export async function rollupProductCounts(): Promise<Map<string, number>> {
   });
   const counts = new Map<string, number>();
   for (const r of rows) {
+    if (!r.category) continue;
     const segments = r.category.path.split("/");
     for (let i = 1; i <= segments.length; i++) {
       const key = segments.slice(0, i).join("/");

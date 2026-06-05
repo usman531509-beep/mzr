@@ -21,11 +21,21 @@ export type DashboardCategory = {
 export type DashboardProduct = {
   id: string; name: string; slug: string;
   price: string; costPrice: string | null; stock: number;
-  brand: string; category: string; categorySlug: string;
+  brand: string;
+  // `category` / `categorySlug` are null when the product is currently
+  // orphaned (its category was soft-deleted). Display fallbacks to
+  // "Uncategorised" — admin can reassign in the edit dialog.
+  category: string | null;
+  categorySlug: string | null;
   featured: boolean; demanding: boolean; active: boolean;
   image: string | null;
   description: string;
-  brandId: string; productBrandId: string | null; categoryId: string;
+  brandId: string; productBrandId: string | null;
+  categoryId: string | null;
+  // Snapshot of the previous categoryId set by the category DELETE handler
+  // — kept on the wire so the admin UI can show a "pending rehome" hint.
+  savedCategoryId: string | null;
+  savedCategoryName: string | null;
   sku: string | null;
   oemNumber: string | null;
   images: string[];

@@ -112,7 +112,7 @@ export default async function StockReceivedPage({ searchParams }: { searchParams
     price: Number(p.price),
     costPrice: p.costPrice ? Number(p.costPrice) : 0,
     brand: p.brand.name,
-    category: p.category.name,
+    category: p.category?.name ?? "Uncategorised",
     image: p.images[0] ?? null,
   }));
 

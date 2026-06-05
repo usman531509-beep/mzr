@@ -95,7 +95,12 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
       where: { deletedAt: null },
       orderBy: { createdAt: "desc" },
       take: 10,
-      include: { brand: true, category: true, compatibilities: true },
+      include: {
+        brand: true,
+        category: true,
+        savedCategory: { select: { id: true, name: true } },
+        compatibilities: true,
+      },
     }),
     prisma.brand.findMany({ orderBy: { name: "asc" } }),
     prisma.productBrand.findMany({ orderBy: { name: "asc" } }),
@@ -264,7 +269,11 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
   for (const it of orderItemsAgg) {
     if (it.order.status !== "DELIVERED") continue;
     const line = Number(it.price) * it.quantity;
-    catRevenue.set(it.product.categoryId, (catRevenue.get(it.product.categoryId) ?? 0) + line);
+    // Orphaned products (categoryId null) bucket under "Uncategorised" in
+    // the revenue chart — small enough to surface on its own slice when the
+    // admin needs to spot uncategorised sales.
+    const catKey = it.product.categoryId ?? "__uncategorised";
+    catRevenue.set(catKey, (catRevenue.get(catKey) ?? 0) + line);
     const cur = productRevenue.get(it.productId);
     if (cur) {
       cur.quantity += it.quantity;
@@ -281,7 +290,12 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
   }
   const categoryNameById = new Map(categories.map((c) => [c.id, c.name]));
   const categoryRevenueData = Array.from(catRevenue.entries())
-    .map(([id, revenue]) => ({ name: categoryNameById.get(id) ?? "Unknown", revenue }))
+    .map(([id, revenue]) => ({
+      name: id === "__uncategorised"
+        ? "Uncategorised"
+        : (categoryNameById.get(id) ?? "Unknown"),
+      revenue,
+    }))
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 10);
   const topProducts = Array.from(productRevenue.values())
@@ -309,8 +323,8 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
     costPrice: p.costPrice ? p.costPrice.toString() : null,
     stock: p.stock,
     brand: p.brand.name,
-    category: p.category.name,
-    categorySlug: p.category.slug,
+    category: p.category?.name ?? null,
+    categorySlug: p.category?.slug ?? null,
     featured: p.featured,
     demanding: p.demanding,
     active: p.active,
@@ -319,6 +333,8 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
     brandId: p.brandId,
     productBrandId: p.productBrandId,
     categoryId: p.categoryId,
+    savedCategoryId: p.savedCategoryId,
+    savedCategoryName: p.savedCategory?.name ?? null,
     sku: p.sku,
     oemNumber: p.oemNumber,
     images: p.images,

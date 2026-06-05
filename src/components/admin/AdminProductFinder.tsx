@@ -22,7 +22,9 @@ export type FinderProduct = {
   image?: string | null;
   brandId: string;
   brandName: string;
-  categoryId: string;
+  // Nullable for orphaned products (category soft-deleted). UI renders
+  // "Uncategorised" in `categoryName` and skips the category-id filter.
+  categoryId: string | null;
   categoryName: string;
   // Compatibility rows attached to this product. Empty array means no fitments
   // are explicitly attached — the product is treated as universal/unknown so

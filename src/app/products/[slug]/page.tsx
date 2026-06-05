@@ -66,7 +66,8 @@ export default async function ProductPage({
   const mainImg = p.images[0] ?? PLACEHOLDER;
   const [trade, ancestors] = await Promise.all([
     getTradeContext(),
-    getAncestors(p.categoryId),
+    // Orphaned products (no category) have no breadcrumb beyond "All".
+    p.categoryId ? getAncestors(p.categoryId) : Promise.resolve([]),
   ]);
   const tp = tradePrice(Number(p.price), p.categoryId, trade);
   const showTrade = tp.percent > 0;
@@ -128,7 +129,7 @@ export default async function ProductPage({
             <div>
               <div className="mb-2 flex flex-wrap items-center gap-1.5">
                 <Badge variant="default" className="text-[10px]">{p.brand.name}</Badge>
-                <Badge variant="secondary" className="text-[10px]">{p.category.name}</Badge>
+                <Badge variant="secondary" className="text-[10px]">{p.category?.name ?? "Uncategorised"}</Badge>
                 {p.featured && (
                   <Badge variant="warning" className="text-[10px]">Featured</Badge>
                 )}

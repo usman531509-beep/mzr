@@ -26,7 +26,10 @@ type UserOpt = {
 type ProductOpt = {
   id: string; name: string; sku: string | null; oemNumber: string | null;
   price: number; stock: number; image?: string;
-  brandId: string; categoryId: string;
+  brandId: string;
+  // Nullable for orphaned products — category trade-discount lookups must
+  // treat null as "no discount" rather than throw.
+  categoryId: string | null;
   brand: string; category: string;
   fitments: { bikeModelId: string; yearFrom: number; yearTo: number }[];
 };
@@ -121,7 +124,8 @@ export function CreateOrderForm({
   const isTrader = !!selectedUser?.tradeApproved;
 
   const priceFor = (p: ProductOpt) => {
-    const pct = isTrader ? (discountByCategory[p.categoryId] ?? 0) : 0;
+    // Orphaned products (no category) can't carry a category discount.
+    const pct = isTrader && p.categoryId ? (discountByCategory[p.categoryId] ?? 0) : 0;
     return pct > 0 ? +(p.price * (1 - pct / 100)).toFixed(2) : p.price;
   };
 

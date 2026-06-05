@@ -50,7 +50,11 @@ export async function POST(req: Request) {
 
   let discounts = new Map<string, number>();
   if (target.tradeApproved) {
-    const categoryIds = [...new Set(products.map((p) => p.categoryId))];
+    // Orphaned products (categoryId null) can't carry a category discount —
+    // drop them from the lookup set before querying TradeDiscount.
+    const categoryIds = [...new Set(
+      products.map((p) => p.categoryId).filter((id): id is string => id != null),
+    )];
     if (categoryIds.length > 0) {
       const rows = await prisma.tradeDiscount.findMany({
         where: { categoryId: { in: categoryIds } },
@@ -65,7 +69,7 @@ export async function POST(req: Request) {
     if (!p) {
       return { productId: i.productId, originalPrice: 0, price: 0, percent: 0 };
     }
-    const pct = discounts.get(p.categoryId) ?? 0;
+    const pct = p.categoryId ? (discounts.get(p.categoryId) ?? 0) : 0;
     const segments = await getFifoRetailBreakdown(prisma, {
       productId: p.id,
       qty: i.quantity,

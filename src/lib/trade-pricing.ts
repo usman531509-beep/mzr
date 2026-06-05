@@ -29,13 +29,16 @@ export async function getTradeContext(): Promise<TradeContext> {
   };
 }
 
-/** Applies the trade discount (if any) for a given product + context. */
+/** Applies the trade discount (if any) for a given product + context.
+ *  `categoryId` is nullable to handle orphaned products whose category was
+ *  soft-deleted — those can't carry a category discount, so they're priced
+ *  at retail until an admin reassigns them. */
 export function tradePrice(
   price: number,
-  categoryId: string,
+  categoryId: string | null,
   ctx: TradeContext,
 ): { original: number; discounted: number; percent: number } {
-  const percent = ctx.isTrader ? ctx.discounts.get(categoryId) ?? 0 : 0;
+  const percent = ctx.isTrader && categoryId ? ctx.discounts.get(categoryId) ?? 0 : 0;
   if (percent <= 0) return { original: price, discounted: price, percent: 0 };
   const discounted = Math.max(0, +(price * (1 - percent / 100)).toFixed(2));
   return { original: price, discounted, percent };

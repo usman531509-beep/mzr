@@ -78,10 +78,22 @@ export async function PATCH(
     },
   });
 
+  // When the admin manually reassigns the category, the orphan-restore
+  // snapshot becomes stale — "last manual action wins" per the soft-delete
+  // contract. We can't add `savedCategoryId: null` to the request schema
+  // without giving callers an attack surface, so apply it server-side based
+  // on the actual presence of `categoryId` in this payload.
+  const updateData: Prisma.ProductUncheckedUpdateInput = {
+    ...(d as Prisma.ProductUncheckedUpdateInput),
+  };
+  if (d.categoryId !== undefined) {
+    updateData.savedCategoryId = null;
+  }
+
   const product = await prisma.$transaction(async (tx) => {
     const updated = await tx.product.update({
       where: { id },
-      data: d as Prisma.ProductUncheckedUpdateInput,
+      data: updateData,
     });
     if (compats) {
       await tx.productCompatibility.deleteMany({ where: { productId: id } });
@@ -144,7 +156,10 @@ export async function PATCH(
       };
     }
     if (before.categoryId !== after.categoryId) {
-      changes.category = { from: before.category?.name ?? before.categoryId, to: after.category?.name ?? after.categoryId };
+      changes.category = {
+        from: before.category?.name ?? before.categoryId ?? "—",
+        to:   after.category?.name  ?? after.categoryId  ?? "—",
+      };
     }
     if (before.images.length !== after.images.length) {
       changes.images = { from: `${before.images.length} image(s)`, to: `${after.images.length} image(s)` };

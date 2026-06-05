@@ -83,7 +83,12 @@ export type PartDialogProps = {
     id: string;
     name: string; description: string; price: number; costPrice: number | null; stock: number;
     sku: string | null; oemNumber: string | null;
-    brandId: string; productBrandId: string | null; categoryId: string;
+    brandId: string;
+    productBrandId: string | null;
+    // Nullable when the product is currently orphaned (its category was
+    // soft-deleted). The form still requires a pick on save — schema below
+    // enforces a non-empty string at submit time.
+    categoryId: string | null;
     featured: boolean; demanding: boolean; active: boolean;
     images: string[]; compatibilities: Compat[];
   };
@@ -126,7 +131,7 @@ export function PartDialog({
         oemNumber: existing.oemNumber ?? "",
         brandId: existing.brandId,
         productBrandId: existing.productBrandId ?? "",
-        categoryId: existing.categoryId,
+        categoryId: existing.categoryId ?? "",
         featured: existing.featured,
         demanding: existing.demanding,
         active: existing.active,

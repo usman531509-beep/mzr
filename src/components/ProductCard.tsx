@@ -12,7 +12,9 @@ export type ProductCardData = {
   stock: number;
   images: string[];
   brand: { name: string };
-  category: { name: string };
+  // Nullable for orphaned products whose category was soft-deleted. The
+  // card falls back to "Uncategorised" instead of hiding the row outright.
+  category: { name: string } | null;
   oemNumber?: string | null;
   sku?: string | null;
   fitments?: { brand: string; model: string; yearFrom: number; yearTo: number }[];
@@ -72,7 +74,7 @@ export function ProductCard({ p }: { p: ProductCardData }) {
       <div className="flex flex-1 flex-col gap-1.5 p-3.5">
         <div className="flex flex-wrap items-center gap-1.5">
           <Badge variant="default" className="text-[11px]">{p.brand.name}</Badge>
-          <Badge variant="secondary" className="text-[11px]">{p.category.name}</Badge>
+          <Badge variant="secondary" className="text-[11px]">{p.category?.name ?? "Uncategorised"}</Badge>
         </div>
 
         <h3 className="line-clamp-2 min-h-[2.5rem] text-base font-semibold leading-tight text-foreground sm:text-[17px]">

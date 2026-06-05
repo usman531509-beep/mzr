@@ -94,7 +94,7 @@ export async function POST(req: Request) {
       qty: i.quantity,
       fallbackRetail: Number(p.price),
     });
-    const pct = discounts.get(p.categoryId) ?? 0;
+    const pct = p.categoryId ? (discounts.get(p.categoryId) ?? 0) : 0;
     for (const seg of segments) {
       const base = seg.unitRetail;
       const price = pct > 0 ? +(base * (1 - pct / 100)).toFixed(2) : base;

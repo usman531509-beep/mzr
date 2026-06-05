@@ -136,6 +136,23 @@ BEGIN
   ) THEN
     ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "deletedAt" TIMESTAMP(3);
     CREATE INDEX IF NOT EXISTS "Product_deletedAt_idx" ON "Product"("deletedAt");
+
+    -- Orphan + remember: a product can now survive its category being soft-
+    -- deleted. The DELETE handler nulls Product.categoryId and stashes the
+    -- previous value in savedCategoryId. RESTORE moves it back. Both
+    -- columns nullable + no default so this applies cleanly to populated
+    -- tables. categoryId loses its NOT NULL.
+    ALTER TABLE "Product" ALTER COLUMN "categoryId" DROP NOT NULL;
+    ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "savedCategoryId" TEXT;
+    CREATE INDEX IF NOT EXISTS "Product_savedCategoryId_idx" ON "Product"("savedCategoryId");
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_constraint WHERE conname = 'Product_savedCategoryId_fkey'
+    ) THEN
+      ALTER TABLE "Product"
+        ADD CONSTRAINT "Product_savedCategoryId_fkey"
+        FOREIGN KEY ("savedCategoryId") REFERENCES "Category"("id")
+        ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
   END IF;
   IF EXISTS (
     SELECT 1 FROM information_schema.tables

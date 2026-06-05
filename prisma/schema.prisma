@@ -154,7 +154,12 @@ model Category {
   sortOrder   Int       @default(0)
   description String?
   imageUrl    String?
-  products    Product[]
+  products    Product[]   @relation("ProductCategory")
+  // Products whose live category was soft-deleted and that are temporarily
+  // homeless. `Product.savedCategoryId` points here so we can rehome them if
+  // the admin restores the category. Cleared the moment an admin manually
+  // reassigns the product to any category.
+  pendingProducts Product[] @relation("ProductSavedCategory")
   tradeDiscount TradeDiscount?
   createdAt   DateTime  @default(now())
   // Soft-delete tombstone. Categories with order/PO history can't be hard-
@@ -216,8 +221,17 @@ model Product {
   // can tag in their own time; existing rows stay untouched until edited.
   productBrandId  String?
   productBrand    ProductBrand?          @relation(fields: [productBrandId], references: [id], onDelete: SetNull)
-  categoryId      String
-  category        Category               @relation(fields: [categoryId], references: [id])
+  // Nullable so a product can survive its category being soft-deleted —
+  // when that happens we copy the value into `savedCategoryId` below and
+  // null this out. The admin can either restore the category (rehome via
+  // savedCategoryId) or pick a new category (clears savedCategoryId).
+  categoryId      String?
+  category        Category?              @relation("ProductCategory", fields: [categoryId], references: [id])
+  // Snapshot of the previous categoryId at the moment its category was
+  // soft-deleted. Set by the category DELETE handler, consumed by the
+  // category RESTORE handler, cleared by any manual category change.
+  savedCategoryId String?
+  savedCategory   Category?              @relation("ProductSavedCategory", fields: [savedCategoryId], references: [id], onDelete: SetNull)
   compatibilities ProductCompatibility[]
   orderItems      OrderItem[]
   cartItems       CartItem[]
@@ -236,6 +250,7 @@ model Product {
   @@index([brandId])
   @@index([productBrandId])
   @@index([categoryId])
+  @@index([savedCategoryId])
   @@index([featured])
   @@index([demanding])
   @@index([active])

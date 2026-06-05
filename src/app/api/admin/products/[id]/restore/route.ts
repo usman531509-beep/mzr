@@ -22,21 +22,23 @@ export async function POST(
   if (!before.deletedAt) {
     return NextResponse.json({ ok: true, alreadyActive: true });
   }
-  // If the parent category was soft-deleted in the meantime, restoring the
-  // product alone would leave it orphaned (invisible on the storefront via
-  // the category filter). Block this and ask the admin to restore the
-  // category first.
-  const cat = await prisma.category.findUnique({
-    where: { id: before.categoryId },
-    select: { deletedAt: true, name: true },
-  });
-  if (cat?.deletedAt) {
-    return NextResponse.json(
-      {
-        error: `The parent category "${cat.name}" is also deleted. Restore the category first, then try again.`,
-      },
-      { status: 409 },
-    );
+  // Products without a categoryId are already orphaned — restoring leaves
+  // them uncategorised and the admin reassigns later. Only block if the
+  // product still points at a category and that category is also deleted,
+  // because reviving the product would put it in a dead branch.
+  if (before.categoryId) {
+    const cat = await prisma.category.findUnique({
+      where: { id: before.categoryId },
+      select: { deletedAt: true, name: true },
+    });
+    if (cat?.deletedAt) {
+      return NextResponse.json(
+        {
+          error: `The parent category "${cat.name}" is also deleted. Restore the category first, then try again.`,
+        },
+        { status: 409 },
+      );
+    }
   }
   await prisma.product.update({
     where: { id },

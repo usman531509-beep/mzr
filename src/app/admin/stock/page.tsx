@@ -139,7 +139,7 @@ export default async function StockPage({ searchParams }: { searchParams: SP }) 
           oemNumber: p.oemNumber,
           image: p.images[0] ?? null,
           brand: p.brand.name,
-          category: p.category.name,
+          category: p.category?.name ?? "Uncategorised",
           brandId: p.brandId,
           categoryId: p.categoryId,
           stock: p.stock,

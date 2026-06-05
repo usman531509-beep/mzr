@@ -34,7 +34,11 @@ type DeletedCategoryRow = {
   path: string;
   depth: number;
   deletedAt: string;
-  liveProductCount: number;
+  // How many sub-categories / products will come back when this row is
+  // restored — surfaced inline so the admin sees the blast radius before
+  // clicking. Computed server-side by walking the path-prefix subtree.
+  cascadeSubCount: number;
+  cascadeProductCount: number;
 };
 
 export function CategoriesClient({
@@ -139,27 +143,50 @@ export function CategoriesClient({
   };
 
   const del = async (node: CategoryTreeNode) => {
+    // Preview the cascade: sub-categories go to the bin with this one, but
+    // products only get *orphaned* (their category link is parked into
+    // savedCategoryId so a restore can rehome them later).
+    const subBlurb = node.childCount > 0
+      ? ` ${node.childCount} sub-categor${node.childCount === 1 ? "y" : "ies"} will be deleted with it.`
+      : "";
+    const prodBlurb = node.productCount > 0
+      ? ` ${node.productCount} product${node.productCount === 1 ? "" : "s"} will become uncategorised — they stay live and can be reassigned or auto-rehomed by restoring this category.`
+      : "";
     const ok = await confirmAction({
       title: `Delete "${node.name}"?`,
-      description: "The category will be moved to the Deleted tab. Sub-categories or products attached to it must be moved out first. You can restore it from the Deleted tab.",
+      description:
+        `The category moves to the Deleted tab.${subBlurb}${prodBlurb} Order history is unaffected.`,
       confirmLabel: "Delete",
       destructive: true,
     });
     if (!ok) return;
     const res = await fetch(`/api/admin/categories?id=${node.id}`, { method: "DELETE" });
-    const data = await res.json().catch(() => ({}));
+    const data = await res.json().catch(() => ({} as { error?: string; categoriesDeleted?: number; orphanedProducts?: number }));
     if (!res.ok) { toast.error(data.error ?? "Failed to delete"); return; }
-    toast.success("Category moved to the Deleted tab");
-    // Step out if we just deleted the current node.
+    const extras: string[] = [];
+    if ((data.categoriesDeleted ?? 1) > 1) extras.push(`${data.categoriesDeleted! - 1} sub-categor${data.categoriesDeleted! - 1 === 1 ? "y" : "ies"}`);
+    if ((data.orphanedProducts ?? 0) > 0) extras.push(`${data.orphanedProducts} product${data.orphanedProducts === 1 ? "" : "s"} orphaned`);
+    toast.success(
+      extras.length > 0
+        ? `Moved to Deleted (${extras.join(" · ")})`
+        : "Category moved to the Deleted tab",
+    );
     if (currentId === node.id) setCurrentId(node.parentId ?? null);
     router.refresh();
   };
 
   const restore = async (row: DeletedCategoryRow) => {
     const res = await fetch(`/api/admin/categories/${row.id}/restore`, { method: "POST" });
-    const data = await res.json().catch(() => ({}));
+    const data = await res.json().catch(() => ({} as { error?: string; categoriesRestored?: number; productsRehomed?: number }));
     if (!res.ok) { toast.error(data.error ?? "Failed to restore"); return; }
-    toast.success(`"${row.name}" restored`);
+    const extras: string[] = [];
+    if ((data.categoriesRestored ?? 1) > 1) extras.push(`${data.categoriesRestored! - 1} sub-categor${data.categoriesRestored! - 1 === 1 ? "y" : "ies"}`);
+    if ((data.productsRehomed ?? 0) > 0) extras.push(`${data.productsRehomed} product${data.productsRehomed === 1 ? "" : "s"} rehomed`);
+    toast.success(
+      extras.length > 0
+        ? `"${row.name}" restored (${extras.join(" · ")})`
+        : `"${row.name}" restored`,
+    );
     router.refresh();
   };
 
@@ -229,9 +256,12 @@ export function CategoriesClient({
                       </div>
                       <div className="text-[11px] text-muted-foreground">
                         Deleted {new Date(d.deletedAt).toLocaleDateString("en-GB", { dateStyle: "medium" })}
-                        {d.liveProductCount > 0 && (
-                          <> · {d.liveProductCount} live product{d.liveProductCount === 1 ? "" : "s"} still attached</>
-                        )}
+                        {(d.cascadeSubCount > 0 || d.cascadeProductCount > 0) && (() => {
+                          const parts: string[] = [];
+                          if (d.cascadeSubCount > 0) parts.push(`${d.cascadeSubCount} sub-categor${d.cascadeSubCount === 1 ? "y" : "ies"}`);
+                          if (d.cascadeProductCount > 0) parts.push(`rehome ${d.cascadeProductCount} product${d.cascadeProductCount === 1 ? "" : "s"}`);
+                          return <> · restoring brings back {parts.join(" + ")}</>;
+                        })()}
                       </div>
                     </div>
                     <Button

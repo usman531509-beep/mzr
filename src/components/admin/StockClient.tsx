@@ -27,7 +27,8 @@ export type StockRow = {
   brand: string;
   category: string;
   brandId: string;
-  categoryId: string;
+  // Nullable for orphaned products (category was soft-deleted).
+  categoryId: string | null;
   stock: number;
   lowStockThreshold: number;
   price: number;

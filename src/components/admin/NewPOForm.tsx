@@ -26,7 +26,8 @@ type Product = {
   image: string | null;
   brandId: string;
   brandName: string;
-  categoryId: string;
+  // Nullable for orphaned products whose category was soft-deleted.
+  categoryId: string | null;
   categoryName: string;
   fitments: { bikeModelId: string; yearFrom: number; yearTo: number }[];
 };

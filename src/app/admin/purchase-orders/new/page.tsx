@@ -69,7 +69,7 @@ export default async function NewPOPage() {
           brandId: p.brandId,
           brandName: p.brand.name,
           categoryId: p.categoryId,
-          categoryName: p.category.name,
+          categoryName: p.category?.name ?? "Uncategorised",
           fitments: p.compatibilities,
         }))}
       />

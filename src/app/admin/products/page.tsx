@@ -22,7 +22,14 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
     prisma.product.findMany({
       where: productWhere,
       orderBy: { createdAt: "desc" },
-      include: { brand: true, category: true, compatibilities: true },
+      include: {
+        brand: true,
+        category: true,
+        // Surfaced so the admin UI can hint at the "would rehome to X"
+        // category for orphaned products.
+        savedCategory: { select: { id: true, name: true } },
+        compatibilities: true,
+      },
       skip,
       take,
     }),
@@ -57,8 +64,8 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
         costPrice: p.costPrice ? p.costPrice.toString() : null,
         stock: p.stock,
         brand: p.brand.name,
-        category: p.category.name,
-        categorySlug: p.category.slug,
+        category: p.category?.name ?? null,
+        categorySlug: p.category?.slug ?? null,
         featured: p.featured,
         demanding: p.demanding,
         active: p.active,
@@ -67,6 +74,8 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
         brandId: p.brandId,
         productBrandId: p.productBrandId,
         categoryId: p.categoryId,
+        savedCategoryId: p.savedCategoryId,
+        savedCategoryName: p.savedCategory?.name ?? null,
         sku: p.sku,
         oemNumber: p.oemNumber,
         images: p.images,

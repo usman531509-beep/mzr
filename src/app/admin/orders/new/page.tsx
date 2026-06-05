@@ -78,7 +78,7 @@ export default async function AdminCreateOrderPage() {
           brandId: p.brandId,
           categoryId: p.categoryId,
           brand: p.brand.name,
-          category: p.category.name,
+          category: p.category?.name ?? "Uncategorised",
           fitments: p.compatibilities,
         }))}
         brands={brands}
