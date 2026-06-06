@@ -69,7 +69,12 @@ export default async function ProductsPage({
       ],
     });
   }
-  if (brandSlug) where.brand = { slug: brandSlug };
+  // Multi-brand: a product with Honda + Yamaha + Kawasaki ticked should
+  // appear under all three brand listings, not just its legacy primary
+  // brandId. `brands: { some }` matches the M2M set which always includes
+  // the primary, so this is a strict superset of the old `brand: { slug }`
+  // filter.
+  if (brandSlug) where.brands = { some: { slug: brandSlug } };
   if (productBrandSlug) where.productBrand = { slug: productBrandSlug };
   if (q) {
     and.push({

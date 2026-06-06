@@ -187,8 +187,8 @@ export function BikeModelsClient({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Model</TableHead>
                 <TableHead>Brand</TableHead>
+                <TableHead>Model</TableHead>
                 <TableHead>Years</TableHead>
                 <TableHead className="text-right">Parts fitted</TableHead>
                 <TableHead></TableHead>
@@ -201,8 +201,14 @@ export function BikeModelsClient({
                 </TableCell></TableRow>
               ) : filtered.map((m) => (
                 <TableRow key={m.id}>
-                  <TableCell className="font-medium">{m.name}</TableCell>
-                  <TableCell>{m.brand}</TableCell>
+                  <TableCell className="font-medium">{m.brand}</TableCell>
+                  {/* Compose the display label inline so admins don't have
+                      to type "CBR 150 (2020-2023)" into the model name. The
+                      stored `name` stays clean ("CBR 150") — the years come
+                      from the dedicated yearStart/yearEnd inputs. */}
+                  <TableCell>
+                    {m.name} <span className="text-muted-foreground">({m.yearStart}–{m.yearEnd})</span>
+                  </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{m.yearStart}–{m.yearEnd}</TableCell>
                   <TableCell className="text-right">{m.count}</TableCell>
                   <TableCell className="text-right">

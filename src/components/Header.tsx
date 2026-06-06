@@ -73,12 +73,12 @@ export function Header({
               <SimpleLink href="/products" label="Parts" />
             )}
             {brandsCols.length > 0 ? (
-              <NavItem label="By bike brands">
+              <NavItem label="By bike">
                 <MegaMenu columns={brandsCols} width="narrow" />
               </NavItem>
             ) : null}
             {productBrandsCols.length > 0 ? (
-              <NavItem label="By parts brands">
+              <NavItem label="By brand">
                 <MegaMenu columns={productBrandsCols} width="narrow" />
               </NavItem>
             ) : null}

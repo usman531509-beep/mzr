@@ -63,8 +63,15 @@ model User {
   password      String
   role          Role      @default(USER)
   phone         String?
+  // Default shipping address — full UK postal shape so checkout can pre-
+  // fill all fields without extra prompts. `address` is line 1 (kept under
+  // the historical name so older code paths keep compiling); the other
+  // four columns were added when we standardised on UK address capture.
   address       String?
+  addressLine2  String?
   city          String?
+  county        String?
+  postcode      String?
   country       String?
   orders        Order[]   @relation("UserOrders")
   ordersCreatedAsAdmin Order[] @relation("AdminCreatedOrders")
@@ -121,6 +128,11 @@ model Brand {
   // calls this "Bike Brands". Standalone part manufacturers (Brembo, NGK,
   // EBC) live in the separate `ProductBrand` model below.
   products  Product[]
+  // M2M back-relation. A product can declare it's compatible with multiple
+  // bike brands (a universal grip fits Honda + Yamaha + Kawasaki). Each
+  // product still carries a primary `brandId` for legacy displays — this
+  // relation is always a superset of {brandId}.
+  compatProducts Product[] @relation("PartCompatBrands")
   bikeModels BikeModel[]
   createdAt DateTime    @default(now())
 }
@@ -215,8 +227,16 @@ model Product {
   // `featured`, which drives the catalogue-wide Featured strip).
   demanding       Boolean                @default(false)
   active          Boolean                @default(true)
+  // Primary bike brand. When the admin ticks multiple brands in the part
+  // dialog, the FIRST selection becomes the primary — every legacy display
+  // (storefront cards, search, admin lists) reads this. The full list lives
+  // in the M2M `brands` relation below.
   brandId         String
   brand           Brand                  @relation(fields: [brandId], references: [id])
+  // Multi-brand compatibility. Implicit Prisma M2M backed by the
+  // `_PartCompatBrands` join table. Always a superset of {brandId} — saved
+  // together by the part dialog.
+  brands          Brand[]                @relation("PartCompatBrands")
   // Manufacturer of the part itself (Brembo, NGK, EBC). Optional so admins
   // can tag in their own time; existing rows stay untouched until edited.
   productBrandId  String?

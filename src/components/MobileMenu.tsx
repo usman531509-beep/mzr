@@ -163,7 +163,7 @@ export function MobileMenu({
 
             {/* Bike-brand group — Honda, Yamaha, etc. */}
             {brands.length > 0 && (
-              <CollapsibleSection title="By bike brands" icon="🏍️">
+              <CollapsibleSection title="By bike" icon="🏍️">
                 <ul className="space-y-0.5 pl-3">
                   {brands.map((b) => (
                     <li key={b.slug}>
@@ -183,7 +183,7 @@ export function MobileMenu({
 
             {/* Part-manufacturer group — Brembo, NGK, EBC, etc. */}
             {productBrands.length > 0 && (
-              <CollapsibleSection title="By parts brands" icon="🛠️">
+              <CollapsibleSection title="By brand" icon="🛠️">
                 <ul className="space-y-0.5 pl-3">
                   {productBrands.map((b) => (
                     <li key={b.slug}>

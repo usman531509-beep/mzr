@@ -6,9 +6,11 @@ import { logActivity } from "@/lib/activity-log";
 
 export const dynamic = "force-dynamic";
 
-// Demo password set when an approved trader has no account yet. They sign in
-// with this once and are forced to set their own password before continuing.
-const DEMO_PASSWORD = "12345678";
+// Temporary password set when an approved trader has no account yet. They
+// sign in with this once and are forced to set their own password before
+// continuing. Surfaced to the admin in the approval response so it can be
+// communicated to the trader out-of-band (email, phone, etc.).
+const DEMO_PASSWORD = "Trader123@";
 
 export async function PATCH(
   req: Request,
@@ -29,6 +31,15 @@ export async function PATCH(
 
   const status = body.action === "approve" ? "APPROVED" : "REJECTED";
 
+  // Track which branch the approval took so we can return the temp
+  // password to the admin only when a new account was actually created.
+  // (We never re-leak the password for a pre-existing account.)
+  type Outcome = "linked" | "created" | "linked-existing-email" | "rejected";
+  // Cast the initial value so TS doesn't narrow the variable's type to the
+  // initial literal — the transaction callback below reassigns to "created"
+  // or "linked-existing-email" and we need those reads to compile.
+  let outcome = (status === "REJECTED" ? "rejected" : "linked") as Outcome;
+
   await prisma.$transaction(async (tx) => {
     await tx.tradeAccountRequest.update({
       where: { id },
@@ -48,6 +59,7 @@ export async function PATCH(
         where: { id: reqRow.userId },
         data: { tradeApproved: true, tradeApprovedAt: new Date() },
       });
+      outcome = "linked";
       return;
     }
 
@@ -64,6 +76,7 @@ export async function PATCH(
         where: { id },
         data: { userId: existing.id },
       });
+      outcome = "linked-existing-email";
       return;
     }
 
@@ -73,8 +86,15 @@ export async function PATCH(
         email: reqRow.email,
         name: reqRow.contactName,
         phone: reqRow.phone,
+        // Seed the new trader's default shipping address from the business
+        // address they entered on the trade-account form. This way the
+        // first time they hit checkout, the address is already filled in.
+        // Customer can still edit it under /account/profile afterwards.
         address: reqRow.address,
+        addressLine2: reqRow.addressLine2,
         city: reqRow.city,
+        county: reqRow.county,
+        postcode: reqRow.postcode,
         country: reqRow.country,
         password: hashed,
         tradeApproved: true,
@@ -86,6 +106,7 @@ export async function PATCH(
       where: { id },
       data: { userId: created.id },
     });
+    outcome = "created";
   });
 
   await logActivity(session, {
@@ -95,5 +116,13 @@ export async function PATCH(
     targetId: id,
   });
   // TODO(email): notify reqRow.email of approval + demo password.
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({
+    ok: true,
+    outcome,
+    // Only return the temp password on the "created" branch — never for
+    // existing accounts (we don't know their current credentials and we
+    // don't want to imply otherwise).
+    tempPassword: outcome === "created" ? DEMO_PASSWORD : null,
+    email: reqRow.email,
+  });
 }

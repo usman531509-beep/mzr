@@ -70,7 +70,12 @@ export default async function HomePage() {
         orderBy: { name: "asc" },
         select: {
           id: true, name: true, slug: true, logoUrl: true,
-          _count: { select: { products: { where: { active: true, deletedAt: null } } } },
+          // Count via the M2M `compatProducts` relation so a multi-brand
+          // product appears in every ticked brand's tile, matching the
+          // /products?brand=… filter behaviour. The primary brandId is
+          // always part of this set, so this stays a superset of the
+          // legacy single-brand count.
+          _count: { select: { compatProducts: { where: { active: true, deletedAt: null } } } },
         },
       }),
       prisma.category.findMany({
@@ -117,13 +122,15 @@ export default async function HomePage() {
     .map((c) => ({ ...c, imageUrl: imageByCategoryId.get(c.id) ?? null }));
 
   // Top brands by stocked-product count (most useful for shoppers).
+  // `compatProducts` is the M2M side, so a part ticked for Honda + Yamaha
+  // contributes to both tiles' counts.
   const topBrands = brandRows
-    .filter((b) => b._count.products > 0)
-    .sort((a, b) => b._count.products - a._count.products)
+    .filter((b) => b._count.compatProducts > 0)
+    .sort((a, b) => b._count.compatProducts - a._count.compatProducts)
     .slice(0, 10)
     .map((b) => ({
       id: b.id, name: b.name, slug: b.slug,
-      logoUrl: b.logoUrl, productCount: b._count.products,
+      logoUrl: b.logoUrl, productCount: b._count.compatProducts,
     }));
 
   const featured = featuredRows.map(toCard);

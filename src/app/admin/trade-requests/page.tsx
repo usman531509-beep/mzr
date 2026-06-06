@@ -1,13 +1,15 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { TradeRequestActions } from "@/components/admin/TradeRequestActions";
 import { TradeRequestView } from "@/components/admin/TradeRequestView";
 import { AdminFilterBar } from "@/components/admin/AdminFilterBar";
-import { Briefcase } from "lucide-react";
+import { Briefcase, UserCheck } from "lucide-react";
 import type { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -77,12 +79,19 @@ export default async function TradeRequestsPage({ searchParams }: { searchParams
   );
 }
 
+// Row shape includes the `user` relation we eagerly load above. We type
+// it explicitly (instead of inferring from `findMany`) so the linked-user
+// existence check in TradeRequestActions has the field on hand.
+type RequestRow = Awaited<ReturnType<typeof prisma.tradeAccountRequest.findMany>>[number] & {
+  user: { id: string; email: string; tradeApproved: boolean } | null;
+};
+
 function Section({
   title, empty, rows, showActions,
 }: {
   title: string;
   empty: string;
-  rows: Awaited<ReturnType<typeof prisma.tradeAccountRequest.findMany>>;
+  rows: RequestRow[];
   showActions?: boolean;
 }) {
   return (
@@ -115,6 +124,15 @@ function Section({
                     <div className="font-medium">{r.contactName}</div>
                     <div className="text-xs text-muted-foreground">{r.email}</div>
                     <div className="text-xs text-muted-foreground">{r.phone}</div>
+                    {/* Linked-account hint — answers "where's the account
+                        for this approved request?" inline instead of
+                        making the admin go hunt in /admin/users. */}
+                    {r.user && (
+                      <div className="mt-1 inline-flex items-center gap-1 text-[11px] text-emerald-300">
+                        <UserCheck className="h-3 w-3" />
+                        Linked to user account
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="font-medium">{r.companyName}</div>
@@ -168,7 +186,25 @@ function Section({
                           decidedAt: r.decidedAt?.toISOString() ?? null,
                         }}
                       />
-                      {showActions && <TradeRequestActions id={r.id} />}
+                      {/* Once a request is linked to a real user, give the
+                          admin a one-click route to that profile. Especially
+                          useful for approved rows in the History section,
+                          where the action set is otherwise empty. */}
+                      {r.user && (
+                        <Button asChild variant="outline" size="sm" className="gap-1.5">
+                          <Link href={`/admin/users?q=${encodeURIComponent(r.user.email)}`}>
+                            <UserCheck className="h-3.5 w-3.5" /> View account
+                          </Link>
+                        </Button>
+                      )}
+                      {showActions && (
+                        <TradeRequestActions
+                          id={r.id}
+                          hasLinkedUser={!!r.user}
+                          applicantEmail={r.email}
+                          applicantName={r.contactName}
+                        />
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

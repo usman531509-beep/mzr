@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Phone } from "lucide-react";
+import { Phone, Users as UsersIcon, UserCheck, UserX, Briefcase } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -7,6 +7,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { StatCard } from "@/components/admin/StatCard";
 import { UserCartButton } from "@/components/admin/UserCartButton";
 import { UserOrdersButton } from "@/components/admin/UserOrdersButton";
 import { AdminFilterBar } from "@/components/admin/AdminFilterBar";
@@ -16,7 +17,6 @@ import { UserPermissionsButton } from "@/components/admin/UserPermissionsButton"
 import { Pagination } from "@/components/Pagination";
 import { parsePagination } from "@/lib/pagination";
 import { auth } from "@/auth";
-import { Briefcase } from "lucide-react";
 import type { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -47,7 +47,14 @@ export default async function UsersPage({ searchParams }: { searchParams: SP }) 
   else if (activeFilter === "no") where.active = false;
 
   const { page, pageSize, skip, take } = parsePagination(sp, { defaultSize: 25 });
-  const [users, total, session] = await Promise.all([
+  // Stat cards report the *whole* user base, NOT the filtered table — so
+  // applying e.g. role=USER doesn't make the "Total" card flip to "only
+  // customers". One Promise.all batch keeps the network round-trip count
+  // identical to before.
+  const [
+    users, total, session,
+    totalUsers, activeUsers, inactiveUsers, traderUsers,
+  ] = await Promise.all([
     prisma.user.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -57,6 +64,17 @@ export default async function UsersPage({ searchParams }: { searchParams: SP }) 
         _count: { select: { orders: true } },
         cart: {
           include: { items: { include: { product: true } } },
+        },
+        // Saved address book — surfaced inside the edit-user dialog so
+        // admins can see what addresses the customer has on file.
+        addresses: {
+          orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
+        },
+        // Latest trade application (if any). We only show the most recent
+        // one in the dialog — older requests live on /admin/trade-requests.
+        tradeRequests: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
         },
         orders: {
           orderBy: { createdAt: "desc" },
@@ -81,6 +99,10 @@ export default async function UsersPage({ searchParams }: { searchParams: SP }) 
     }),
     prisma.user.count({ where }),
     auth(),
+    prisma.user.count(),
+    prisma.user.count({ where: { active: true } }),
+    prisma.user.count({ where: { active: false } }),
+    prisma.user.count({ where: { tradeApproved: true } }),
   ]);
   const currentAdminId = session?.user?.id;
 
@@ -95,6 +117,49 @@ export default async function UsersPage({ searchParams }: { searchParams: SP }) 
           </p>
         </div>
         <NewUserButton />
+      </div>
+
+      {/* Top-of-page snapshot of the whole user base. Each card links to
+          the corresponding filtered view so the admin can drill in with a
+          single click instead of opening the filter dropdowns. */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Link href="/admin/users" className="block transition hover:opacity-90">
+          <StatCard
+            label="Total users"
+            value={totalUsers}
+            icon={UsersIcon}
+            sub="All registered accounts"
+          />
+        </Link>
+        <Link href="/admin/users?active=yes" className="block transition hover:opacity-90">
+          <StatCard
+            label="Active"
+            value={activeUsers}
+            icon={UserCheck}
+            accent="success"
+            sub={totalUsers > 0
+              ? `${Math.round((activeUsers / totalUsers) * 100)}% of users`
+              : "—"}
+          />
+        </Link>
+        <Link href="/admin/users?active=no" className="block transition hover:opacity-90">
+          <StatCard
+            label="Inactive"
+            value={inactiveUsers}
+            icon={UserX}
+            accent={inactiveUsers > 0 ? "warning" : undefined}
+            sub={inactiveUsers > 0 ? "Deactivated accounts" : "All accounts active"}
+          />
+        </Link>
+        <Link href="/admin/users?trade=yes" className="block transition hover:opacity-90">
+          <StatCard
+            label="Trade users"
+            value={traderUsers}
+            icon={Briefcase}
+            accent="primary"
+            sub={traderUsers > 0 ? "Approved for wholesale pricing" : "No trade accounts yet"}
+          />
+        </Link>
       </div>
 
       <AdminFilterBar
@@ -245,8 +310,53 @@ export default async function UsersPage({ searchParams }: { searchParams: SP }) 
                             role: u.role,
                             phone: u.phone,
                             address: u.address,
+                            addressLine2: u.addressLine2,
                             city: u.city,
+                            county: u.county,
+                            postcode: u.postcode,
                             country: u.country,
+                            active: u.active,
+                            tradeApproved: u.tradeApproved,
+                            tradeApprovedAt: u.tradeApprovedAt?.toISOString() ?? null,
+                            mustChangePassword: u.mustChangePassword,
+                            createdAt: u.createdAt.toISOString(),
+                            tradeRequest: u.tradeRequests[0]
+                              ? {
+                                  id: u.tradeRequests[0].id,
+                                  status: u.tradeRequests[0].status,
+                                  createdAt: u.tradeRequests[0].createdAt.toISOString(),
+                                  decidedAt: u.tradeRequests[0].decidedAt?.toISOString() ?? null,
+                                  decisionNote: u.tradeRequests[0].decisionNote,
+                                  contactName: u.tradeRequests[0].contactName,
+                                  email: u.tradeRequests[0].email,
+                                  phone: u.tradeRequests[0].phone,
+                                  companyName: u.tradeRequests[0].companyName,
+                                  companyWebsite: u.tradeRequests[0].companyWebsite,
+                                  vatNumber: u.tradeRequests[0].vatNumber,
+                                  businessType: u.tradeRequests[0].businessType,
+                                  monthlyVolume: u.tradeRequests[0].monthlyVolume,
+                                  address: u.tradeRequests[0].address,
+                                  addressLine2: u.tradeRequests[0].addressLine2,
+                                  city: u.tradeRequests[0].city,
+                                  county: u.tradeRequests[0].county,
+                                  postcode: u.tradeRequests[0].postcode,
+                                  country: u.tradeRequests[0].country,
+                                  notes: u.tradeRequests[0].notes,
+                                }
+                              : null,
+                            addresses: u.addresses.map((a) => ({
+                              id: a.id,
+                              label: a.label,
+                              recipientName: a.recipientName,
+                              phone: a.phone,
+                              line1: a.line1,
+                              line2: a.line2,
+                              city: a.city,
+                              county: a.county,
+                              postcode: a.postcode,
+                              country: a.country,
+                              isDefault: a.isDefault,
+                            })),
                           }}
                         />
                       </div>

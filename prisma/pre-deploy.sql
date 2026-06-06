@@ -124,6 +124,25 @@ BEGIN
   END IF;
 
   ----------------------------------------------------------------------------
+  -- User — same UK address extension as TradeAccountRequest above. The
+  -- profile form now collects a full UK postal address, and when admins
+  -- approve a trade request the business address from the application is
+  -- copied straight into these columns on the new User row so the trader
+  -- doesn't have to re-enter it at checkout.
+  ----------------------------------------------------------------------------
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'User'
+  ) THEN
+    ALTER TABLE "User"
+      ADD COLUMN IF NOT EXISTS "addressLine2" TEXT;
+    ALTER TABLE "User"
+      ADD COLUMN IF NOT EXISTS "county" TEXT;
+    ALTER TABLE "User"
+      ADD COLUMN IF NOT EXISTS "postcode" TEXT;
+  END IF;
+
+  ----------------------------------------------------------------------------
   -- Product.deletedAt / Category.deletedAt — soft-delete tombstones. Products
   -- and categories that have order history can't be hard-deleted (FK Restrict
   -- on OrderItem.product), so the admin "Delete" action now stamps deletedAt
@@ -189,5 +208,53 @@ BEGIN
   ) THEN
     CREATE INDEX IF NOT EXISTS "OrderItem_orderId_idx"   ON "OrderItem"("orderId");
     CREATE INDEX IF NOT EXISTS "OrderItem_productId_idx" ON "OrderItem"("productId");
+  END IF;
+
+  ----------------------------------------------------------------------------
+  -- Multi-brand compatibility: a Product can declare it fits more than one
+  -- bike-make brand (Honda + Yamaha + Kawasaki on a universal part).
+  -- Prisma implicit M2M creates `_PartCompatBrands` with columns A=Brand.id,
+  -- B=Product.id. Created here so prisma db push doesn't have to invent a
+  -- structure during the build, and so the FK + unique index exist before
+  -- the backfill seeds it from existing Product.brandId values.
+  ----------------------------------------------------------------------------
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'Brand'
+  ) AND EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'Product'
+  ) THEN
+    CREATE TABLE IF NOT EXISTS "_PartCompatBrands" (
+      "A" TEXT NOT NULL,
+      "B" TEXT NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS "_PartCompatBrands_AB_unique"
+      ON "_PartCompatBrands"("A","B");
+    CREATE INDEX IF NOT EXISTS "_PartCompatBrands_B_index"
+      ON "_PartCompatBrands"("B");
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_constraint WHERE conname = '_PartCompatBrands_A_fkey'
+    ) THEN
+      ALTER TABLE "_PartCompatBrands"
+        ADD CONSTRAINT "_PartCompatBrands_A_fkey"
+        FOREIGN KEY ("A") REFERENCES "Brand"("id")
+        ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_constraint WHERE conname = '_PartCompatBrands_B_fkey'
+    ) THEN
+      ALTER TABLE "_PartCompatBrands"
+        ADD CONSTRAINT "_PartCompatBrands_B_fkey"
+        FOREIGN KEY ("B") REFERENCES "Product"("id")
+        ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+
+    -- Seed: every existing product's primary brand becomes the first
+    -- M2M entry. ON CONFLICT DO NOTHING is safe across re-runs and
+    -- against products whose admin has already ticked extra brands.
+    INSERT INTO "_PartCompatBrands" ("A","B")
+    SELECT "brandId", "id" FROM "Product"
+    ON CONFLICT ("A","B") DO NOTHING;
   END IF;
 END$$;

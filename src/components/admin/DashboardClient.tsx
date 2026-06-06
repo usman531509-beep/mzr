@@ -30,7 +30,11 @@ export type DashboardProduct = {
   featured: boolean; demanding: boolean; active: boolean;
   image: string | null;
   description: string;
-  brandId: string; productBrandId: string | null;
+  brandId: string;
+  // Full set of compatible bike-brand ids. Always includes `brandId` so
+  // PartDialog can hydrate every checkbox without a follow-up query.
+  brandIds: string[];
+  productBrandId: string | null;
   categoryId: string | null;
   // Snapshot of the previous categoryId set by the category DELETE handler
   // — kept on the wire so the admin UI can show a "pending rehome" hint.

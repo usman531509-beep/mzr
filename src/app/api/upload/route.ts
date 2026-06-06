@@ -50,8 +50,34 @@ export async function POST(req: Request) {
         .getPublicUrl(`mzr-parts/${objectName}`);
       return NextResponse.json({ url: pub.publicUrl, bytes: buffer.length });
     } catch (e) {
+      // Surface the underlying Supabase error so admins can debug bad envs
+      // (wrong bucket, expired service-role key, invalid SUPABASE_URL etc.)
+      // instead of staring at a generic "Upload failed".
+      const supabaseMsg = e instanceof Error ? e.message : String(e);
       console.error("[upload:supabase]", e);
-      return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+
+      // Dev fallback: if Supabase is misconfigured locally, drop the file
+      // into public/uploads so the admin UI keeps working. We never do this
+      // in production — a real Supabase failure there should be visible.
+      if (process.env.NODE_ENV !== "production") {
+        try {
+          const dir = path.join(process.cwd(), "public", "uploads");
+          await mkdir(dir, { recursive: true });
+          await writeFile(path.join(dir, objectName), buffer);
+          return NextResponse.json({
+            url: `/uploads/${objectName}`,
+            bytes: buffer.length,
+            warning: `Supabase upload failed (${supabaseMsg}); saved locally instead.`,
+          });
+        } catch (diskErr) {
+          console.error("[upload:dev-fallback]", diskErr);
+        }
+      }
+
+      return NextResponse.json(
+        { error: `Supabase upload failed: ${supabaseMsg}` },
+        { status: 500 },
+      );
     }
   }
 

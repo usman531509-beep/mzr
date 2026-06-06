@@ -6,6 +6,7 @@ import type { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import { logActivity } from "@/lib/activity-log";
 import { NAV_CACHE_TAG } from "@/lib/nav-cache";
+import { consumeLayersForWriteOff } from "@/lib/fifo";
 
 const schema = z.object({
   name: z.string().min(2).optional(),
@@ -25,6 +26,10 @@ const schema = z.object({
     )
     .optional(),
   brandId: z.string().optional(),
+  // Multi-brand replacement. When provided, fully replaces the M2M set —
+  // the first element also becomes the primary `brandId`. Pass undefined
+  // to leave both alone. Empty array is rejected by min(1).
+  brandIds: z.array(z.string()).min(1).optional(),
   productBrandId: z.string().nullable().optional(),
   categoryId: z.string().optional(),
   featured: z.boolean().optional(),
@@ -56,6 +61,14 @@ export async function PATCH(
   const d = parsed.data;
   const compats = d.compatibilities;
   delete d.compatibilities;
+  // Brand replacement is handled outside the base `updateData` because
+  // Prisma needs `brands: { set: [...] }` shape for the M2M, not a plain
+  // array. We sync `brandId` to brandIds[0] in the same write so the
+  // primary stays in lock-step with the list.
+  const brandIds = d.brandIds && d.brandIds.length > 0
+    ? Array.from(new Set(d.brandIds))
+    : undefined;
+  delete d.brandIds;
 
   if (d.categoryId !== undefined) {
     const childCount = await prisma.category.count({ where: { parentId: d.categoryId } });
@@ -89,11 +102,21 @@ export async function PATCH(
   if (d.categoryId !== undefined) {
     updateData.savedCategoryId = null;
   }
+  if (brandIds) {
+    // First entry is the new primary. The M2M set is replaced atomically
+    // below so the relation stays consistent with the primary.
+    updateData.brandId = brandIds[0];
+  }
 
   const product = await prisma.$transaction(async (tx) => {
     const updated = await tx.product.update({
       where: { id },
-      data: updateData,
+      data: {
+        ...updateData,
+        ...(brandIds
+          ? { brands: { set: brandIds.map((bid) => ({ id: bid })) } }
+          : {}),
+      },
     });
     if (compats) {
       await tx.productCompatibility.deleteMany({ where: { productId: id } });
@@ -101,6 +124,30 @@ export async function PATCH(
         await tx.productCompatibility.create({
           data: { productId: id, ...c },
         });
+      }
+    }
+    // FIFO invariant maintenance: a direct stock change in PartDialog has to
+    // map to a layer movement. Positive delta → new MANUAL_ADJUSTMENT layer
+    // at the product's current cost/retail. Negative delta → consume from
+    // existing layers (write-off), oldest first. Without this, every direct
+    // stock edit drifts SUM(layer.qtyRemaining) away from Product.stock and
+    // the next sale throws.
+    if (d.stock !== undefined && before && d.stock !== before.stock) {
+      const delta = d.stock - before.stock;
+      if (delta > 0) {
+        await tx.stockLayer.create({
+          data: {
+            productId: id,
+            source: "MANUAL_ADJUSTMENT",
+            unitCost: updated.costPrice ?? 0,
+            unitRetail: updated.price,
+            qtyReceived: delta,
+            qtyRemaining: delta,
+            notes: "Manual stock adjustment via product edit",
+          },
+        });
+      } else {
+        await consumeLayersForWriteOff(tx, { productId: id, qty: -delta });
       }
     }
     return updated;

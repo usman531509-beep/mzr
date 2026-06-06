@@ -12,8 +12,15 @@ import { Separator } from "@/components/ui/separator";
 
 type Initial = {
   name: string | null; email: string;
-  phone: string | null; address: string | null;
-  city: string | null; country: string | null;
+  phone: string | null;
+  // Full UK postal address — matches the trade-account request shape so
+  // approved trader profiles read consistently across the app.
+  address: string | null;
+  addressLine2: string | null;
+  city: string | null;
+  county: string | null;
+  postcode: string | null;
+  country: string | null;
 };
 
 export function ProfileForm({ initial }: { initial: Initial }) {
@@ -22,8 +29,13 @@ export function ProfileForm({ initial }: { initial: Initial }) {
     name: initial.name ?? "",
     phone: initial.phone ?? "",
     address: initial.address ?? "",
+    addressLine2: initial.addressLine2 ?? "",
     city: initial.city ?? "",
-    country: initial.country ?? "",
+    county: initial.county ?? "",
+    postcode: initial.postcode ?? "",
+    // Default to UK so brand-new accounts land with the country pre-filled
+    // — matches the trade-account form's default and the checkout flow.
+    country: initial.country ?? "United Kingdom",
   });
   const [pw, setPw] = useState({ current: "", next: "" });
   const [busy, setBusy] = useState(false);
@@ -78,7 +90,7 @@ export function ProfileForm({ initial }: { initial: Initial }) {
           <CardDescription>Name, contact, default shipping address.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={saveDetails} className="space-y-4">
+          <form onSubmit={saveDetails} className="space-y-5">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Name</Label>
@@ -88,23 +100,65 @@ export function ProfileForm({ initial }: { initial: Initial }) {
                 <Label>Email</Label>
                 <Input value={initial.email} disabled />
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label>Phone</Label>
                 <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               </div>
-              <div className="space-y-1.5">
-                <Label>Country</Label>
-                <Input value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
+            </div>
+
+            {/* Default shipping address — full UK postal layout. Used at
+                checkout when the customer hasn't picked a saved address. */}
+            <div className="space-y-3">
+              <div className="space-y-0.5">
+                <h3 className="text-sm font-semibold">Default shipping address</h3>
+                <p className="text-[12px] text-muted-foreground">
+                  Pre-fills at checkout. You can still pick a different one from your saved addresses below.
+                </p>
               </div>
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label>Address</Label>
-                <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>City</Label>
-                <Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>Address line 1</Label>
+                  <Input
+                    value={form.address}
+                    onChange={(e) => setForm({ ...form, address: e.target.value })}
+                    placeholder="House number / street"
+                  />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>
+                    Address line 2 <span className="text-muted-foreground">(optional)</span>
+                  </Label>
+                  <Input
+                    value={form.addressLine2}
+                    onChange={(e) => setForm({ ...form, addressLine2: e.target.value })}
+                    placeholder="Apartment, suite, etc."
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>City / Town</Label>
+                  <Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>
+                    County <span className="text-muted-foreground">(optional)</span>
+                  </Label>
+                  <Input value={form.county} onChange={(e) => setForm({ ...form, county: e.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Postcode</Label>
+                  <Input
+                    value={form.postcode}
+                    onChange={(e) => setForm({ ...form, postcode: e.target.value.toUpperCase() })}
+                    placeholder="e.g. SW1A 1AA"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Country</Label>
+                  <Input value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
+                </div>
               </div>
             </div>
+
             <div className="flex justify-end">
               <Button type="submit" disabled={busy}>Save changes</Button>
             </div>

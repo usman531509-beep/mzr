@@ -46,6 +46,14 @@ export function AccountShell({
     <div className="portal-scope flex min-h-screen bg-background text-foreground">
       {/* Desktop sidebar */}
       <aside
+        // Radix Sheet (rendered below) injects `aria-hidden` /
+        // `data-aria-hidden` on portal siblings when it opens for screen-
+        // reader scoping. That DOM mutation can race with the React
+        // hydration pass and trip "server attributes don't match client"
+        // warnings on the sidebar even though our code never sets those
+        // attributes. Suppressing here is the standard workaround — the
+        // rest of the tree still hydrates strictly.
+        suppressHydrationWarning
         className={cn(
           "sticky top-0 hidden h-screen shrink-0 border-r border-border bg-card transition-[width] duration-200 lg:flex lg:flex-col",
           collapsed ? "w-[70px]" : "w-[240px]",
@@ -74,7 +82,12 @@ export function AccountShell({
       </Sheet>
 
       {/* Main */}
-      <div className="flex min-w-0 flex-1 flex-col">
+      {/* Radix Sheet (rendered above) injects aria-hidden / data-aria-hidden
+          on every sibling element when its portal mounts — including this
+          main pane — which mismatches the SSR markup and trips a hydration
+          warning. Suppressing attribute diffs is the standard workaround;
+          the rest of the tree still hydrates strictly. */}
+      <div suppressHydrationWarning className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border bg-background/95 px-4 lg:px-6">
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobOpen(true)}>
             <Menu className="h-5 w-5" />

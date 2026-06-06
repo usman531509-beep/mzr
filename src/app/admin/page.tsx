@@ -97,6 +97,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
       take: 10,
       include: {
         brand: true,
+        brands: { select: { id: true } },
         category: true,
         savedCategory: { select: { id: true, name: true } },
         compatibilities: true,
@@ -331,6 +332,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
     image: p.images[0] ?? null,
     description: p.description,
     brandId: p.brandId,
+    brandIds: p.brands.map((b) => b.id),
     productBrandId: p.productBrandId,
     categoryId: p.categoryId,
     savedCategoryId: p.savedCategoryId,

@@ -149,13 +149,53 @@ export default function CheckoutPage() {
     let cancelled = false;
     (async () => {
       try {
-        const r = await fetch("/api/account/addresses");
-        const d = await r.json();
-        if (cancelled || !d.ok) return;
-        const list = d.addresses as SavedAddress[];
+        // Fetch saved addresses AND profile in parallel. Saved addresses
+        // take priority for pre-fill (a customer who created one knows
+        // it's their preferred shipping spot); profile is the fallback
+        // for customers who only filled out /account/profile but never
+        // added an address-book entry. Without that fallback the form
+        // looked empty even though the user had a profile address —
+        // which made the profile feature feel broken.
+        const [aRes, pRes] = await Promise.all([
+          fetch("/api/account/addresses"),
+          fetch("/api/account/profile"),
+        ]);
+        const aData = await aRes.json().catch(() => ({ ok: false }));
+        const pData = await pRes.json().catch(() => ({ ok: false }));
+        if (cancelled) return;
+
+        const list: SavedAddress[] = aData.ok ? aData.addresses : [];
         setSavedAddresses(list);
+
         const def = list.find((a) => a.isDefault);
-        if (def) applyAddress(def);
+        if (def) {
+          applyAddress(def);
+          return;
+        }
+        // No saved-address default — fall back to the profile's default
+        // shipping address. Treat empty strings as "not set" so the
+        // form's existing placeholders show through when nothing's there.
+        if (pData.ok && pData.profile) {
+          const p = pData.profile as {
+            name: string | null; email: string;
+            phone: string | null;
+            address: string | null; addressLine2: string | null;
+            city: string | null; county: string | null;
+            postcode: string | null; country: string | null;
+          };
+          setForm((f) => ({
+            ...f,
+            customerName:         p.name  || f.customerName,
+            customerEmail:        p.email || f.customerEmail,
+            customerPhone:        p.phone || f.customerPhone,
+            shippingAddress:      p.address      ?? f.shippingAddress,
+            shippingAddressLine2: p.addressLine2 ?? f.shippingAddressLine2,
+            shippingCity:         p.city         ?? f.shippingCity,
+            shippingCounty:       p.county       ?? f.shippingCounty,
+            shippingPostcode:     p.postcode     ?? f.shippingPostcode,
+            shippingCountry:      p.country      || f.shippingCountry,
+          }));
+        }
       } catch {
         /* network error — checkout still works, just no pre-fill */
       }
@@ -312,7 +352,7 @@ export default function CheckoutPage() {
                          placeholder="07xxx xxxxxx" required />
 
                   <div className="sm:col-span-2 flex flex-wrap items-end justify-between gap-2 -mb-1 mt-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <span className="text-sm font-semibold uppercase tracking-wider text-foreground">
                       Shipping address
                     </span>
                     {savedAddresses.length > 0 && (
@@ -325,9 +365,21 @@ export default function CheckoutPage() {
                     )}
                   </div>
 
+                  {/* Address picker card. Wrapping the Select in a bordered
+                      box with a clear heading + helper line makes it
+                      unmistakably the "change shipping destination" control
+                      — the unstyled trigger was reading as just another
+                      muted input below the contact fields. */}
                   {savedAddresses.length > 0 && (
-                    <div className="sm:col-span-2 space-y-1.5">
-                      <Label className="text-xs">Use a saved address</Label>
+                    <div className="sm:col-span-2 rounded-lg border border-primary/30 bg-primary/[0.04] p-3 ring-1 ring-inset ring-primary/20">
+                      <div className="mb-2">
+                        <Label className="text-sm font-semibold text-foreground">
+                          Where should we ship this?
+                        </Label>
+                        <p className="text-[11px] text-muted-foreground">
+                          Pick a saved address or use a new one for this order.
+                        </p>
+                      </div>
                       <Select
                         value={selectedAddressId || "new"}
                         onValueChange={(v) => {
@@ -339,7 +391,9 @@ export default function CheckoutPage() {
                           if (a) applyAddress(a);
                         }}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger
+                          className="h-11 border-primary/50 bg-background text-[15px] font-medium shadow-sm transition hover:border-primary focus:border-primary"
+                        >
                           <SelectValue placeholder="Pick a saved address" />
                         </SelectTrigger>
                         <SelectContent>

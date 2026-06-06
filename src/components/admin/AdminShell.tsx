@@ -280,7 +280,12 @@ function SidebarNav({
       {nav.map((g) => (
         <div key={g.group}>
           {!collapsed && (
-            <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+            // Group label styled in the brand red so the section divisions
+            // scan at a glance against the dark sidebar. Sat on a thin
+            // top border + dot accent for visual weight without taking
+            // attention away from the nav items below.
+            <div className="mt-1 flex items-center gap-2 px-3 pb-1.5 pt-2 text-[10px] font-semibold uppercase tracking-widest text-red">
+              <span className="h-1 w-1 rounded-full bg-red" />
               {g.group}
             </div>
           )}

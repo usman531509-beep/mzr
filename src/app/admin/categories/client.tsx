@@ -190,6 +190,25 @@ export function CategoriesClient({
     router.refresh();
   };
 
+  // Permanent delete from the Deleted tab. The server checks blockers —
+  // child categories, attached products, pending rehome snapshots, or a
+  // tied trade-discount rule — and refuses with a friendly reason if any
+  // are still in the way.
+  const purge = async (row: DeletedCategoryRow) => {
+    const ok = await confirmAction({
+      title: `Permanently delete "${row.name}"?`,
+      description: "This wipes the category row from the database completely. It cannot be undone. The server will refuse if any sub-categories, products, or trade-discount rules still reference it.",
+      confirmLabel: "Delete permanently",
+      destructive: true,
+    });
+    if (!ok) return;
+    const res = await fetch(`/api/admin/categories/${row.id}/purge`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({} as { error?: string }));
+    if (!res.ok) { toast.error(data.error ?? "Could not permanently delete"); return; }
+    toast.success(`"${row.name}" permanently deleted`);
+    router.refresh();
+  };
+
   return (
     <div className="space-y-4">
       <header>
@@ -264,14 +283,26 @@ export function CategoriesClient({
                         })()}
                       </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => restore(d)}
-                      className="h-8 gap-1.5"
-                    >
-                      <RotateCcw className="h-3.5 w-3.5" /> Restore
-                    </Button>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => restore(d)}
+                        className="h-8 gap-1.5"
+                      >
+                        <RotateCcw className="h-3.5 w-3.5" /> Restore
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => purge(d)}
+                        title="Delete permanently"
+                        aria-label="Delete permanently"
+                        className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </li>
                 ))}
               </ul>

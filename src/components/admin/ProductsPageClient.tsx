@@ -237,6 +237,27 @@ export function ProductsPageClient({
     toast.error(data.error ?? "Failed to restore");
   };
 
+  // Permanent delete from the Deleted tab. The server checks FK blockers
+  // (order history, PO lines, stock layers) and refuses with a clear
+  // reason if anything still references the row.
+  const purge = async (id: string, name: string) => {
+    const ok = await confirmAction({
+      title: `Permanently delete "${name}"?`,
+      description: "This wipes the product from the database completely. It cannot be undone. The server will refuse if any orders or stock layers still reference it.",
+      confirmLabel: "Delete permanently",
+      destructive: true,
+    });
+    if (!ok) return;
+    const res = await fetch(`/api/admin/products/${id}/purge`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({} as { error?: string }));
+    if (res.ok) {
+      toast.success(`"${name}" permanently deleted`);
+      router.refresh();
+      return;
+    }
+    toast.error(data.error ?? "Could not permanently delete");
+  };
+
   return (
     <div className="space-y-4">
       <header className="flex flex-wrap items-end justify-between gap-3">
@@ -495,14 +516,26 @@ export function ProductsPageClient({
                     </TableCell>
                     <TableCell className="text-right">
                       {isDeletedView ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => restore(p.id, p.name)}
-                          className="h-8 gap-1.5"
-                        >
-                          <RotateCcw className="h-3.5 w-3.5" /> Restore
-                        </Button>
+                        <div className="flex justify-end gap-1.5">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => restore(p.id, p.name)}
+                            className="h-8 gap-1.5"
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" /> Restore
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => purge(p.id, p.name)}
+                            title="Delete permanently"
+                            aria-label="Delete permanently"
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       ) : (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -555,7 +588,7 @@ export function ProductsPageClient({
           stock: editing.stock,
           sku: editing.sku,
           oemNumber: editing.oemNumber,
-          brandId: editing.brandId,
+          brandIds: editing.brandIds,
           productBrandId: editing.productBrandId,
           categoryId: editing.categoryId,
           featured: editing.featured,

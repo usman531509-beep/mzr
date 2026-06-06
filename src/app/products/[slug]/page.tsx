@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { fmtMoney } from "@/lib/format";
 import { AddToCartButton } from "@/components/AddToCartButton";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { ProductImageGallery } from "@/components/ProductImageGallery";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -15,12 +16,6 @@ import type { Metadata } from "next";
 
 // Trade discount must be evaluated per-request, so we can't statically cache.
 export const dynamic = "force-dynamic";
-
-const PLACEHOLDER =
-  "data:image/svg+xml;utf8," +
-  encodeURIComponent(
-    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'><rect width='4' height='3' fill='%231C1E21'/></svg>`,
-  );
 
 // Shared per-request fetch: Next renders `generateMetadata` AND the page in
 // the same request, so wrapping in React.cache() collapses the two calls
@@ -63,7 +58,6 @@ export default async function ProductPage({
   const p = await getProduct(slug);
   if (!p || !p.active) notFound();
 
-  const mainImg = p.images[0] ?? PLACEHOLDER;
   const [trade, ancestors] = await Promise.all([
     getTradeContext(),
     // Orphaned products (no category) have no breadcrumb beyond "All".
@@ -74,7 +68,9 @@ export default async function ProductPage({
 
   return (
     <div className="bg-background text-foreground">
-      <div className="mx-auto max-w-site px-[var(--gutter)] py-8">
+      {/* Generous bottom padding so the long fitments/details column
+          doesn't crash into the footer on shorter products. */}
+      <div className="mx-auto max-w-site px-[var(--gutter)] py-8 pb-16 lg:pb-24">
         <Breadcrumbs
           className="mb-6"
           items={[
@@ -87,48 +83,24 @@ export default async function ProductPage({
           ]}
         />
 
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-          {/* IMAGES */}
-          <div className="space-y-3">
-            <Card className="overflow-hidden">
-              <div className="relative aspect-square bg-secondary">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={mainImg}
-                  alt={p.name}
-                  className="h-full w-full object-contain p-4"
-                />
-                {p.featured && (
-                  <Badge variant="default" className="absolute left-3 top-3 text-[10px]">
-                    Featured
-                  </Badge>
-                )}
-                {p.stock <= 0 && (
-                  <Badge variant="destructive" className="absolute right-3 top-3 text-[10px]">
-                    Sold out
-                  </Badge>
-                )}
-              </div>
-            </Card>
-            {p.images.length > 1 && (
-              <div className="grid grid-cols-4 gap-2">
-                {p.images.slice(0, 4).map((src, i) => (
-                  <Card key={i} className="overflow-hidden">
-                    <div className="aspect-square bg-secondary">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={src} alt="" className="h-full w-full object-cover" />
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
+        {/* Image column is now narrower than the details so the gallery
+            sits as a fixed-size visual element and the rich details
+            (price, identifiers, CTAs, fitments) get the room they need.
+            `items-start` keeps the gallery anchored at the top instead of
+            stretching to the height of the long details column. */}
+        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+          {/* Interactive gallery — main image + clickable thumbnails. */}
+          <ProductImageGallery
+            images={p.images}
+            name={p.name}
+            featured={p.featured}
+            soldOut={p.stock <= 0}
+          />
 
           {/* DETAILS */}
           <div className="space-y-5">
             <div>
               <div className="mb-2 flex flex-wrap items-center gap-1.5">
-                <Badge variant="default" className="text-[10px]">{p.brand.name}</Badge>
                 <Badge variant="secondary" className="text-[10px]">{p.category?.name ?? "Uncategorised"}</Badge>
                 {p.featured && (
                   <Badge variant="warning" className="text-[10px]">Featured</Badge>
@@ -220,10 +192,12 @@ export default async function ProductPage({
                     {p.compatibilities.map((c) => (
                       <li
                         key={c.id}
-                        className="flex items-center justify-between gap-3 py-2 text-sm"
+                        className="flex items-center justify-between gap-3 py-2.5 text-base"
                       >
                         <div className="min-w-0">
-                          <span className="text-muted-foreground">{c.bikeModel.brand.name}</span>{" "}
+                          {/* Brand name highlighted in the brand red + bumped
+                              one size up so the make leads the row visually. */}
+                          <span className="text-lg font-semibold text-red">{c.bikeModel.brand.name}</span>{" "}
                           <span className="font-medium">{c.bikeModel.name}</span>
                         </div>
                         <span className="shrink-0 font-mono text-xs text-muted-foreground tabular-nums">

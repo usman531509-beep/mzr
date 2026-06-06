@@ -43,7 +43,11 @@ export type PartFormValues = {
   stock: number;
   sku: string;
   oemNumber: string;
-  brandId: string;
+  // Multi-brand: a part can fit several bike makes. The dialog requires
+  // at least one tick before save. All ticked brands are treated equally;
+  // the server picks one to populate the legacy Product.brandId column,
+  // but that's an internal detail not surfaced to the admin.
+  brandIds: string[];
   productBrandId: string;
   categoryId: string;
   featured: boolean;
@@ -63,7 +67,7 @@ const schema = z.object({
   stock: z.coerce.number().int().min(0, "Stock cannot be negative"),
   sku: z.string().optional().default(""),
   oemNumber: z.string().max(64).optional().default(""),
-  brandId: z.string().min(1, "Pick a bike brand"),
+  brandIds: z.array(z.string()).min(1, "Pick at least one bike brand"),
   productBrandId: z.string().optional().default(""),
   categoryId: z.string().min(1, "Pick a category"),
   featured: z.boolean().default(false),
@@ -83,7 +87,8 @@ export type PartDialogProps = {
     id: string;
     name: string; description: string; price: number; costPrice: number | null; stock: number;
     sku: string | null; oemNumber: string | null;
-    brandId: string;
+    // Full set of bike-brand ids — used to hydrate the multi-select.
+    brandIds: string[];
     productBrandId: string | null;
     // Nullable when the product is currently orphaned (its category was
     // soft-deleted). The form still requires a pick on save — schema below
@@ -106,11 +111,13 @@ export function PartDialog({
   const [compats, setCompats] = useState<Compat[]>([]);
   const [uploading, setUploading] = useState(false);
 
+  const defaultBrandIds = brands[0] ? [brands[0].id] : [];
+
   const form = useForm<PartFormValues>({
     resolver: zodResolver(schema) as never,
     defaultValues: {
       name: "", description: "", price: 0, costPrice: null, stock: 0, sku: "", oemNumber: "",
-      brandId: brands[0]?.id ?? "",
+      brandIds: defaultBrandIds,
       productBrandId: "",
       categoryId: defaultCategoryId ?? "",
       featured: false, demanding: false, active: true,
@@ -129,7 +136,7 @@ export function PartDialog({
         stock: existing.stock,
         sku: existing.sku ?? "",
         oemNumber: existing.oemNumber ?? "",
-        brandId: existing.brandId,
+        brandIds: existing.brandIds.length ? existing.brandIds : defaultBrandIds,
         productBrandId: existing.productBrandId ?? "",
         categoryId: existing.categoryId ?? "",
         featured: existing.featured,
@@ -141,7 +148,7 @@ export function PartDialog({
     } else {
       form.reset({
         name: "", description: "", price: 0, costPrice: null, stock: 0, sku: "", oemNumber: "",
-        brandId: brands[0]?.id ?? "",
+        brandIds: defaultBrandIds,
         productBrandId: "",
         categoryId: defaultCategoryId ?? "",
         featured: false, demanding: false, active: true,
@@ -158,15 +165,35 @@ export function PartDialog({
     setUploading(true);
     try {
       for (const f of Array.from(files)) {
+        // Downscale + re-encode in the browser before posting. Phone photos
+        // routinely exceed Vercel's 4.5 MB body-size cap on serverless
+        // functions, which silently 413s before the server-side sharp
+        // compressor ever sees them. Shrinking client-side avoids that AND
+        // saves upload time on slow connections.
+        const prepared = await downscaleForUpload(f);
         const fd = new FormData();
-        fd.append("file", f);
+        fd.append("file", prepared);
         const res = await fetch("/api/upload", { method: "POST", body: fd });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Upload failed");
-        setImages((cur) => [...cur, data.url]);
+        // The body-size limiter (and other infra errors) return non-JSON,
+        // which used to surface as "Unexpected token <" in the toast. Read
+        // text first, try to parse, fall back to a status-aware message.
+        const raw = await res.text();
+        let parsed: { url?: string; error?: string } = {};
+        try { parsed = raw ? JSON.parse(raw) : {}; } catch { /* non-JSON */ }
+        if (!res.ok || !parsed.url) {
+          const reason =
+            parsed.error
+            ?? (res.status === 413 ? "File is too large — try a smaller image" : null)
+            ?? (res.status === 401 ? "Sign in as admin to upload images" : null)
+            ?? `Upload failed (HTTP ${res.status})`;
+          throw new Error(reason);
+        }
+        setImages((cur) => [...cur, parsed.url!]);
       }
       toast.success(`${files.length} image${files.length > 1 ? "s" : ""} uploaded`);
     } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("[PartDialog upload]", err);
       toast.error(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);
@@ -209,7 +236,17 @@ export function PartDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent
+        // `!duration-75` overrides the shared Dialog's 200ms animation. The
+        // form is large (≈15 Radix-wrapped inputs + the brand checkbox
+        // grid) so the fade+zoom feels sluggish on click — at 75ms it
+        // reads as instant without losing the entrance hint.
+        className="max-w-3xl max-h-[90vh] overflow-y-auto !duration-75"
+        // Lock the dialog to explicit Cancel / Save changes / X close so an
+        // accidental backdrop click can't wipe an admin's half-filled form.
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>{existing ? "Edit part" : "Add a new part"}</DialogTitle>
           <DialogDescription>
@@ -217,103 +254,162 @@ export function PartDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={submit} className="space-y-5">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2 space-y-1.5">
+        <form onSubmit={submit} className="space-y-6">
+          {/* Identity ─ name + description run full width at the top so the
+              admin can write a long descriptive name without truncation. */}
+          <div className="space-y-3">
+            <div className="space-y-1.5">
               <Label htmlFor="name">Name</Label>
               <Input id="name" {...form.register("name")} placeholder="e.g. Sintered Front Brake Pads" />
               {form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}
             </div>
-            <div className="sm:col-span-2 space-y-1.5">
+            <div className="space-y-1.5">
               <Label htmlFor="description">Description</Label>
-              <Textarea id="description" rows={4} {...form.register("description")} />
+              <Textarea id="description" rows={3} {...form.register("description")} />
               {form.formState.errors.description && <p className="text-xs text-destructive">{form.formState.errors.description.message}</p>}
             </div>
-            <div className="space-y-1.5">
-              <Label>Retail price (GBP)</Label>
-              <Input type="number" min={0} step="0.01" {...form.register("price")} />
-              {form.formState.errors.price && <p className="text-xs text-destructive">{form.formState.errors.price.message}</p>}
+          </div>
+
+          {/* Pricing & Inventory — 3-column row groups the related fields and
+              avoids the awkward half-width Stock input the previous layout
+              left dangling on its own row. */}
+          <FormSection title="Pricing & Inventory">
+            <div className="grid gap-3 sm:grid-cols-3">
+              {/* Cost price leads — admins typically enter what they paid
+                  first, then mark up to set retail. The flow now matches
+                  that mental order: cost → retail → stock. */}
+              <div className="space-y-1.5">
+                <Label>
+                  Cost price (GBP) <span className="text-muted-foreground">(optional)</span>
+                </Label>
+                <Input type="number" min={0} step="0.01" placeholder="What you paid" {...form.register("costPrice")} />
+                {form.formState.errors.costPrice && <p className="text-xs text-destructive">{form.formState.errors.costPrice.message}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <Label>Retail price (GBP)</Label>
+                <Input type="number" min={0} step="0.01" {...form.register("price")} />
+                {form.formState.errors.price && <p className="text-xs text-destructive">{form.formState.errors.price.message}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <Label>Stock</Label>
+                <Input type="number" min={0} {...form.register("stock")} />
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label>
-                Cost price (GBP) <span className="text-muted-foreground">(optional)</span>
-              </Label>
-              <Input type="number" min={0} step="0.01" placeholder="What you paid for it" {...form.register("costPrice")} />
-              {form.formState.errors.costPrice && <p className="text-xs text-destructive">{form.formState.errors.costPrice.message}</p>}
+          </FormSection>
+
+          {/* Bike brand fitment — inline checkbox grid. Every brand visible
+              at once, all ticked brands are treated equally. The server
+              still stores one in `Product.brandId` for legacy displays but
+              there's no "primary" concept exposed to the admin. */}
+          <FormSection
+            title="Bike brand fitment"
+            subtitle="Tick every motorcycle make this part fits."
+          >
+            <Controller
+              control={form.control}
+              name="brandIds"
+              render={({ field }) => (
+                <div className="space-y-2">
+                  <div className="rounded-md border border-border bg-background/40 p-3">
+                    {brands.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No bike brands yet — add some in Admin → Bike Brands.</p>
+                    ) : (
+                      <div className="grid gap-x-4 gap-y-2 sm:grid-cols-3 lg:grid-cols-4">
+                        {brands.map((b) => {
+                          const isOn = field.value.includes(b.id);
+                          return (
+                            <label
+                              key={b.id}
+                              className={cn(
+                                "flex cursor-pointer select-none items-center gap-2 rounded px-2 py-1.5 text-sm transition",
+                                isOn ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                              )}
+                            >
+                              <Checkbox
+                                checked={isOn}
+                                onCheckedChange={(v) => {
+                                  const next = !!v
+                                    ? Array.from(new Set([...field.value, b.id]))
+                                    : field.value.filter((x) => x !== b.id);
+                                  field.onChange(next);
+                                }}
+                              />
+                              <span className="truncate">{b.name}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  {form.formState.errors.brandIds && (
+                    <p className="text-xs text-destructive">{form.formState.errors.brandIds.message as string}</p>
+                  )}
+                </div>
+              )}
+            />
+          </FormSection>
+
+          {/* Brand & identification details — product brand sits alongside
+              the manufacturer codes since they're all "who made this and how
+              do I cross-reference it". */}
+          <FormSection title="Brand & identification">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label>
+                  Product brand <span className="text-muted-foreground">(optional)</span>
+                </Label>
+                <Controller
+                  control={form.control}
+                  name="productBrandId"
+                  render={({ field }) => (
+                    <Select
+                      value={field.value || "__none"}
+                      onValueChange={(v) => field.onChange(v === "__none" ? "" : v)}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Select product brand" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none">— None —</SelectItem>
+                        {productBrands.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <p className="text-[11px] text-muted-foreground">Brembo, NGK, EBC…</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>SKU <span className="text-muted-foreground">(optional)</span></Label>
+                <Input {...form.register("sku")} placeholder="e.g. MZR-BRK-001" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>OEM number <span className="text-muted-foreground">(optional)</span></Label>
+                <Input {...form.register("oemNumber")} placeholder="e.g. 06430-K0R-V01" />
+                <p className="text-[11px] text-muted-foreground">Manufacturer&apos;s part number.</p>
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label>Stock</Label>
-              <Input type="number" min={0} {...form.register("stock")} />
-            </div>
-            <div className="hidden sm:block" />
-            <div className="space-y-1.5">
-              <Label>Bike brand</Label>
-              <Controller
-                control={form.control}
-                name="brandId"
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger><SelectValue placeholder="Select bike brand" /></SelectTrigger>
-                    <SelectContent>
-                      {brands.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              <p className="text-[11px] text-muted-foreground">Which motorcycle make this part fits (Honda, Yamaha…).</p>
-            </div>
-            <div className="space-y-1.5">
-              <Label>
-                Product brand <span className="text-muted-foreground">(optional)</span>
-              </Label>
-              <Controller
-                control={form.control}
-                name="productBrandId"
-                render={({ field }) => (
-                  <Select
-                    value={field.value || "__none"}
-                    onValueChange={(v) => field.onChange(v === "__none" ? "" : v)}
-                  >
-                    <SelectTrigger><SelectValue placeholder="Select product brand" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none">— None —</SelectItem>
-                      {productBrands.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              <p className="text-[11px] text-muted-foreground">Who manufactures the part itself (Brembo, NGK, EBC…).</p>
-            </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label>Category</Label>
-              <Controller
-                control={form.control}
-                name="categoryId"
-                render={({ field }) => (
-                  <CategoryPicker
-                    categories={categories}
-                    value={field.value}
-                    onChange={field.onChange}
-                  />
-                )}
-              />
-              {form.formState.errors.categoryId && <p className="text-xs text-destructive">{form.formState.errors.categoryId.message}</p>}
-            </div>
-            <div className="space-y-1.5">
-              <Label>SKU (optional)</Label>
-              <Input {...form.register("sku")} placeholder="e.g. MZR-BRK-001" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>OEM number (optional)</Label>
-              <Input
-                {...form.register("oemNumber")}
-                placeholder="e.g. 06430-K0R-V01"
-              />
-              <p className="text-[11px] text-muted-foreground">
-                Manufacturer's part number — helps buyers cross-reference fitment.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-end gap-6 pb-1">
+          </FormSection>
+
+          {/* Category — wide picker, full width. */}
+          <FormSection title="Category">
+            <Controller
+              control={form.control}
+              name="categoryId"
+              render={({ field }) => (
+                <CategoryPicker
+                  categories={categories}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+            {form.formState.errors.categoryId && (
+              <p className="mt-1 text-xs text-destructive">{form.formState.errors.categoryId.message}</p>
+            )}
+          </FormSection>
+
+          {/* Settings — Featured / In demand / Active live together because
+              they all affect storefront surfacing. */}
+          <FormSection title="Settings">
+            <div className="flex flex-wrap items-center gap-6">
               <Controller
                 control={form.control}
                 name="featured"
@@ -345,7 +441,7 @@ export function PartDialog({
                 )}
               />
             </div>
-          </div>
+          </FormSection>
 
           <Separator />
 
@@ -354,7 +450,7 @@ export function PartDialog({
             <div className="mb-2 flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-semibold">Images</h3>
-                <p className="text-xs text-muted-foreground">Stored locally in dev, on Cloudinary in production.</p>
+                <p className="text-xs text-muted-foreground">Stored on Supabase Storage in production.</p>
               </div>
               <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
                 {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
@@ -400,7 +496,7 @@ export function PartDialog({
             </div>
             {compats.length === 0 ? (
               <div className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                No compatibility set yet — buyers won't find this via the bike-model filter.
+                No compatibility set yet buyers won't find this via the bike-model filter.
               </div>
             ) : (
               <div className="space-y-2">
@@ -421,7 +517,7 @@ export function PartDialog({
                         <SelectContent>
                           {models.map((mm) => (
                             <SelectItem key={mm.id} value={mm.id}>
-                              {mm.brand.name} {mm.name}
+                              {mm.brand.name} {mm.name} ({mm.yearStart}–{mm.yearEnd})
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -487,5 +583,70 @@ export function PartDialog({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// Resize + re-encode an image in the browser before upload, so we never
+// trip Vercel's 4.5 MB serverless body-size limit on phone photos. Returns
+// the original File untouched for non-image types or files that already
+// fit comfortably. Falls back to the original if anything in the Canvas
+// pipeline fails — better to attempt the upload than block on a quirky
+// image format.
+async function downscaleForUpload(file: File): Promise<File> {
+  if (!file.type.startsWith("image/")) return file;
+  // ≤ 1.5 MB is fine to send raw — server-side sharp still trims to 200 KB.
+  if (file.size < 1_500_000) return file;
+  try {
+    const url = URL.createObjectURL(file);
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = reject;
+      el.src = url;
+    });
+    URL.revokeObjectURL(url);
+
+    const MAX_DIM = 2000;
+    const scale = Math.min(1, MAX_DIM / Math.max(img.width, img.height));
+    const w = Math.max(1, Math.round(img.width * scale));
+    const h = Math.max(1, Math.round(img.height * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(img, 0, 0, w, h);
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob((b) => resolve(b), "image/jpeg", 0.82),
+    );
+    if (!blob) return file;
+    return new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", {
+      type: "image/jpeg",
+    });
+  } catch {
+    return file;
+  }
+}
+
+// Light grouped section used throughout the dialog. Title sits flush with
+// an optional subtitle; children get a small left-pad-free body. Keeps the
+// form readable without the visual weight of a full Card per section.
+function FormSection({
+  title, subtitle, children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-2">
+      <div>
+        <h3 className="text-sm font-semibold">{title}</h3>
+        {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+      </div>
+      <div>{children}</div>
+    </section>
   );
 }

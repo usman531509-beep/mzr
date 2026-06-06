@@ -24,6 +24,10 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
       orderBy: { createdAt: "desc" },
       include: {
         brand: true,
+        // Full M2M set so PartDialog can hydrate every ticked checkbox in
+        // one trip — without this, edit-mode would show only the primary
+        // brand checked even though the part fits several.
+        brands: { select: { id: true } },
         category: true,
         // Surfaced so the admin UI can hint at the "would rehome to X"
         // category for orphaned products.
@@ -72,6 +76,7 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
         image: p.images[0] ?? null,
         description: p.description,
         brandId: p.brandId,
+        brandIds: p.brands.map((b) => b.id),
         productBrandId: p.productBrandId,
         categoryId: p.categoryId,
         savedCategoryId: p.savedCategoryId,

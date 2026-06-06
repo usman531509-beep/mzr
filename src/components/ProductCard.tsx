@@ -73,7 +73,6 @@ export function ProductCard({ p }: { p: ProductCardData }) {
 
       <div className="flex flex-1 flex-col gap-1.5 p-3.5">
         <div className="flex flex-wrap items-center gap-1.5">
-          <Badge variant="default" className="text-[11px]">{p.brand.name}</Badge>
           <Badge variant="secondary" className="text-[11px]">{p.category?.name ?? "Uncategorised"}</Badge>
         </div>
 

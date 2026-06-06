@@ -14,7 +14,10 @@ export default async function ProfilePage() {
   const [user, addresses] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { name: true, email: true, phone: true, address: true, city: true, country: true },
+      select: {
+        name: true, email: true, phone: true,
+        address: true, addressLine2: true, city: true, county: true, postcode: true, country: true,
+      },
     }),
     prisma.address.findMany({
       where: { userId: session.user.id },
