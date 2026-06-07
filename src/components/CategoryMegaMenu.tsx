@@ -25,23 +25,18 @@ export function CategoryMegaMenu({ tree }: { tree: NavCategoryNode[] }) {
   const active = tree.find((n) => n.id === activeId) ?? tree[0];
   if (!active) return null;
 
-  // Width heuristic — gives the dropdown more horizontal room as the
-  // active category grows. Above 8 sections we go to a full-viewport-
-  // width shell so the right pane gets the whole screen to lay out into
-  // (and the auto-fit grid below has actual room to fan out instead of
-  // squeezing columns to min-content and overflowing).
-  const sectionCount = active.children.length;
-  const widthClass =
-    sectionCount > 8 ? "w-[calc(100vw-2rem)]"
-    : sectionCount > 5 ? "w-[1280px]"
-    : "w-[1080px]";
-
   return (
+    // Locked to a single sensible width that always fits inside the
+    // viewport (max-w-[calc(100vw-2rem)] is the hard cap). Width does NOT
+    // grow with section count anymore — instead the grid below uses a
+    // fixed column count with `minmax(0, 1fr)`, so columns share width
+    // equally and extras wrap onto a new row. Combined with the
+    // internal vertical scroll on the right pane, no content can ever
+    // escape the dropdown boundary or the viewport.
     <div
       className={cn(
-        "mega absolute left-0 top-full z-40 mt-2 max-w-[calc(100vw-2rem)] max-h-[calc(100vh-6rem)] origin-top overflow-hidden rounded-xl border border-white/10 bg-ink-800",
+        "mega absolute left-0 top-full z-40 mt-2 w-[1080px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-6rem)] origin-top overflow-hidden rounded-xl border border-white/10 bg-ink-800",
         "shadow-[0_24px_60px_-10px_rgba(0,0,0,0.7),0_0_0_1px_rgba(232,21,27,0.15)]",
-        widthClass,
       )}
     >
       {/* Brand accent strip + faint inner glow — matches MegaMenu's look. */}
@@ -104,24 +99,24 @@ export function CategoryMegaMenu({ tree }: { tree: NavCategoryNode[] }) {
               No sub-categories yet. Use the link above to browse {active.name}.
             </p>
           ) : (
-            // `auto-fit` lets the grid pack as many columns as the
-            // current width allows. The trick is `minmax(0, 1fr)` instead
-            // of `minmax(170px, 1fr)` — `0` lets columns shrink past
-            // their content's min-width when they have to, which stops
-            // long words (e.g. "RECTIFIER", "STARTER SWITCH (UNDER BRAKE
-            // LEVER)") from forcing the grid wider than its container.
-            // The combination of `auto-fit`, the small min, and the long-
-            // word `break-words` on each item below means columns
-            // smoothly shrink + wrap to fit any number of sections.
+            // CSS multi-column layout (newspaper-style) instead of grid.
+            // Sections flow top→bottom inside each column and pack
+            // tightly without waiting for the tallest sibling in a row,
+            // matching the Habitat/IKEA reference you shared. Adding
+            // more sections just grows the columns longer; if they
+            // exceed the viewport height, the right pane scrolls
+            // internally. Column count scales with viewport width.
             <div
-              className="grid gap-x-5 gap-y-5"
-              style={{
-                gridTemplateColumns:
-                  "repeat(auto-fit, minmax(min(170px, 100%), 1fr))",
-              }}
+              className="columns-2 gap-x-6 sm:columns-3 lg:columns-4 xl:columns-5 [&>div]:mb-5"
             >
               {active.children.map((section) => (
-                <div key={section.id} className="min-w-0">
+                <div
+                  key={section.id}
+                  // `break-inside-avoid` keeps each section's heading +
+                  // leaves together — they never get split across two
+                  // columns mid-list.
+                  className="break-inside-avoid"
+                >
                   {/* `break-words` lets the section heading wrap inside
                       long names like "STARTER SWITCH (UNDER BRAKE
                       LEVER)" rather than forcing the column wider. */}
