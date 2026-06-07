@@ -25,13 +25,14 @@ export function CategoryMegaMenu({ tree }: { tree: NavCategoryNode[] }) {
   const active = tree.find((n) => n.id === activeId) ?? tree[0];
   if (!active) return null;
 
-  // Heuristic — when a category has a lot of sub-sections, give the
-  // dropdown more horizontal room so the sections lay out side-by-side
-  // instead of stacking down past the viewport bottom. Capped at the
-  // viewport width so it never spills off-screen.
+  // Width heuristic — gives the dropdown more horizontal room as the
+  // active category grows. Above 8 sections we go to a full-viewport-
+  // width shell so the right pane gets the whole screen to lay out into
+  // (and the auto-fit grid below has actual room to fan out instead of
+  // squeezing columns to min-content and overflowing).
   const sectionCount = active.children.length;
   const widthClass =
-    sectionCount > 8 ? "w-[1480px]"
+    sectionCount > 8 ? "w-[calc(100vw-2rem)]"
     : sectionCount > 5 ? "w-[1280px]"
     : "w-[1080px]";
 
@@ -80,8 +81,12 @@ export function CategoryMegaMenu({ tree }: { tree: NavCategoryNode[] }) {
 
         {/* RIGHT — selected category's sub-tree. Internally scrollable so
             very deep categories don't push the dropdown past the viewport
-            edge. `min-h-0` is required (see note on the left pane). */}
-        <div className="min-h-0 overflow-y-auto p-6">
+            edge. `min-h-0` + `min-w-0` are both required: without min-w-0,
+            long category names (e.g. "STARTER SWITCH (UNDER BRAKE LEVER)")
+            push the grid wider than its parent and the columns spill past
+            the right edge. `overflow-x: hidden` is the belt-and-braces
+            backstop in case something still forces a wider min-content. */}
+        <div className="min-h-0 min-w-0 overflow-y-auto overflow-x-hidden p-6">
           {/* Top "Shop all" link — drills straight into /products with the
               parent path so customers who want everything skip past the
               section drill-down. */}
@@ -100,36 +105,42 @@ export function CategoryMegaMenu({ tree }: { tree: NavCategoryNode[] }) {
             </p>
           ) : (
             // `auto-fit` lets the grid pack as many columns as the
-            // current width allows. Each section gets at least 170px;
-            // when many sections exist, more fit per row instead of
-            // stacking vertically (your "expand horizontally" ask).
-            // `auto-fit` also shrinks columns down toward 170px as more
-            // are needed, which is the "text auto-adjusts to make space"
-            // behaviour you wanted.
+            // current width allows. The trick is `minmax(0, 1fr)` instead
+            // of `minmax(170px, 1fr)` — `0` lets columns shrink past
+            // their content's min-width when they have to, which stops
+            // long words (e.g. "RECTIFIER", "STARTER SWITCH (UNDER BRAKE
+            // LEVER)") from forcing the grid wider than its container.
+            // The combination of `auto-fit`, the small min, and the long-
+            // word `break-words` on each item below means columns
+            // smoothly shrink + wrap to fit any number of sections.
             <div
-              className="grid gap-x-6 gap-y-5"
+              className="grid gap-x-5 gap-y-5"
               style={{
-                gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+                gridTemplateColumns:
+                  "repeat(auto-fit, minmax(min(170px, 100%), 1fr))",
               }}
             >
               {active.children.map((section) => (
                 <div key={section.id} className="min-w-0">
+                  {/* `break-words` lets the section heading wrap inside
+                      long names like "STARTER SWITCH (UNDER BRAKE
+                      LEVER)" rather than forcing the column wider. */}
                   <Link
                     href={`/products?category=${section.path}`}
-                    className="mb-2.5 block border-b border-red/20 pb-2 font-head text-[15px] font-bold uppercase tracking-[0.14em] text-red transition hover:text-white"
+                    className="mb-2.5 block border-b border-red/20 pb-2 font-head text-[14px] font-bold uppercase leading-tight tracking-[0.12em] text-red transition break-words hover:text-white"
                   >
                     {section.name}
                   </Link>
                   <ul className="space-y-0.5">
                     {section.children.length > 0 ? (
                       section.children.map((leaf) => (
-                        <li key={leaf.id}>
+                        <li key={leaf.id} className="min-w-0">
                           <Link
                             href={`/products?category=${leaf.path}`}
-                            className="group/link flex items-center gap-2 rounded px-2 py-1.5 text-[15px] text-white/75 transition hover:bg-white/[0.04] hover:text-white"
+                            className="group/link flex items-start gap-2 rounded px-2 py-1.5 text-[14px] leading-snug text-white/75 transition break-words hover:bg-white/[0.04] hover:text-white"
                           >
-                            <span className="text-red opacity-0 transition group-hover/link:opacity-100">›</span>
-                            <span className="-ml-2 truncate transition group-hover/link:ml-0">{leaf.name}</span>
+                            <span className="mt-0.5 shrink-0 text-red opacity-0 transition group-hover/link:opacity-100">›</span>
+                            <span className="-ml-2 min-w-0 transition group-hover/link:ml-0">{leaf.name}</span>
                           </Link>
                         </li>
                       ))
@@ -140,7 +151,7 @@ export function CategoryMegaMenu({ tree }: { tree: NavCategoryNode[] }) {
                       <li>
                         <Link
                           href={`/products?category=${section.path}`}
-                          className="block rounded px-2 py-1.5 text-[15px] text-white/75 transition hover:text-white"
+                          className="block rounded px-2 py-1.5 text-[14px] leading-snug text-white/75 transition break-words hover:text-white"
                         >
                           Browse {section.name}
                         </Link>
