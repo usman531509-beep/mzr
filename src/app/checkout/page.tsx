@@ -164,25 +164,69 @@ export default function CheckoutPage() {
         const pData = await pRes.json().catch(() => ({ ok: false }));
         if (cancelled) return;
 
-        const list: SavedAddress[] = aData.ok ? aData.addresses : [];
-        setSavedAddresses(list);
+        const bookList: SavedAddress[] = aData.ok ? aData.addresses : [];
 
-        const def = list.find((a) => a.isDefault);
+        // Surface the profile address as a virtual entry in the same
+        // picker the saved book uses. Customers expect to switch between
+        // "my profile address" and "addresses I've added" from one place,
+        // but the profile lives on the User row, not in the Address table.
+        // Skip injection when an Address with identical line1+postcode is
+        // already in the book — we don't want the same destination twice.
+        let merged: SavedAddress[] = bookList;
+        const p = pData.ok && pData.profile
+          ? (pData.profile as {
+              name: string | null; email: string;
+              phone: string | null;
+              address: string | null; addressLine2: string | null;
+              city: string | null; county: string | null;
+              postcode: string | null; country: string | null;
+            })
+          : null;
+        const profileHasFullAddress = !!(
+          p && p.address && p.city && p.postcode && p.country
+        );
+        if (profileHasFullAddress && p) {
+          const dupe = bookList.some(
+            (a) =>
+              a.line1.trim().toLowerCase() === (p.address ?? "").trim().toLowerCase() &&
+              a.postcode.trim().toUpperCase() === (p.postcode ?? "").trim().toUpperCase(),
+          );
+          if (!dupe) {
+            merged = [
+              {
+                // Synthetic id — the order POST never sends this, it only
+                // affects which option the dropdown highlights and what
+                // `applyAddress` writes into the form.
+                id: "__profile__",
+                label: "Profile address",
+                recipientName: p.name ?? "",
+                phone: p.phone,
+                line1: p.address!,
+                line2: p.addressLine2,
+                city: p.city!,
+                county: p.county,
+                postcode: p.postcode!,
+                country: p.country!,
+                // Treat profile as the default only when no book entry is
+                // already flagged default — keeps existing manual picks.
+                isDefault: !bookList.some((a) => a.isDefault),
+              },
+              ...bookList,
+            ];
+          }
+        }
+        setSavedAddresses(merged);
+
+        const def = merged.find((a) => a.isDefault);
         if (def) {
           applyAddress(def);
           return;
         }
-        // No saved-address default — fall back to the profile's default
-        // shipping address. Treat empty strings as "not set" so the
-        // form's existing placeholders show through when nothing's there.
-        if (pData.ok && pData.profile) {
-          const p = pData.profile as {
-            name: string | null; email: string;
-            phone: string | null;
-            address: string | null; addressLine2: string | null;
-            city: string | null; county: string | null;
-            postcode: string | null; country: string | null;
-          };
+        // No default in either source — fall back to writing the profile
+        // fields directly into the form so something pre-fills. Treat
+        // empty strings as "not set" so the existing placeholders show
+        // through when nothing's there.
+        if (p) {
           setForm((f) => ({
             ...f,
             customerName:         p.name  || f.customerName,

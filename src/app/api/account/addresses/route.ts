@@ -44,13 +44,15 @@ export async function POST(req: Request) {
   const d = parsed.data;
   const userId = session.user.id;
 
-  // First address auto-becomes the default; subsequent saves use the flag
-  // the caller sent. If they marked the new one default we have to unset
-  // the previous default in the same transaction.
+  // Honour the "default" checkbox literally — only mark the new address as
+  // the default when the customer explicitly ticked it. The previous auto-
+  // default-the-first-address rule was confusing: customers who deliberately
+  // left the box empty still saw their address flagged as default and
+  // pre-filled at checkout. If they want a default they tick the box.
+  const wantDefault = d.isDefault === true;
   const created = await prisma.$transaction(async (tx) => {
-    const count = await tx.address.count({ where: { userId } });
-    const wantDefault = d.isDefault === true || count === 0;
     if (wantDefault) {
+      // Demote any existing default first so we don't end up with two.
       await tx.address.updateMany({
         where: { userId, isDefault: true },
         data: { isDefault: false },

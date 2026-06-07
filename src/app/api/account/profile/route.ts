@@ -76,5 +76,43 @@ export async function PATCH(req: Request) {
       address: true, addressLine2: true, city: true, county: true, postcode: true, country: true,
     },
   });
+
+  // Auto-promote the profile address into the address book as the default
+  // — but only when the customer doesn't already have a default on file.
+  // This way the *first* time someone fills in their profile address, it
+  // becomes their default shipping destination (visible in the address
+  // book, picked up by checkout). After that, manual edits in the address
+  // book card own the relationship — we don't keep rewriting it on every
+  // profile save, otherwise the customer's deliberate "this address is my
+  // default now" picks would get clobbered.
+  const hasCompleteAddress = !!(
+    user.address && user.city && user.postcode && user.country
+  );
+  if (hasCompleteAddress) {
+    const existingDefault = await prisma.address.findFirst({
+      where: { userId: user.id, isDefault: true },
+      select: { id: true },
+    });
+    if (!existingDefault) {
+      await prisma.address.create({
+        data: {
+          userId: user.id,
+          // Tagged so the address book shows where this entry came from.
+          // Customer can rename it from the Addresses card if they want.
+          label: "Default shipping address",
+          recipientName: user.name ?? user.email ?? "Recipient",
+          phone: user.phone,
+          line1: user.address!,
+          line2: user.addressLine2,
+          city: user.city!,
+          county: user.county,
+          postcode: user.postcode!,
+          country: user.country!,
+          isDefault: true,
+        },
+      });
+    }
+  }
+
   return NextResponse.json(user);
 }
