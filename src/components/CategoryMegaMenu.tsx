@@ -25,18 +25,37 @@ export function CategoryMegaMenu({ tree }: { tree: NavCategoryNode[] }) {
   const active = tree.find((n) => n.id === activeId) ?? tree[0];
   if (!active) return null;
 
+  // Heuristic — when a category has a lot of sub-sections, give the
+  // dropdown more horizontal room so the sections lay out side-by-side
+  // instead of stacking down past the viewport bottom. Capped at the
+  // viewport width so it never spills off-screen.
+  const sectionCount = active.children.length;
+  const widthClass =
+    sectionCount > 8 ? "w-[1480px]"
+    : sectionCount > 5 ? "w-[1280px]"
+    : "w-[1080px]";
+
   return (
     <div
-      className="mega absolute left-0 top-full z-40 mt-2 w-[1080px] max-w-[calc(100vw-2rem)] origin-top overflow-hidden rounded-xl border border-white/10 bg-ink-800
-                 shadow-[0_24px_60px_-10px_rgba(0,0,0,0.7),0_0_0_1px_rgba(232,21,27,0.15)]"
+      className={cn(
+        "mega absolute left-0 top-full z-40 mt-2 max-w-[calc(100vw-2rem)] max-h-[calc(100vh-6rem)] origin-top overflow-hidden rounded-xl border border-white/10 bg-ink-800",
+        "shadow-[0_24px_60px_-10px_rgba(0,0,0,0.7),0_0_0_1px_rgba(232,21,27,0.15)]",
+        widthClass,
+      )}
     >
       {/* Brand accent strip + faint inner glow — matches MegaMenu's look. */}
       <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-red to-transparent" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(232,21,27,0.08),transparent_55%)]" />
 
-      <div className="relative grid min-h-[420px] grid-cols-[240px_1fr]">
-        {/* LEFT — top-level categories */}
-        <div className="border-r border-white/10 bg-ink-900/40 py-3">
+      <div className="relative grid max-h-[calc(100vh-6rem)] min-h-[420px] grid-cols-[240px_1fr]">
+        {/* LEFT — top-level categories. Scrolls within itself when the
+            admin has many top-level entries. `min-h-0` is the crucial
+            bit: grid items default to min-content sizing, which beats
+            the parent's max-height and disables overflow scrolling.
+            Forcing min-h-0 lets the parent's height cap actually clip
+            the child so the scroll engages. Same trick on the right
+            pane below. */}
+        <div className="min-h-0 overflow-y-auto border-r border-white/10 bg-ink-900/40 py-3">
           {tree.map((root) => {
             const isActive = activeId === root.id;
             return (
@@ -59,8 +78,10 @@ export function CategoryMegaMenu({ tree }: { tree: NavCategoryNode[] }) {
           })}
         </div>
 
-        {/* RIGHT — selected category's sub-tree */}
-        <div className="p-6">
+        {/* RIGHT — selected category's sub-tree. Internally scrollable so
+            very deep categories don't push the dropdown past the viewport
+            edge. `min-h-0` is required (see note on the left pane). */}
+        <div className="min-h-0 overflow-y-auto p-6">
           {/* Top "Shop all" link — drills straight into /products with the
               parent path so customers who want everything skip past the
               section drill-down. */}
@@ -78,7 +99,19 @@ export function CategoryMegaMenu({ tree }: { tree: NavCategoryNode[] }) {
               No sub-categories yet. Use the link above to browse {active.name}.
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-x-6 gap-y-5 lg:grid-cols-3 xl:grid-cols-4">
+            // `auto-fit` lets the grid pack as many columns as the
+            // current width allows. Each section gets at least 170px;
+            // when many sections exist, more fit per row instead of
+            // stacking vertically (your "expand horizontally" ask).
+            // `auto-fit` also shrinks columns down toward 170px as more
+            // are needed, which is the "text auto-adjusts to make space"
+            // behaviour you wanted.
+            <div
+              className="grid gap-x-6 gap-y-5"
+              style={{
+                gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+              }}
+            >
               {active.children.map((section) => (
                 <div key={section.id} className="min-w-0">
                   <Link
