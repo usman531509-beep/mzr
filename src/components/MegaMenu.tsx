@@ -20,13 +20,26 @@ export function MegaMenu({
   };
   width?: "wide" | "narrow";
 }) {
-  // Visual width — kept comfortably under viewport edge so it never feels "full width"
-  const widthClass = width === "wide" ? "w-[920px]" : "w-[720px]";
+  // Visual width — bumps wider when there are more columns so each
+  // column keeps a comfortable item width. Always capped at viewport
+  // via max-w-[calc(100vw-2rem)] below so it never escapes the screen.
+  const widthClass =
+    width === "wide"
+      ? "w-[920px]"
+      : columns.length >= 4
+        ? "w-[1080px]"
+        : columns.length === 3
+          ? "w-[900px]"
+          : "w-[720px]";
 
   return (
+    // Height is viewport-bounded so a long brand/category list can never
+    // run past the bottom edge of the screen. The inner content area is
+    // independently scrollable. `flex flex-col` lets the inner section
+    // claim min-height: 0 properly so overflow-y-auto engages.
     <div
-      className={`mega absolute left-0 top-full z-40 mt-2 ${widthClass} max-w-[calc(100vw-2rem)] origin-top
-                  overflow-hidden rounded-xl border border-white/10 bg-ink-800
+      className={`mega absolute left-0 top-full z-40 mt-2 ${widthClass} max-w-[calc(100vw-2rem)] max-h-[calc(100vh-6rem)] origin-top
+                  flex flex-col overflow-hidden rounded-xl border border-white/10 bg-ink-800
                   shadow-[0_24px_60px_-10px_rgba(0,0,0,0.7),0_0_0_1px_rgba(232,21,27,0.15)]`}
     >
       {/* top accent bar */}
@@ -35,7 +48,11 @@ export function MegaMenu({
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(232,21,27,0.08),transparent_55%)]" />
 
       <div
-        className="relative grid gap-0 p-6"
+        // `min-h-0 overflow-y-auto` lets the content scroll inside the
+        // viewport-capped shell once the brand list exceeds available
+        // height. Without min-h-0, flex children refuse to shrink past
+        // their content height and the scrollbar never engages.
+        className="relative grid min-h-0 gap-0 overflow-y-auto p-6"
         style={{
           gridTemplateColumns: promo
             ? `repeat(${columns.length},minmax(0,1fr)) 200px`
@@ -54,10 +71,10 @@ export function MegaMenu({
                 <li key={it.label}>
                   <Link
                     href={it.href}
-                    className="group/link flex items-center gap-2 rounded px-2 py-2 text-[16px] font-medium text-white/80 transition hover:bg-white/[0.04] hover:text-white"
+                    className="group/link flex items-center gap-2 rounded px-2 py-2 text-[16px] font-medium text-white/80 transition break-words hover:bg-white/[0.04] hover:text-white"
                   >
                     <span className="text-red opacity-0 transition group-hover/link:opacity-100">›</span>
-                    <span className="-ml-2 transition group-hover/link:ml-0">{it.label}</span>
+                    <span className="-ml-2 min-w-0 transition group-hover/link:ml-0">{it.label}</span>
                   </Link>
                 </li>
               ))}

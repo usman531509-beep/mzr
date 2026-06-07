@@ -41,8 +41,18 @@ export function Header({
   // Parts uses the two-pane CategoryMegaMenu (consumes the raw tree
   // directly), so no flat-column transformation is needed here anymore.
   // The brand menus still use the legacy MegaMenu, which expects columns.
-  const brandsCols = chunk(brands.map(toBrandItem), 2);
-  const productBrandsCols = chunk(productBrands.map(toProductBrandItem), 2);
+  // More columns when the brand list is long, so each column doesn't
+  // grow taller than the viewport. The MegaMenu shell still caps height
+  // at viewport-aware max and scrolls internally beyond that — this just
+  // spreads short rows wider instead of stacking them deep.
+  const brandsCols = chunk(
+    brands.map(toBrandItem),
+    brands.length > 18 ? 4 : brands.length > 10 ? 3 : 2,
+  );
+  const productBrandsCols = chunk(
+    productBrands.map(toProductBrandItem),
+    productBrands.length > 18 ? 4 : productBrands.length > 10 ? 3 : 2,
+  );
 
   return (
     <>
