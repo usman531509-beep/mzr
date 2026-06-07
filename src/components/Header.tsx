@@ -8,6 +8,8 @@ import { useCart } from "@/lib/cart-store";
 import { useWishlist } from "@/lib/wishlist-store";
 import { useOverlays } from "@/lib/overlays-store";
 import { MegaMenu, type MegaColumn } from "@/components/MegaMenu";
+import { CategoryMegaMenu } from "@/components/CategoryMegaMenu";
+import { NavSearch } from "@/components/NavSearch";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
@@ -36,9 +38,9 @@ export function Header({
 
   // Build live mega menus from the catalogue tree. Each top-level category
   // (depth 0) becomes a column; its direct children become the items. Empty
-  // branches are hidden so users don't click through to an empty grid. If a
-  // top-level has no children, we still surface it as a single-item column.
-  const partsCols = treeToColumns(tree);
+  // Parts uses the two-pane CategoryMegaMenu (consumes the raw tree
+  // directly), so no flat-column transformation is needed here anymore.
+  // The brand menus still use the legacy MegaMenu, which expects columns.
   const brandsCols = chunk(brands.map(toBrandItem), 2);
   const productBrandsCols = chunk(productBrands.map(toProductBrandItem), 2);
 
@@ -65,9 +67,9 @@ export function Header({
 
           {/* Desktop nav */}
           <nav className="flex h-full flex-1 items-stretch">
-            {partsCols.length > 0 ? (
+            {tree.length > 0 ? (
               <NavItem label="Parts">
-                <MegaMenu columns={partsCols} />
+                <CategoryMegaMenu tree={tree} />
               </NavItem>
             ) : (
               <SimpleLink href="/products" label="Parts" />
@@ -85,14 +87,26 @@ export function Header({
             <SimpleLink href="/products" label="All Products" />
           </nav>
 
+          {/* Inline search — real typeable input with its own anchored
+              autocomplete dropdown. Visible on desktop only; mobile uses
+              the icon button + SearchOverlay below to keep the navbar
+              uncluttered on small screens. */}
+          <div className="ml-auto mr-2 hidden lg:block">
+            <NavSearch />
+          </div>
+
           {/* Right actions */}
-          <div className="ml-auto flex items-center gap-1">
+          <div className="flex items-center gap-1 lg:ml-0 ml-auto">
             <Link href="/track" className="btn-trade mr-1">Track Order</Link>
             <Link href="/trade-account" className="btn-trade">Trade Account</Link>
 
-            <ActionBtn label="Search" onClick={openSearch}>
-              <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-            </ActionBtn>
+            {/* Icon-only search trigger — kept for mobile / narrow viewports
+                where the inline pseudo-input above is hidden. */}
+            <span className="lg:hidden">
+              <ActionBtn label="Search" onClick={openSearch}>
+                <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+              </ActionBtn>
+            </span>
 
             {session?.user ? (() => {
               const role = session.user.role;
@@ -277,28 +291,6 @@ function toBrandItem(b: NavBrand) {
 // with ?productBrand=<slug> so the storefront filter chip picks it up.
 function toProductBrandItem(b: NavProductBrand) {
   return { label: b.name, href: `/products?productBrand=${b.slug}` };
-}
-
-// Turn the category tree into a column-per-top-level mega-menu layout.
-// Each top-level node becomes a column; its direct children are the link
-// items. Every category the admin has created is surfaced — even ones with
-// zero products yet — so the navbar matches the admin's category list.
-// Links deep-link into /products?category=<path> so navigation stays inside
-// the single /products route (no full reload between categories).
-function treeToColumns(tree: NavCategoryNode[]): MegaColumn[] {
-  if (tree.length === 0) return [];
-  return tree.map((root) => ({
-    heading: root.name,
-    items: root.children.length > 0
-      ? root.children.map((c) => ({
-          label: c.name,
-          href: `/products?category=${c.path}`,
-        }))
-      : [{
-          label: `Browse ${root.name}`,
-          href: `/products?category=${root.path}`,
-        }],
-  }));
 }
 
 function chunk<T>(arr: T[], cols: number): MegaColumn[] {

@@ -45,16 +45,16 @@ export function MegaMenu({
         {columns.map((col, i) => (
           <div key={i} className={i > 0 ? "border-l border-white/10 pl-5 pr-3" : "pr-5"}>
             {col.heading && (
-              <h4 className="mb-3 flex items-center gap-2 border-b border-red/20 pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-red">
+              <h4 className="mb-3 flex items-center gap-2 border-b border-red/20 pb-2 font-head text-[17px] font-bold uppercase tracking-[0.12em] text-red">
                 {col.heading}
               </h4>
             )}
-            <ul className="flex flex-col gap-0.5">
+            <ul className="flex flex-col gap-1">
               {col.items.map((it) => (
                 <li key={it.label}>
                   <Link
                     href={it.href}
-                    className="group/link flex items-center gap-2 rounded px-2 py-1 text-[12.5px] text-white/65 transition hover:bg-white/[0.04] hover:text-white"
+                    className="group/link flex items-center gap-2 rounded px-2 py-2 text-[16px] font-medium text-white/80 transition hover:bg-white/[0.04] hover:text-white"
                   >
                     <span className="text-red opacity-0 transition group-hover/link:opacity-100">›</span>
                     <span className="-ml-2 transition group-hover/link:ml-0">{it.label}</span>

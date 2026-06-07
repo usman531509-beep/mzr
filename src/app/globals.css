@@ -192,25 +192,29 @@ body { line-height: 1.5; overflow-x: hidden; }
    marketing styling intact while making the dashboards more readable. The
    specificity of ".portal-scope .text-xs" beats Tailwind's bare utility,
    so no !important is needed. */
-.portal-scope { font-size: 16px; }
+.portal-scope { font-size: 17px; }
 
-.portal-scope .text-xs   { font-size: 13px;   line-height: 1.25rem; }
-.portal-scope .text-sm   { font-size: 15px;   line-height: 1.5rem; }
-.portal-scope .text-base { font-size: 17px;   line-height: 1.625rem; }
-.portal-scope .text-lg   { font-size: 19px;   line-height: 1.75rem; }
-.portal-scope .text-xl   { font-size: 22px;   line-height: 1.875rem; }
-.portal-scope .text-2xl  { font-size: 26px;   line-height: 2rem; }
-.portal-scope .text-3xl  { font-size: 32px;   line-height: 2.25rem; }
+.portal-scope .text-xs   { font-size: 14px;   line-height: 1.4rem;   }
+.portal-scope .text-sm   { font-size: 16px;   line-height: 1.6rem;   }
+.portal-scope .text-base { font-size: 18px;   line-height: 1.7rem;   }
+.portal-scope .text-lg   { font-size: 20px;   line-height: 1.8rem;   }
+.portal-scope .text-xl   { font-size: 24px;   line-height: 2rem;     }
+.portal-scope .text-2xl  { font-size: 28px;   line-height: 2.2rem;   }
+.portal-scope .text-3xl  { font-size: 34px;   line-height: 2.4rem;   }
 
 /* Tailwind arbitrary-px sizes used throughout the portals. Square brackets
    must be CSS-escaped (`\[`, `\]`) to match the generated class name. */
-.portal-scope .text-\[10px\]   { font-size: 12px; }
-.portal-scope .text-\[10\.5px\]{ font-size: 12.5px; }
-.portal-scope .text-\[11px\]   { font-size: 13px; }
-.portal-scope .text-\[11\.5px\]{ font-size: 13px; }
-.portal-scope .text-\[12px\]   { font-size: 14px; }
-.portal-scope .text-\[12\.5px\]{ font-size: 14px; }
-.portal-scope .text-\[13px\]   { font-size: 14.5px; }
+.portal-scope .text-\[9px\]    { font-size: 12px; }
+.portal-scope .text-\[10px\]   { font-size: 13px; }
+.portal-scope .text-\[10\.5px\]{ font-size: 13.5px; }
+.portal-scope .text-\[11px\]   { font-size: 14px; }
+.portal-scope .text-\[11\.5px\]{ font-size: 14px; }
+.portal-scope .text-\[12px\]   { font-size: 15px; }
+.portal-scope .text-\[12\.5px\]{ font-size: 15px; }
+.portal-scope .text-\[13px\]   { font-size: 15.5px; }
+.portal-scope .text-\[13\.5px\]{ font-size: 16px; }
+.portal-scope .text-\[14px\]   { font-size: 16.5px; }
+.portal-scope .text-\[15px\]   { font-size: 17px; }
 
 /* ---- Print: isolate the invoice modal --------------------------------- */
 /* When a dialog opts in via data-invoice-print, every other element on the
