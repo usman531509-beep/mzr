@@ -71,7 +71,12 @@ export async function PATCH(
   delete d.brandIds;
 
   if (d.categoryId !== undefined) {
-    const childCount = await prisma.category.count({ where: { parentId: d.categoryId } });
+    // "Leaf" means no LIVE children — soft-deleted sub-categories don't
+    // count, otherwise the admin can't reassign a product to a category
+    // whose only sub-categories are in the Deleted tab.
+    const childCount = await prisma.category.count({
+      where: { parentId: d.categoryId, deletedAt: null },
+    });
     if (childCount > 0) {
       return NextResponse.json(
         { error: "Pick a leaf category (one with no sub-categories)." },

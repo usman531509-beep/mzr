@@ -59,7 +59,12 @@ export async function POST(req: Request) {
   const d = parsed.data;
 
   // Products may only attach to a leaf category. Reject a parent pick early.
-  const childCount = await prisma.category.count({ where: { parentId: d.categoryId } });
+  // "Leaf" means no LIVE children — soft-deleted sub-categories don't
+  // count, otherwise the admin can't save a product against a category
+  // whose only sub-categories are in the Deleted tab.
+  const childCount = await prisma.category.count({
+    where: { parentId: d.categoryId, deletedAt: null },
+  });
   if (childCount > 0) {
     return NextResponse.json(
       { error: "Pick a leaf category (one with no sub-categories)." },
