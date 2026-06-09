@@ -63,8 +63,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <Header tree={tree} brands={navBrands} productBrands={navProductBrands} />
           </SiteChrome>
           <main className="flex-1">{children}</main>
-          <SiteChrome>
+          <SiteChrome hideOnPortals>
             <Footer tree={tree} />
+          </SiteChrome>
+          <SiteChrome>
             <GlobalOverlays brands={brands} productBrands={productBrands} models={models} tree={tree} />
             <MobileBottomBar />
           </SiteChrome>

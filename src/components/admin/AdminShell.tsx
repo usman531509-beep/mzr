@@ -8,6 +8,7 @@ import {
   LayoutDashboard, Package, Layers, Tag, Bike, ShoppingCart, Users, Briefcase, Receipt, Boxes,
   Activity, Truck, ClipboardList, MapPin, PackageCheck, Megaphone, CreditCard,
   Menu, ChevronLeft, ChevronDown, Home, LogOut,
+  BarChart3, LineChart, PoundSterling,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Breadcrumbs, type Crumb } from "@/components/Breadcrumbs";
@@ -74,6 +75,15 @@ const NAV = [
     ],
   },
   {
+    group: "Reports",
+    items: [
+      { href: "/admin/reports",            label: "Overview",     icon: BarChart3, exact: true },
+      { href: "/admin/reports/sales",      label: "Sales",        icon: LineChart },
+      { href: "/admin/reports/inventory",  label: "Inventory",    icon: Boxes },
+      { href: "/admin/reports/financial",  label: "Financial",    icon: PoundSterling },
+    ],
+  },
+  {
     group: "Audit",
     items: [
       { href: "/admin/activity", label: "Activity log", icon: Activity },
@@ -81,7 +91,16 @@ const NAV = [
   },
 ];
 
-type NavLeaf = { href: string; label: string; icon: React.ComponentType<{ className?: string }> };
+type NavLeaf = {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  /** When true, the item only highlights for an exact pathname match.
+   *  Used for "Overview"-style items that are conceptual siblings of
+   *  their deeper neighbours rather than ancestors (e.g. /admin/reports
+   *  sitting alongside /admin/reports/sales). */
+  exact?: boolean;
+};
 type NavParent = {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -111,6 +130,13 @@ const HREF_TO_KEY: Record<string, ModuleKey> = {
   "/admin/stock-received":  "stock-received",
   "/admin/couriers":        "couriers",
   "/admin/activity":        "activity",
+  // Reports landing is visible to anyone with the operational `reports.view`
+  // key — that's the lowest tier. The Financial sub-item is gated on the
+  // stricter `reports.financial` key separately below.
+  "/admin/reports":            "reports.view",
+  "/admin/reports/sales":      "reports.view",
+  "/admin/reports/inventory":  "reports.view",
+  "/admin/reports/financial":  "reports.financial",
 };
 
 function filterNav(role?: string, permissions: string[] = []) {
@@ -231,6 +257,10 @@ const ADMIN_LABELS: Record<string, string> = {
   "/admin/stock-received":  "Stock Received",
   "/admin/couriers":        "Couriers",
   "/admin/activity":        "Activity log",
+  "/admin/reports":            "Reports",
+  "/admin/reports/sales":      "Sales report",
+  "/admin/reports/inventory":  "Inventory report",
+  "/admin/reports/financial":  "Financial report",
 };
 
 function adminCrumbs(pathname: string): Crumb[] {
@@ -319,7 +349,8 @@ function SidebarNav({
 function NavLeafItem({
   item, pathname, collapsed, onNavigate,
 }: { item: NavLeaf; pathname: string; collapsed: boolean; onNavigate?: () => void }) {
-  const active = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href));
+  const active = pathname === item.href
+    || (!item.exact && item.href !== "/admin" && pathname.startsWith(`${item.href}/`));
   return (
     <Link
       href={item.href}

@@ -24,13 +24,18 @@ export type ModuleKey =
   | "couriers"
   | "offers"
   | "payments"
-  | "activity";
+  | "activity"
+  // Reports module — `reports.view` covers operational reports (stock,
+  // sales). `reports.financial` adds the sensitive ones (P&L, customer
+  // revenue). ADMIN gets both implicitly via canAccessModule.
+  | "reports.view"
+  | "reports.financial";
 
 export type ModuleDef = {
   key: ModuleKey;
   label: string;
   href: string;
-  group: "Overview" | "Catalogue" | "Sales" | "Marketing" | "People" | "Trader management" | "Procurement" | "Shipping" | "Audit";
+  group: "Overview" | "Catalogue" | "Sales" | "Marketing" | "People" | "Trader management" | "Procurement" | "Shipping" | "Audit" | "Reports";
 };
 
 export const ADMIN_MODULES: ModuleDef[] = [
@@ -53,6 +58,8 @@ export const ADMIN_MODULES: ModuleDef[] = [
   { key: "stock-received", label: "Stock Received", href: "/admin/stock-received",   group: "Procurement" },
   { key: "couriers",       label: "Couriers",       href: "/admin/couriers",         group: "Shipping" },
   { key: "activity",       label: "Activity log",   href: "/admin/activity",         group: "Audit" },
+  { key: "reports.view",      label: "Sales & Stock", href: "/admin/reports/sales",     group: "Reports" },
+  { key: "reports.financial", label: "Financial",     href: "/admin/reports/financial", group: "Reports" },
 ];
 
 export const ALL_MODULE_KEYS: ModuleKey[] = ADMIN_MODULES.map((m) => m.key);

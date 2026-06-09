@@ -66,7 +66,7 @@ body { line-height: 1.5; overflow-x: hidden; }
            hover:bg-white/10 hover:text-white hover:border-white/40;
   }
   .btn-trade {
-    @apply bg-red text-white font-head font-bold uppercase tracking-wider px-5 py-2 text-[13px]
+    @apply inline-flex items-center whitespace-nowrap bg-red text-white font-head font-bold uppercase tracking-wider px-5 py-2 text-[13px]
            shadow-[0_2px_12px_rgba(232,21,27,0.3)] hover:bg-red-600 hover:shadow-[0_4px_20px_rgba(232,21,27,0.5)] transition;
     clip-path: polygon(7px 0%, 100% 0%, calc(100% - 7px) 100%, 0% 100%);
   }

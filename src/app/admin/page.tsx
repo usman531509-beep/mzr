@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { Package, ShoppingCart, Users, DollarSign, BadgePercent, Receipt, TrendingUp, Percent } from "lucide-react";
 
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { fmtMoney } from "@/lib/format";
+import { ukHourNow, greetingFor, firstNameOf } from "@/lib/greeting";
 import { StatCard } from "@/components/admin/StatCard";
 import { DashboardClient, type DashboardCategory } from "@/components/admin/DashboardClient";
 import { RevenueLineChart } from "@/components/admin/RevenueLineChart";
@@ -19,6 +21,7 @@ import {
 export const dynamic = "force-dynamic";
 
 type SP = Promise<Record<string, string | string[] | undefined>>;
+
 
 function resolveRange(sp: Record<string, string | string[] | undefined>) {
   // Dashboard defaults to the last 30 days for a monthly snapshot. Other
@@ -62,6 +65,11 @@ function resolveRange(sp: Record<string, string | string[] | undefined>) {
 export default async function AdminDashboard({ searchParams }: { searchParams: SP }) {
   const sp = await searchParams;
   const { from, to, label: rangeLabel, days: rangeDays } = resolveRange(sp);
+  // auth() is React-cached within a request, so this is a no-op when the
+  // admin layout has already resolved the same session.
+  const session = await auth();
+  const firstName = firstNameOf(session?.user?.name);
+  const greeting = greetingFor(ukHourNow());
 
   const orderRangeFilter   = from && to ? { createdAt: { gte: from, lte: to } } : {};
   const itemRangeFilter    = from && to ? { order: { is: { createdAt: { gte: from, lte: to } } } } : {};
@@ -348,8 +356,10 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Overview of your store · {rangeLabel}.</p>
+        <h1 className="text-2xl font-bold tracking-tight">
+          {greeting}, <span className="text-primary">{firstName}</span>
+        </h1>
+        <p className="text-sm text-muted-foreground">Here's your store overview · {rangeLabel}.</p>
       </header>
 
       <DateRangeFilter />

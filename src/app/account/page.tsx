@@ -4,6 +4,7 @@ import { Package, ShoppingBag, ArrowRight } from "lucide-react";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { fmtMoney } from "@/lib/format";
+import { ukHourNow, greetingFor, firstNameOf } from "@/lib/greeting";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,8 @@ export const dynamic = "force-dynamic";
 export default async function AccountOverview() {
   const session = await auth();
   if (!session?.user) return null;
+  const firstName = firstNameOf(session.user.name);
+  const greeting = greetingFor(ukHourNow());
 
   const [orders, totalSpentAgg] = await Promise.all([
     prisma.order.findMany({
@@ -33,7 +36,9 @@ export default async function AccountOverview() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight">Hi, {session.user.name?.split(" ")[0] ?? "there"}.</h1>
+        <h1 className="text-2xl font-bold tracking-tight">
+          {greeting}, <span className="text-primary">{firstName}</span>
+        </h1>
         <p className="text-sm text-muted-foreground">Welcome back to MZR Parts.</p>
       </header>
 
