@@ -1,6 +1,6 @@
 # MZR Parts — Motorbike Spare Parts Store
 
-Next.js 15 (App Router) + Prisma + Supabase Postgres + Cloudinary + NextAuth v5.
+Next.js 15 (App Router) + Prisma + Supabase Postgres + Cloudinary + NextAuth v5..
 
 ## Features
 
