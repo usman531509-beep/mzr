@@ -2,93 +2,81 @@ import Link from "next/link";
 import Image from "next/image";
 import type { NavCategoryNode } from "@/lib/nav-cache";
 
+// Storefront footer — reference design (.h-footer): dark red-black panel,
+// brand + contact column, Shop / Account / Help link columns and a payment
+// strip. Shop links stay wired to the live category tree.
 export function Footer({ tree = [] }: { tree?: NavCategoryNode[] }) {
-  // Pick the six top-level categories with the most active products. Keeps
-  // the column compact while staying in sync with the actual catalogue.
+  // Pick the top-level categories with the most active products. Keeps the
+  // column compact while staying in sync with the actual catalogue.
   const shopLinks = tree
     .filter((c) => c.productCount > 0)
-    .slice(0, 6)
+    .slice(0, 7)
     .map((c) => ({ l: c.name, h: `/products?category=${c.path}` }));
+
   return (
-    <footer className="border-t border-white/10 bg-[#040405] px-[var(--gutter)] py-16">
-      <div className="mx-auto max-w-site">
-        <div className="mb-12 grid gap-12 md:grid-cols-2 lg:grid-cols-[2.2fr_1fr_1fr_1fr]">
+    <footer className="h-footer">
+      <div className="h-container">
+        <div className="h-footer-grid">
           <div>
-            <Link href="/" className="inline-flex items-center" aria-label="MZR Spare — home">
+            <Link href="/" className="h-logo" aria-label="MZR Spare — home">
               <Image
                 src="/logo.png"
                 alt="MZR Spare — Motorbike Parts Specialist"
                 width={617}
                 height={405}
-                className="h-14 w-auto"
+                className="h-12 w-auto"
               />
             </Link>
-            <p className="mt-4 max-w-[310px] text-[13px] font-light leading-relaxed text-white/40">
-              Genuine and aftermarket spares for every popular bike. Filter by your model and year only see what fits.
+            <p style={{ fontSize: 14, lineHeight: 1.6, color: "#8f95a6", margin: "20px 0", maxWidth: 380 }}>
+              Genuine and aftermarket spares for scooters, mopeds and motorcycles.
+              Filter by model and year to find parts that fit — first time, every time.
             </p>
-            <address className="mt-5 not-italic text-[12.5px] leading-loose text-white/40">
-              <strong className="text-[13px] font-semibold text-white/85">Customer support</strong><br />
-              <a href="mailto:hello@mzrparts.com" className="transition hover:text-white">hello@mzrparts.com</a><br />
+            <p style={{ fontSize: 14, color: "#8f95a6", lineHeight: 1.8 }}>
+              ✉ <a href="mailto:hello@mzrparts.com" style={{ display: "inline", padding: 0 }}>hello@mzrparts.com</a>
+              <br />
               Mon–Fri 9–6 · Sat 9–5
-            </address>
+            </p>
           </div>
 
-          <FCol
-            title="Shop"
-            links={shopLinks.length > 0
-              ? shopLinks
-              : [{ l: "All parts", h: "/products" }]}
-          />
+          <div>
+            <h5>Shop</h5>
+            {shopLinks.length > 0 ? (
+              shopLinks.map((it) => (
+                <Link key={it.l} href={it.h}>{it.l}</Link>
+              ))
+            ) : (
+              <Link href="/products">All parts</Link>
+            )}
+          </div>
 
-          <FCol title="Account" links={[
-            { l: "Sign in", h: "/login" },
-            { l: "Create account", h: "/register" },
-            { l: "My orders", h: "/account/orders" },
-            { l: "Track order", h: "/track" },
-            { l: "Cart", h: "/cart" },
-          ]} />
+          <div>
+            <h5>Account</h5>
+            <Link href="/login">Sign in</Link>
+            <Link href="/register">Create account</Link>
+            <Link href="/account/orders">My orders</Link>
+            <Link href="/track">Track order</Link>
+            <Link href="/cart">Basket</Link>
+            <Link href="/trade-account">Trade account</Link>
+          </div>
 
-          <FCol title="Help" links={[
-            { l: "Shipping & returns", h: "#" },
-            { l: "Fitment guarantee", h: "#" },
-            { l: "Trade accounts", h: "#" },
-            { l: "Contact us", h: "#" },
-          ]} />
+          <div>
+            <h5>Help</h5>
+            <a href="#">Shipping &amp; returns</a>
+            <a href="#">Fitment guarantee</a>
+            <Link href="/trade-account">Trade accounts</Link>
+            <a href="#">Contact us</a>
+            <a href="#">Privacy policy</a>
+            <a href="#">Terms</a>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-6">
-          <p className="text-[11.5px] text-white/40">
-            © {new Date().getFullYear()} MZR Parts. All rights reserved.
-          </p>
-          <div className="flex flex-wrap gap-4">
-            <a href="#" className="text-[11.5px] text-white/40 transition hover:text-white/85">Privacy</a>
-            <a href="#" className="text-[11.5px] text-white/40 transition hover:text-white/85">Terms</a>
-            <a href="#" className="text-[11.5px] text-white/40 transition hover:text-white/85">Cookies</a>
+        <div className="h-foot-bottom">
+          <div>© {new Date().getFullYear()} MZR Spare Ltd · Built for serious mechanics 🛠️</div>
+          <div className="h-pay">
+            <span>VISA</span><span>MC</span><span>AMEX</span><span>PAYPAL</span>
           </div>
         </div>
       </div>
     </footer>
-  );
-}
-
-function FCol({ title, links }: { title: string; links: { l: string; h: string }[] }) {
-  return (
-    <div>
-      <h5 className="mb-4 border-b border-red/25 pb-2 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-red">
-        {title}
-      </h5>
-      <ul>
-        {links.map((it) => (
-          <li key={it.l}>
-            <Link
-              href={it.h}
-              className="block py-1 text-[12.5px] text-white/40 transition hover:translate-x-1 hover:text-white"
-            >
-              {it.l}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }

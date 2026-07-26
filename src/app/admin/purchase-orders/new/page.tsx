@@ -35,11 +35,12 @@ export default async function NewPOPage() {
   ]);
 
   return (
-    <div className="space-y-4 p-4 lg:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="space-y-4">
+      <div className="adm-top !mb-0">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">New purchase order</h1>
-          <p className="text-sm text-muted-foreground">
+          <div className="crumb">Admin · Purchase Orders</div>
+          <h1 className="font-head text-3xl font-normal uppercase leading-none tracking-wide">New Purchase Order</h1>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
             Pick a supplier and the parts you&apos;re ordering. Save as Draft, mark
             Placed when sent, or Received once it arrives. The PO is a
             printable procurement document and does not change stock — use

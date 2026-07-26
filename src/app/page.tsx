@@ -8,7 +8,6 @@ import { NewArrivals } from "@/components/home/NewArrivals";
 import { FeaturedProducts } from "@/components/home/FeaturedProducts";
 import { FinderCTA } from "@/components/home/FinderCTA";
 import { BrandsGrid } from "@/components/home/BrandsGrid";
-import { BrandsMarquee } from "@/components/home/BrandsMarquee";
 import { Newsletter } from "@/components/home/Newsletter";
 import { getTradeContext, tradePrice } from "@/lib/trade-pricing";
 import { getNavData } from "@/lib/nav-cache";
@@ -159,17 +158,21 @@ export default async function HomePage() {
       <Hero brands={brands} models={models} />
 
       {empty ? (
-        <section className="mx-auto max-w-2xl px-[var(--gutter)] py-20 text-center">
-          <span className="eyebrow">Catalogue empty</span>
-          <h2 className="section-h2 mt-2">Awaiting <em>store setup</em></h2>
-          <p className="mt-4 text-white/60">
-            No categories, brands, or parts have been added yet. Once the store
-            admin populates the catalogue from the admin panel, products will
-            appear here automatically.
-          </p>
-          <Link href="/admin" className="btn-red mt-6 inline-flex">
-            Open admin panel
-          </Link>
+        <section className="h-section">
+          <div className="mx-auto max-w-2xl px-[22px] text-center">
+            <span className="h-eyebrow">Catalogue empty</span>
+            <h2 className="mt-5 font-head text-5xl uppercase tracking-wide text-ink">
+              Awaiting store setup
+            </h2>
+            <p className="mt-4 text-muted-foreground">
+              No categories, brands, or parts have been added yet. Once the store
+              admin populates the catalogue from the admin panel, products will
+              appear here automatically.
+            </p>
+            <Link href="/admin" className="btn-red mt-6 inline-flex">
+              Open admin panel
+            </Link>
+          </div>
         </section>
       ) : (
         <>
@@ -179,6 +182,8 @@ export default async function HomePage() {
 
           {topCategories.length > 0 && <CategoriesGrid categories={topCategories} />}
 
+          {topBrands.length > 0 && <BrandsGrid brands={topBrands} />}
+
           <InDemandBanner products={demandingPicks} />
 
           {newArrivals.length > 0 && <NewArrivals products={newArrivals} />}
@@ -186,12 +191,6 @@ export default async function HomePage() {
           {featured.length > 0 && <FeaturedProducts products={featured} />}
 
           <FinderCTA />
-
-          {topBrands.length > 0 && <BrandsGrid brands={topBrands} />}
-
-          {brands.length > 0 && (
-            <BrandsMarquee brands={brands.map((b) => ({ name: b.name, slug: b.slug }))} />
-          )}
 
           <Newsletter />
         </>

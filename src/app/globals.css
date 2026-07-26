@@ -4,185 +4,91 @@
 
 @layer base {
   :root {
-    color-scheme: dark;
-    --max: 1440px;
-    --gutter: clamp(16px, 3vw, 40px);
-    --shadow-red: 0 0 24px rgba(232, 21, 27, 0.45);
+    color-scheme: light;
+    --max: 1320px;
+    --gutter: clamp(16px, 3vw, 22px);
+    --shadow-red: 0 14px 40px -12px rgba(227, 6, 19, 0.55);
 
-    /* shadcn semantic tokens — dark + red theme matching the storefront.
-       Values are space-separated HSL (no commas) so Tailwind can wrap with hsl(...). */
-    --background: 240 7% 3%;          /* #060607 ink */
-    --foreground: 0 0% 100%;
-    --card: 220 7% 9%;                /* #141517 ink-800 */
-    --card-foreground: 0 0% 100%;
-    --popover: 220 7% 9%;
-    --popover-foreground: 0 0% 100%;
-    --primary: 358 82% 50%;           /* #E8151B red */
+    /* shadcn semantic tokens — light + red theme matching the reference
+       design (engine-aid-hub). Values are space-separated HSL (no commas)
+       so Tailwind can wrap with hsl(...). */
+    --background: 0 0% 98%;           /* #fafafa */
+    --foreground: 223 24% 6%;         /* #0b0d12 ink */
+    --card: 0 0% 100%;
+    --card-foreground: 223 24% 6%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 223 24% 6%;
+    --primary: 356 95% 46%;           /* #e30613 red */
     --primary-foreground: 0 0% 100%;
-    --secondary: 216 7% 12%;          /* #1C1E21 ink-700 */
-    --secondary-foreground: 0 0% 100%;
-    --muted: 216 7% 12%;
-    --muted-foreground: 0 0% 62%;
-    --accent: 216 7% 14%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 358 82% 50%;
+    --secondary: 228 26% 96%;         /* #f3f4f8 */
+    --secondary-foreground: 223 24% 6%;
+    --muted: 225 25% 97%;             /* #f5f6f9 */
+    --muted-foreground: 220 9% 46%;   /* #6b7280 */
+    --accent: 240 7% 97%;             /* #f7f7f8 soft */
+    --accent-foreground: 223 24% 6%;
+    --destructive: 356 95% 46%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 100% / 0.10;       /* white/10 */
-    --input: 216 7% 12%;
-    --ring: 358 82% 50%;
+    --border: 240 7% 91%;             /* #e7e7ea line */
+    --input: 240 7% 91%;
+    --ring: 356 95% 46%;
     --radius: 0.625rem;
   }
-  * { border-color: hsl(0 0% 100% / 0.10); }
+  * { border-color: hsl(var(--border)); }
 }
 
 html { scroll-behavior: smooth; }
 html, body {
-  background: #060607;
-  color: #fff;
-  font-family: var(--font-body), "Barlow", system-ui, sans-serif;
+  background: #fafafa;
+  color: #0b0d12;
+  font-family: var(--font-body), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 body { line-height: 1.5; overflow-x: hidden; }
 
-/* Light scrollbar that fits the dark theme */
-::-webkit-scrollbar { width: 12px; height: 12px; }
-::-webkit-scrollbar-track { background: #141517; }
-::-webkit-scrollbar-thumb { background: #2a2c30; border-radius: 6px; border: 2px solid #141517; }
-::-webkit-scrollbar-thumb:hover { background: #3a3d42; }
-::selection { background: rgba(232, 21, 27, 0.4); color: #fff; }
+::selection { background: #ffe3e6; color: #0b0d12; }
 
 @layer components {
-  /* ---- Buttons ---- */
-  .btn-red {
-    @apply inline-flex items-center justify-center gap-2 bg-red text-white font-head font-extrabold tracking-wider uppercase
-           px-7 py-3 text-sm transition shadow-[0_4px_24px_rgba(232,21,27,0.4)]
-           hover:bg-red-600 hover:shadow-[0_6px_36px_rgba(232,21,27,0.55)] hover:-translate-y-px;
-    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
-  }
-  .btn-outline {
-    @apply inline-flex items-center justify-center gap-2 bg-white/5 text-white/85 font-head font-bold tracking-wider uppercase
-           px-6 py-3 text-sm border border-white/15 backdrop-blur transition
-           hover:bg-white/10 hover:text-white hover:border-white/40;
-  }
+  /* ---- Legacy helper classes, restyled to the light reference theme.
+         Pages progressively adopt the reference classes from theme.css;
+         these keep any not-yet-rewritten corner looking coherent. ---- */
   .btn-trade {
-    @apply inline-flex items-center whitespace-nowrap bg-red text-white font-head font-bold uppercase tracking-wider px-5 py-2 text-[13px]
-           shadow-[0_2px_12px_rgba(232,21,27,0.3)] hover:bg-red-600 hover:shadow-[0_4px_20px_rgba(232,21,27,0.5)] transition;
-    clip-path: polygon(7px 0%, 100% 0%, calc(100% - 7px) 100%, 0% 100%);
+    @apply inline-flex items-center whitespace-nowrap rounded-[10px] bg-red px-5 py-2 text-[13px]
+           font-extrabold uppercase tracking-wider text-white transition
+           hover:bg-red-600;
   }
 
-  /* ---- Surface helpers ---- */
-  .surface { @apply bg-ink-800 border border-white/10 rounded-lg; }
-  .surface-deep { @apply bg-ink-900 border border-white/10 rounded-lg; }
+  .surface { @apply rounded-[14px] border border-line bg-white; }
+  .surface-deep { @apply rounded-[14px] border border-line bg-soft; }
 
-  /* ---- Inputs ---- */
   .ifield {
-    @apply w-full bg-ink-700 border border-white/10 text-white placeholder:text-white/40
-           rounded px-3 h-11 text-sm outline-none transition
-           focus:border-red focus:bg-ink-600;
+    @apply h-11 w-full rounded-lg border border-line bg-white px-3 text-sm text-ink
+           placeholder:text-muted-foreground outline-none transition
+           focus:border-red;
     -webkit-appearance: none;
   }
-  .ilabel { @apply font-mono text-[10px] font-bold tracking-[0.16em] text-white/40 uppercase mb-1.5 block; }
+  .ilabel { @apply mb-1.5 block text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground; }
 
-  /* ---- Eyebrow / section heading ---- */
   .eyebrow {
-    @apply font-mono text-[11px] font-bold tracking-[0.22em] text-red uppercase;
+    @apply text-[11px] font-extrabold uppercase tracking-[0.2em] text-red;
   }
   .section-h2 {
-    @apply font-head font-black uppercase leading-none tracking-tight text-white;
-    font-size: clamp(28px, 4vw, 46px);
+    @apply font-head uppercase leading-none tracking-[0.02em] text-ink;
+    font-size: clamp(30px, 4vw, 48px);
   }
-  .section-h2 em { @apply text-red not-italic; }
+  .section-h2 em { @apply not-italic text-red; }
 
-  /* ---- Brand pill row (static, no animation) ---- */
-  .marquee {
-    display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;
-  }
   .pill-brand {
-    @apply bg-ink-800 border border-white/10 rounded font-head font-bold uppercase tracking-wider
-           text-white/65 text-sm px-6 py-2 whitespace-nowrap transition
-           hover:text-white hover:border-white/20;
-  }
-
-  /* ---- Logo mark (hex with glow) ---- */
-  .logo-hex {
-    width: 44px; height: 44px;
-    background: #E8151B;
-    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-    box-shadow: var(--shadow-red);
+    @apply whitespace-nowrap rounded-full border border-line bg-white px-6 py-2 text-sm
+           font-bold uppercase tracking-wider text-ink/70 transition
+           hover:border-red hover:text-red;
   }
 }
 
-/* ---- Hero accents ---- */
-.hero-radial {
-  background:
-    radial-gradient(ellipse 90% 70% at 70% 35%, rgba(232,21,27,0.16) 0%, transparent 65%),
-    radial-gradient(ellipse 50% 50% at 15% 75%, rgba(232,21,27,0.07) 0%, transparent 60%);
-}
-.hero-grid {
-  background-image:
-    linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.028) 1px, transparent 1px);
-  background-size: 64px 64px;
-}
-.hero-scan {
-  background: linear-gradient(90deg, transparent, #E8151B 40%, #FF2D33 60%, transparent);
-  box-shadow: 0 0 20px #E8151B, 0 0 60px rgba(232,21,27,0.3);
-}
-.hero-panel-top::before {
-  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, #E8151B, #FF2D33, #E8151B);
-}
-
-/* ---- Indicator dot (static) ---- */
+/* ---- Indicator dot ---- */
 .pulse-dot {
-  width: 8px; height: 8px; border-radius: 50%; background: #E8151B;
-  box-shadow: 0 0 6px #E8151B;
-}
-
-/* hero-in is now a no-op (kept for class compatibility) */
-.hero-in, .hero-in.delay-1, .hero-in.delay-2, .hero-in.delay-3 { animation: none; }
-
-/* ---- Mega menu hover (CSS-only, with smooth fade/slide) ---- */
-.nav-item > .mega {
-  opacity: 0;
-  transform: translateY(-6px);
-  pointer-events: none;
-  transition: opacity 0.18s ease, transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-}
-/* Invisible bridge so the cursor can cross the visual gap between the
-   nav button and the dropdown without losing :hover on .nav-item.
-   Lives on .nav-item (not inside .mega) because .mega has overflow-hidden
-   which would clip a pseudo-element placed outside its box. */
-.nav-item::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 100%;
-  height: 16px;
-  /* Widen the hit area horizontally a bit so diagonal mouse paths to the
-     dropdown don't slip out the side of the nav button. */
-  margin-left: -8px;
-  margin-right: -8px;
-  pointer-events: auto;
-}
-.nav-item:hover > .mega,
-.nav-item:focus-within > .mega {
-  opacity: 1;
-  transform: translateY(0);
-  pointer-events: auto;
-}
-
-/* ---- Diagonal accent stripe in hero ---- */
-.hero-diagonal {
-  background: linear-gradient(
-    135deg,
-    transparent 49.8%,
-    rgba(232,21,27,0.06) 49.8%,
-    rgba(232,21,27,0.06) 50.2%,
-    transparent 50.2%
-  );
+  width: 8px; height: 8px; border-radius: 50%; background: #e30613;
+  box-shadow: 0 0 6px #e30613;
 }
 
 /* ---- Portal text scale ------------------------------------------------ */
@@ -262,23 +168,4 @@ body { line-height: 1.5; overflow-x: hidden; }
   /* Set print page margins (browser default leaves room for headers/footers
      and lots of side padding — A4 with 0.5in margins fits nicely). */
   @page { margin: 12mm; }
-}
-
-/* ---- Infinite-loop marquee (used by TrustStrip) ---------------------- */
-/* The track contains TWO identical copies of the items side by side.
-   Translating from 0 to -50% scrolls through the first copy; when the
-   animation snaps back to 0, the second copy is in the exact same visual
-   place, so the loop has no visible seam. Pauses on hover so customers
-   can read items they care about. */
-@keyframes trust-marquee {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
-}
-.trust-marquee-track {
-  animation: trust-marquee 36s linear infinite;
-  will-change: transform;
-}
-.trust-marquee:hover .trust-marquee-track { animation-play-state: paused; }
-@media (prefers-reduced-motion: reduce) {
-  .trust-marquee-track { animation: none; }
 }

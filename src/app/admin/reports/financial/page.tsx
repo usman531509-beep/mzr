@@ -1,11 +1,7 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { fmtMoney } from "@/lib/format";
-import { Card, CardContent } from "@/components/ui/card";
 import { StatCard } from "@/components/admin/StatCard";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
 import {
   TrendingUp, TrendingDown, Receipt, PoundSterling, Percent,
 } from "lucide-react";
@@ -153,92 +149,84 @@ export default async function FinancialReport({ searchParams }: { searchParams: 
       </div>
 
       {/* P&L statement card — formatted like an accountant's view. */}
-      <Card>
-        <CardContent className="p-5">
-          <h2 className="mb-3 text-sm font-semibold tracking-tight">Profit & loss statement</h2>
-          <table className="w-full text-sm">
-            <tbody className="divide-y divide-border">
-              <PnLRow label="Revenue (delivered orders)" value={revenue} />
-              <PnLRow label="Discounts applied" value={-discounts} muted />
-              <PnLRow label="Shipping collected" value={shipping} muted />
-              <PnLRow label="Cost of goods sold (FIFO)" value={-cogs} />
-              <PnLRow label="Gross profit" value={grossProfit} bold />
-              <PnLRow label="Operating expenses" value={-expenses} />
-              <PnLRow label="Net profit" value={netProfit} bold highlight />
-            </tbody>
-          </table>
-          {itemsMissingCost > 0 && (
-            <p className="mt-3 text-xs text-amber-300">
-              ⚠ {itemsMissingCost} unit{itemsMissingCost === 1 ? "" : "s"} sold this period have no cost data —
-              gross profit is overstated by their unknown cost. Add costPrice to those products for accurate margin.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Sales-context + VAT block */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardContent className="p-5">
-            <h2 className="mb-3 text-sm font-semibold tracking-tight">Sales context</h2>
-            <dl className="grid grid-cols-2 gap-y-2 text-sm">
-              <dt className="text-muted-foreground">Units sold</dt>
-              <dd className="text-right tabular-nums">{unitsSold}</dd>
-              <dt className="text-muted-foreground">Line subtotal</dt>
-              <dd className="text-right tabular-nums">{fmtMoney(lineSubtotal)}</dd>
-              <dt className="text-muted-foreground">Avg. order value</dt>
-              <dd className="text-right tabular-nums">{orderCount > 0 ? fmtMoney(revenue / orderCount) : "—"}</dd>
-            </dl>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <h2 className="mb-3 text-sm font-semibold tracking-tight">VAT (20% UK standard)</h2>
-            <dl className="grid grid-cols-2 gap-y-2 text-sm">
-              <dt className="text-muted-foreground">VAT base</dt>
-              <dd className="text-right tabular-nums">{fmtMoney(vatBase)}</dd>
-              <dt className="text-muted-foreground">VAT collected</dt>
-              <dd className="text-right tabular-nums font-medium">{fmtMoney(vatCollected)}</dd>
-              <dt className="text-muted-foreground">Excludes VAT on purchases</dt>
-              <dd className="text-right text-xs text-muted-foreground">Manual</dd>
-            </dl>
-          </CardContent>
-        </Card>
+      <div className="panel !mb-0">
+        <h3>Profit & loss statement</h3>
+        <table className="w-full text-sm">
+          <tbody className="divide-y divide-line">
+            <PnLRow label="Revenue (delivered orders)" value={revenue} />
+            <PnLRow label="Discounts applied" value={-discounts} muted />
+            <PnLRow label="Shipping collected" value={shipping} muted />
+            <PnLRow label="Cost of goods sold (FIFO)" value={-cogs} />
+            <PnLRow label="Gross profit" value={grossProfit} bold />
+            <PnLRow label="Operating expenses" value={-expenses} />
+            <PnLRow label="Net profit" value={netProfit} bold highlight />
+          </tbody>
+        </table>
+        {itemsMissingCost > 0 && (
+          <p className="mt-3 text-xs text-amber-700">
+            ⚠ {itemsMissingCost} unit{itemsMissingCost === 1 ? "" : "s"} sold this period have no cost data —
+            gross profit is overstated by their unknown cost. Add costPrice to those products for accurate margin.
+          </p>
+        )}
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <div className="flex items-end justify-between gap-3 p-5 pb-3">
-            <div>
-              <h2 className="text-sm font-semibold tracking-tight">Expenses by category</h2>
-              <p className="text-xs text-muted-foreground">{range.label}.</p>
-            </div>
-            <PoundSterling className="h-4 w-4 text-muted-foreground" />
+      {/* Sales-context + VAT block */}
+      <div className="grid g-2 !mb-0">
+        <div className="panel !mb-0">
+          <h3>Sales context</h3>
+          <dl className="grid grid-cols-2 gap-y-2 text-sm">
+            <dt className="text-muted-foreground">Units sold</dt>
+            <dd className="text-right tabular-nums">{unitsSold}</dd>
+            <dt className="text-muted-foreground">Line subtotal</dt>
+            <dd className="text-right tabular-nums">{fmtMoney(lineSubtotal)}</dd>
+            <dt className="text-muted-foreground">Avg. order value</dt>
+            <dd className="text-right tabular-nums">{orderCount > 0 ? fmtMoney(revenue / orderCount) : "—"}</dd>
+          </dl>
+        </div>
+        <div className="panel !mb-0">
+          <h3>VAT (20% UK standard)</h3>
+          <dl className="grid grid-cols-2 gap-y-2 text-sm">
+            <dt className="text-muted-foreground">VAT base</dt>
+            <dd className="text-right tabular-nums">{fmtMoney(vatBase)}</dd>
+            <dt className="text-muted-foreground">VAT collected</dt>
+            <dd className="text-right tabular-nums font-medium">{fmtMoney(vatCollected)}</dd>
+            <dt className="text-muted-foreground">Excludes VAT on purchases</dt>
+            <dd className="text-right text-xs text-muted-foreground">Manual</dd>
+          </dl>
+        </div>
+      </div>
+
+      <div className="panel !mb-0">
+        <div className="mb-3 flex items-end justify-between gap-3">
+          <div>
+            <h3 className="!mb-0">Expenses by category</h3>
+            <p className="text-xs text-muted-foreground">{range.label}.</p>
           </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="pl-5">Category</TableHead>
-                <TableHead className="text-right">Entries</TableHead>
-                <TableHead className="text-right pr-5">Amount</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {expenseRows.length === 0 ? (
-                <TableRow><TableCell colSpan={3} className="py-8 text-center text-sm text-muted-foreground">
-                  No expenses logged in this period.
-                </TableCell></TableRow>
-              ) : expenseRows.map((e) => (
-                <TableRow key={e.category}>
-                  <TableCell className="pl-5 font-medium capitalize">{e.category}</TableCell>
-                  <TableCell className="text-right tabular-nums">{e.count}</TableCell>
-                  <TableCell className="pr-5 text-right tabular-nums font-medium">{fmtMoney(e.amount)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+          <PoundSterling className="h-4 w-4 text-muted-foreground" />
+        </div>
+        <table className="t">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th className="text-right">Entries</th>
+              <th className="text-right">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {expenseRows.length === 0 ? (
+              <tr><td colSpan={3} className="py-8 text-center text-sm text-muted-foreground">
+                No expenses logged in this period.
+              </td></tr>
+            ) : expenseRows.map((e) => (
+              <tr key={e.category}>
+                <td className="font-medium capitalize">{e.category}</td>
+                <td className="text-right tabular-nums">{e.count}</td>
+                <td className="text-right tabular-nums font-medium">{fmtMoney(e.amount)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

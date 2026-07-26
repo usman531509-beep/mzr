@@ -1,22 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
   LayoutDashboard, Package, Layers, Tag, Bike, ShoppingCart, Users, Briefcase, Receipt, Boxes,
   Activity, Truck, ClipboardList, MapPin, PackageCheck, Megaphone, CreditCard,
-  Menu, ChevronLeft, ChevronDown, Home, LogOut,
+  Menu, ChevronLeft, ChevronDown, ChevronRight, Home, LogOut, Settings,
   BarChart3, LineChart, PoundSterling,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Breadcrumbs, type Crumb } from "@/components/Breadcrumbs";
+import { type Crumb } from "@/components/Breadcrumbs";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Toaster } from "@/components/ui/sonner";
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
+  DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { canAccessModule, type ModuleKey } from "@/lib/permissions";
 
 const NAV = [
@@ -175,14 +179,19 @@ export function AdminShell({
   const filteredNav = filterNav(role, permissions);
 
   return (
-    <div className="portal-scope flex min-h-screen bg-background text-foreground">
-      {/* Desktop sidebar */}
+    // Viewport-locked shell: the whole admin fills exactly one screen and never
+    // scrolls the window — only the <main> content column scrolls internally.
+    // This keeps the dark sidebar pinned regardless of content height. (We
+    // can't use `position: sticky` here because the storefront's global
+    // `body { overflow-x: hidden }` turns <body> into the scroll container,
+    // which stops a sticky child from pinning to the viewport.)
+    <div className="portal-scope flex h-screen overflow-hidden bg-[#f4f5f7] text-foreground">
+      {/* Desktop sidebar — themed light rail (white + red accents) to match
+          the storefront. Full-height, fixed within the locked shell; its nav
+          scrolls internally so the user/footer row stays pinned to the bottom. */}
       <aside
         className={cn(
-          // Sticky full-height column. Nav scrolls internally so the footer
-          // stays pinned to the bottom and the collapse-toggle chevron on
-          // the right edge isn't clipped by an outer overflow.
-          "sticky top-0 hidden h-screen shrink-0 border-r border-border bg-card transition-[width] duration-200 lg:flex lg:flex-col",
+          "relative hidden h-full shrink-0 border-r border-line bg-white text-ink transition-[width] duration-200 lg:flex lg:flex-col",
           collapsed ? "w-[70px]" : "w-[240px]",
         )}
       >
@@ -191,45 +200,49 @@ export function AdminShell({
         <SidebarUser collapsed={collapsed} user={user} />
         <button
           onClick={() => setCollapsed((c) => !c)}
-          className="absolute -right-3 top-20 hidden h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm hover:text-foreground lg:flex"
+          className="absolute -right-3 top-20 z-10 hidden h-6 w-6 items-center justify-center rounded-full border border-line bg-white text-muted-foreground shadow-sm hover:text-red lg:flex"
           aria-label="Toggle sidebar"
         >
           <ChevronLeft className={cn("h-3.5 w-3.5 transition", collapsed && "rotate-180")} />
         </button>
       </aside>
 
-      {/* Mobile drawer */}
+      {/* Mobile drawer — same dark treatment as the desktop rail */}
       <Sheet open={mobOpen} onOpenChange={setMobOpen}>
-        <SheetContent side="left" className="flex w-[260px] flex-col p-0">
-          <SheetHeader className="shrink-0 px-4 py-5"><SheetTitle>MZR Admin</SheetTitle></SheetHeader>
-          <Separator />
+        <SheetContent side="left" className="flex w-[260px] flex-col border-line bg-white p-0 text-ink">
+          <SheetHeader className="shrink-0 px-4 py-5">
+            <SheetTitle className="text-left text-lg font-black text-ink">
+              MZR<span className="text-red">·SPARE</span> <span className="font-semibold text-muted-foreground">Admin</span>
+            </SheetTitle>
+          </SheetHeader>
+          <Separator className="bg-line" />
           <SidebarNav collapsed={false} pathname={pathname} nav={filteredNav} onNavigate={() => setMobOpen(false)} />
           <SidebarUser collapsed={false} user={user} />
         </SheetContent>
       </Sheet>
 
-      {/* Main */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-border bg-background/95 px-4 lg:px-6">
-          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobOpen(true)}>
+      {/* Main — light content column (.adm-main). Fills the locked shell and
+          owns the only scroll region: the top bar stays fixed while <main>
+          scrolls. */}
+      <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
+        <header className="z-20 flex h-16 shrink-0 items-center gap-3 border-b border-line bg-white/90 px-4 backdrop-blur-sm lg:px-7">
+          <Button variant="ghost" size="icon" className="-ml-1 lg:hidden" onClick={() => setMobOpen(true)}>
             <Menu className="h-5 w-5" />
           </Button>
-          <Breadcrumbs items={adminCrumbs(pathname)} />
-          {/* (back-compat link kept off the visible bar — breadcrumbs cover it) */}
-          {false && (
-            <Link href="/admin" className="hidden text-sm text-muted-foreground hover:text-foreground">
-              Admin
+          <AdminBreadcrumb crumbs={adminCrumbs(pathname)} />
+
+          <div className="ml-auto flex items-center gap-2 sm:gap-3">
+            <Link
+              href="/"
+              className="hidden h-9 items-center gap-2 rounded-full border border-line bg-white px-3.5 text-[13px] font-semibold text-ink/80 transition hover:border-red hover:bg-soft hover:text-red sm:inline-flex"
+            >
+              <Home className="h-4 w-4" /> View store
             </Link>
-          )}
-          <div className="ml-auto flex items-center gap-2">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/" className="gap-2">
-                <Home className="h-3.5 w-3.5" /> View store
-              </Link>
-            </Button>
+            <span className="hidden h-7 w-px bg-line sm:block" />
+            <HeaderUserMenu user={user} role={role} />
           </div>
         </header>
-        <main className="flex-1 p-4 lg:p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto bg-[#f4f5f7] p-4 lg:px-7 lg:py-6">{children}</main>
       </div>
 
       <Toaster />
@@ -277,12 +290,107 @@ function adminCrumbs(pathname: string): Crumb[] {
   return items;
 }
 
+// Modern admin breadcrumb: a dashboard-icon root (→ /admin) followed by
+// chevron-separated crumbs, with the current page bold. Intentionally its own
+// component (not the storefront <Breadcrumbs>) so the admin trail can lead
+// with an icon and use chevrons instead of the storefront's "Home · … · …".
+function AdminBreadcrumb({ crumbs }: { crumbs: Crumb[] }) {
+  return (
+    <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-0.5 text-sm">
+      {crumbs.map((c, i) => {
+        const isLast = i === crumbs.length - 1;
+        return (
+          <Fragment key={`${c.label}-${i}`}>
+            {i > 0 && (
+              <ChevronRight className="mx-0.5 h-4 w-4 shrink-0 text-muted-foreground/40" />
+            )}
+            {c.href && !isLast ? (
+              <Link
+                href={c.href}
+                className="flex shrink-0 items-center gap-1.5 rounded-lg px-1.5 py-1 font-medium text-muted-foreground transition hover:bg-soft hover:text-red"
+              >
+                {i === 0 && <LayoutDashboard className="h-4 w-4 text-red" />}
+                {c.label}
+              </Link>
+            ) : (
+              <span className="flex min-w-0 items-center gap-1.5 px-1.5 py-1 font-semibold text-ink">
+                {i === 0 && <LayoutDashboard className="h-4 w-4 shrink-0 text-red" />}
+                <span className="truncate">{c.label}</span>
+              </span>
+            )}
+          </Fragment>
+        );
+      })}
+    </nav>
+  );
+}
+
+// Top-bar account menu: shows who is signed in and opens profile settings.
+function HeaderUserMenu({ user, role }: { user: User; role?: string }) {
+  const name = user.name || user.email || "Account";
+  const initial = (user.name || user.email || "?").trim()[0]?.toUpperCase() || "?";
+  const roleLabel = role ? role.charAt(0) + role.slice(1).toLowerCase() : "Staff";
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 text-left transition hover:bg-soft"
+          aria-label="Account menu"
+        >
+          <Avatar className="h-9 w-9 ring-2 ring-red-soft">
+            <AvatarFallback className="bg-red-soft text-[13px] font-bold text-red">{initial}</AvatarFallback>
+          </Avatar>
+          <span className="hidden min-w-0 leading-tight sm:block">
+            <span className="block max-w-[140px] truncate text-[13px] font-semibold text-ink">{name}</span>
+            <span className="block text-[10px] uppercase tracking-wide text-muted-foreground">{roleLabel}</span>
+          </span>
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel className="flex flex-col">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Signed in as {roleLabel.toLowerCase()}</span>
+          <span className="truncate text-sm font-medium normal-case">{name}</span>
+          {user.email && <span className="truncate text-[11px] font-normal text-muted-foreground">{user.email}</span>}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/admin/settings" className="cursor-pointer">
+            <Settings className="h-4 w-4" />
+            Profile settings
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/" className="cursor-pointer">
+            <Home className="h-4 w-4" />
+            View store
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={() => signOut({ callbackUrl: "/" })}
+          className="cursor-pointer text-destructive focus:text-destructive"
+        >
+          <LogOut className="h-4 w-4" />
+          Sign out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 function SidebarHeader({ collapsed }: { collapsed: boolean }) {
   return (
-    <div className="flex h-14 items-center gap-2.5 px-4">
-      {!collapsed && (
+    <div className={cn("flex h-16 shrink-0 items-center border-b border-line px-[18px]", collapsed && "justify-center px-2")}>
+      {collapsed ? (
+        <span className="text-lg font-black text-ink">M<span className="text-red">·</span></span>
+      ) : (
         <div className="leading-tight">
-          <div className="font-head text-sm font-bold uppercase tracking-wider">MZR Admin</div>
+          <div className="text-[15px] font-black tracking-wide text-ink">
+            MZR<span className="text-red">·SPARE</span> <span className="font-semibold text-muted-foreground">Admin</span>
+          </div>
           <div className="text-[10px] text-muted-foreground">Parts management</div>
         </div>
       )}
@@ -301,25 +409,22 @@ function SidebarNav({
   nav: NavGroup[];
 }) {
   return (
-    <nav className="min-h-0 flex-1 space-y-4 overflow-y-auto px-2 py-2">
+    <nav className="min-h-0 flex-1 overflow-y-auto py-2">
       {nav.length === 0 && !collapsed && (
-        <div className="px-3 py-4 text-[11px] text-muted-foreground">
+        <div className="px-[18px] py-4 text-[11px] text-muted-foreground">
           No modules assigned. Ask an admin to grant access.
         </div>
       )}
       {nav.map((g) => (
         <div key={g.group}>
           {!collapsed && (
-            // Group label styled in the brand red so the section divisions
-            // scan at a glance against the dark sidebar. Sat on a thin
-            // top border + dot accent for visual weight without taking
-            // attention away from the nav items below.
-            <div className="mt-1 flex items-center gap-2 px-3 pb-1.5 pt-2 text-[10px] font-semibold uppercase tracking-widest text-red">
-              <span className="h-1 w-1 rounded-full bg-red" />
+            // Reference `.adm-side h6` section label: dim grey, uppercase,
+            // wide tracking, sitting flush with the 18px link gutter.
+            <div className="px-[18px] pb-1.5 pt-3.5 text-[10px] font-bold uppercase tracking-[0.07em] text-muted-foreground">
               {g.group}
             </div>
           )}
-          <div className="space-y-0.5">
+          <div className="space-y-0.5 px-2">
             {(g.items as NavItem[]).map((it) =>
               isParent(it) ? (
                 <NavParentItem
@@ -356,17 +461,16 @@ function NavLeafItem({
       href={item.href}
       onClick={onNavigate}
       className={cn(
-        "flex h-9 items-center gap-2.5 rounded-md px-3 text-sm transition-colors",
+        "flex h-9 w-full items-center gap-2.5 rounded-lg px-3 text-[13px] no-underline transition-colors hover:no-underline",
         active
-          ? "bg-primary/10 text-foreground"
-          : "text-muted-foreground hover:bg-accent hover:text-foreground",
+          ? "bg-red-soft font-semibold text-red"
+          : "text-ink/75 hover:bg-soft hover:text-red",
         collapsed && "justify-center px-0",
       )}
       title={collapsed ? item.label : undefined}
     >
-      <item.icon className={cn("h-4 w-4 shrink-0", active && "text-primary")} />
+      <item.icon className={cn("h-4 w-4 shrink-0", active && "text-red")} />
       {!collapsed && <span className="truncate">{item.label}</span>}
-      {!collapsed && active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />}
     </Link>
   );
 }
@@ -392,11 +496,13 @@ function NavParentItem({
               onClick={onNavigate}
               title={c.label}
               className={cn(
-                "flex h-9 items-center justify-center rounded-md text-sm transition-colors",
-                active ? "bg-primary/10 text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                "flex h-9 w-full items-center justify-center rounded-lg text-[13px] no-underline transition-colors hover:no-underline",
+                active
+                  ? "bg-red-soft text-red"
+                  : "text-ink/75 hover:bg-soft hover:text-red",
               )}
             >
-              <item.icon className={cn("h-4 w-4 shrink-0", active && "text-primary")} />
+              <item.icon className={cn("h-4 w-4 shrink-0", active && "text-red")} />
             </Link>
           );
         })}
@@ -410,19 +516,19 @@ function NavParentItem({
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "flex h-9 w-full items-center gap-2.5 rounded-md px-3 text-sm transition-colors",
+          "flex h-9 w-full items-center gap-2.5 rounded-lg px-3 text-[13px] transition-colors",
           isChildActive
-            ? "text-foreground"
-            : "text-muted-foreground hover:bg-accent hover:text-foreground",
+            ? "font-semibold text-red"
+            : "text-ink/75 hover:bg-soft hover:text-red",
         )}
         aria-expanded={open}
       >
-        <item.icon className={cn("h-4 w-4 shrink-0", isChildActive && "text-primary")} />
+        <item.icon className={cn("h-4 w-4 shrink-0", isChildActive && "text-red")} />
         <span className="truncate">{item.label}</span>
         <ChevronDown className={cn("ml-auto h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
       </button>
       {open && (
-        <div className="mt-0.5 space-y-0.5 pl-7">
+        <div>
           {item.children.map((c) => {
             const active = pathname === c.href || pathname.startsWith(`${c.href}/`);
             return (
@@ -431,14 +537,13 @@ function NavParentItem({
                 href={c.href}
                 onClick={onNavigate}
                 className={cn(
-                  "flex h-8 items-center rounded-md px-3 text-[13px] transition-colors",
+                  "flex h-8 w-full items-center rounded-lg py-0 pl-[38px] pr-3 text-[12.5px] no-underline transition-colors hover:no-underline",
                   active
-                    ? "bg-primary/10 text-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                    ? "bg-red-soft font-semibold text-red"
+                    : "text-ink/75 hover:bg-soft hover:text-red",
                 )}
               >
                 <span className="truncate">{c.label}</span>
-                {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />}
               </Link>
             );
           })}
@@ -451,15 +556,15 @@ function NavParentItem({
 function SidebarUser({ collapsed, user }: { collapsed: boolean; user: User }) {
   const initial = (user.name || user.email || "?").trim()[0]?.toUpperCase() || "?";
   return (
-    <div className={cn("shrink-0 border-t border-border p-2", collapsed && "px-1")}>
+    <div className={cn("shrink-0 border-t border-line p-2", collapsed && "px-1")}>
       {/* User info row */}
       <div className={cn("mb-2 flex items-center gap-2 px-1", collapsed && "justify-center px-0")}>
         <Avatar className="h-7 w-7">
-          <AvatarFallback className="text-[11px]">{initial}</AvatarFallback>
+          <AvatarFallback className="bg-red-soft text-[11px] font-bold text-red">{initial}</AvatarFallback>
         </Avatar>
         {!collapsed && (
           <div className="min-w-0 flex-1">
-            <div className="truncate text-[12px] font-medium leading-tight">{user.name ?? "Admin"}</div>
+            <div className="truncate text-[12px] font-medium leading-tight text-ink">{user.name ?? "Admin"}</div>
             <div className="truncate text-[10px] leading-tight text-muted-foreground">{user.email}</div>
           </div>
         )}
@@ -470,7 +575,7 @@ function SidebarUser({ collapsed, user }: { collapsed: boolean; user: User }) {
         <Link
           href="/"
           title="Go to store"
-          className="inline-flex items-center justify-center gap-1.5 rounded-md border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
+          className="inline-flex items-center justify-center gap-1.5 rounded-md border border-line px-2 py-1 text-[11px] font-medium text-ink/75 transition hover:bg-soft hover:text-red"
         >
           <Home className="h-3.5 w-3.5" />
           {!collapsed && <span>Store</span>}
@@ -479,7 +584,7 @@ function SidebarUser({ collapsed, user }: { collapsed: boolean; user: User }) {
           type="button"
           onClick={() => signOut({ callbackUrl: "/" })}
           title="Sign out"
-          className="inline-flex items-center justify-center gap-1.5 rounded-md border border-destructive/30 bg-destructive/5 px-2 py-1 text-[11px] font-medium text-destructive transition hover:bg-destructive/15"
+          className="inline-flex items-center justify-center gap-1.5 rounded-md border border-red/30 bg-red-soft px-2 py-1 text-[11px] font-medium text-red transition hover:bg-red hover:text-white"
         >
           <LogOut className="h-3.5 w-3.5" />
           {!collapsed && <span>Sign out</span>}

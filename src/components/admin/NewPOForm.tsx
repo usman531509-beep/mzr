@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, Minus, Plus, Trash2 } from "lucide-react";
 import { fmtMoney } from "@/lib/format";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -146,8 +145,8 @@ export function NewPOForm({
   return (
     <form onSubmit={submit} className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
       <div className="space-y-4">
-        <Card>
-          <CardContent className="grid grid-cols-2 gap-3 p-5">
+        <div className="panel !mb-0">
+          <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2 space-y-1.5">
               <Label className="text-xs">Supplier *</Label>
               <Select value={supplierId} onValueChange={setSupplierId}>
@@ -187,11 +186,11 @@ export function NewPOForm({
               <Label className="text-xs">Notes</Label>
               <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardContent className="space-y-3 p-5">
+        <div className="panel !mb-0">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label className="text-xs">Add product</Label>
               <Button type="button" size="sm" variant="outline" onClick={addCustom}>
@@ -205,14 +204,14 @@ export function NewPOForm({
               models={models}
               onAdd={(p) => addLineById(p.id)}
             />
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       <div className="space-y-4">
-        <Card>
-          <CardContent className="space-y-3 p-5">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="panel !mb-0">
+          <div className="space-y-3">
+            <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
               Line items
             </h2>
             {lines.length === 0 ? (
@@ -292,24 +291,26 @@ export function NewPOForm({
                 })}
               </ul>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardContent className="p-5 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Total</span>
-              <span className="text-lg font-bold tabular-nums">{fmtMoney(total)}</span>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="panel !mb-0 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Total</span>
+            <span className="text-lg font-bold tabular-nums">{fmtMoney(total)}</span>
+          </div>
+        </div>
 
-        {err && <p className="text-sm text-destructive">{err}</p>}
+        {err && <p className="text-sm text-red">{err}</p>}
 
-        <Button type="submit" disabled={busy} className="w-full">
+        <button
+          type="submit"
+          disabled={busy}
+          className="btn-red w-full !justify-center disabled:pointer-events-none disabled:opacity-60"
+        >
           {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Create purchase order
-        </Button>
+        </button>
       </div>
     </form>
   );

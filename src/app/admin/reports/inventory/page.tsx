@@ -1,11 +1,7 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { fmtMoney } from "@/lib/format";
-import { Card, CardContent } from "@/components/ui/card";
 import { StatCard } from "@/components/admin/StatCard";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
 import { Boxes, PackageX, PoundSterling, AlertTriangle } from "lucide-react";
 import { ReportHeader } from "@/components/admin/reports/ReportHeader";
 import { requireReportAccess } from "@/lib/reports/auth";
@@ -130,103 +126,99 @@ export default async function InventoryReport({ searchParams }: { searchParams: 
         />
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <div className="flex items-end justify-between gap-3 p-5 pb-3">
-            <div>
-              <h2 className="text-sm font-semibold tracking-tight">Low stock alerts</h2>
-              <p className="text-xs text-muted-foreground">
-                Active products at or below their configured threshold but still in stock. Restock priority list.
-              </p>
-            </div>
+      <div className="panel !mb-0">
+        <div className="mb-3 flex items-end justify-between gap-3">
+          <div>
+            <h3 className="!mb-0">Low stock alerts</h3>
+            <p className="text-xs text-muted-foreground">
+              Active products at or below their configured threshold but still in stock. Restock priority list.
+            </p>
           </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="pl-5">Product</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Brand</TableHead>
-                <TableHead className="text-right">Stock</TableHead>
-                <TableHead className="text-right pr-5">Threshold</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {lowStock.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
-                  No low-stock items. All active products are above their thresholds.
-                </TableCell></TableRow>
-              ) : lowStock.map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell className="pl-5">
-                    <div className="font-medium">{p.name}</div>
-                    {p.sku && <div className="text-xs text-muted-foreground">SKU {p.sku}</div>}
-                  </TableCell>
-                  <TableCell className="text-sm">{p.category?.name ?? "—"}</TableCell>
-                  <TableCell className="text-sm">{p.brand?.name ?? "—"}</TableCell>
-                  <TableCell className="text-right tabular-nums font-medium text-amber-300">{p.stock}</TableCell>
-                  <TableCell className="pr-5 text-right tabular-nums text-muted-foreground">{p.lowStockThreshold}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+        </div>
+        <table className="t">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Category</th>
+              <th>Brand</th>
+              <th className="text-right">Stock</th>
+              <th className="text-right">Threshold</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lowStock.length === 0 ? (
+              <tr><td colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                No low-stock items. All active products are above their thresholds.
+              </td></tr>
+            ) : lowStock.map((p) => (
+              <tr key={p.id}>
+                <td>
+                  <div className="font-medium">{p.name}</div>
+                  {p.sku && <div className="text-xs text-muted-foreground">SKU {p.sku}</div>}
+                </td>
+                <td className="text-sm">{p.category?.name ?? "—"}</td>
+                <td className="text-sm">{p.brand?.name ?? "—"}</td>
+                <td className="text-right tabular-nums font-medium text-amber-700">{p.stock}</td>
+                <td className="text-right tabular-nums text-muted-foreground">{p.lowStockThreshold}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <div className="flex items-end justify-between gap-3 p-5 pb-3">
-            <div>
-              <h2 className="text-sm font-semibold tracking-tight">Stock valuation</h2>
-              <p className="text-xs text-muted-foreground">
-                Per-product valuation at retail and cost. Sorted by retail value — top of list ties up the most working capital.
-              </p>
-            </div>
+      <div className="panel !mb-0">
+        <div className="mb-3 flex items-end justify-between gap-3">
+          <div>
+            <h3 className="!mb-0">Stock valuation</h3>
+            <p className="text-xs text-muted-foreground">
+              Per-product valuation at retail and cost. Sorted by retail value — top of list ties up the most working capital.
+            </p>
           </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="pl-5">Product</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead className="text-right">Stock</TableHead>
-                <TableHead className="text-right">Sold ({range.label})</TableHead>
-                <TableHead className="text-right">Cost ea.</TableHead>
-                <TableHead className="text-right">Retail ea.</TableHead>
-                <TableHead className="text-right">Value @ cost</TableHead>
-                <TableHead className="text-right pr-5">Value @ retail</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {valued.length === 0 ? (
-                <TableRow><TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
-                  No stock on hand.
-                </TableCell></TableRow>
-              ) : valued.slice(0, 50).map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell className="pl-5 font-medium">{p.name}</TableCell>
-                  <TableCell className="text-sm">{p.category?.name ?? "—"}</TableCell>
-                  <TableCell className="text-right tabular-nums">{p.stock}</TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {p.soldInPeriod > 0
-                      ? <span className="font-medium text-emerald-300">{p.soldInPeriod}</span>
-                      : <span className="text-muted-foreground">—</span>}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-muted-foreground">
-                    {p.costPrice ? fmtMoney(Number(p.costPrice)) : "—"}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">{fmtMoney(Number(p.price))}</TableCell>
-                  <TableCell className="text-right tabular-nums">{fmtMoney(p.costValue)}</TableCell>
-                  <TableCell className="pr-5 text-right tabular-nums font-medium">{fmtMoney(p.retailValue)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          {valued.length > 50 && (
-            <div className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
-              Showing the 50 highest-value products. Use CSV / PDF export above for the complete list of {valued.length} products.
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+        <table className="t">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Category</th>
+              <th className="text-right">Stock</th>
+              <th className="text-right">Sold ({range.label})</th>
+              <th className="text-right">Cost ea.</th>
+              <th className="text-right">Retail ea.</th>
+              <th className="text-right">Value @ cost</th>
+              <th className="text-right">Value @ retail</th>
+            </tr>
+          </thead>
+          <tbody>
+            {valued.length === 0 ? (
+              <tr><td colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
+                No stock on hand.
+              </td></tr>
+            ) : valued.slice(0, 50).map((p) => (
+              <tr key={p.id}>
+                <td className="font-medium">{p.name}</td>
+                <td className="text-sm">{p.category?.name ?? "—"}</td>
+                <td className="text-right tabular-nums">{p.stock}</td>
+                <td className="text-right tabular-nums">
+                  {p.soldInPeriod > 0
+                    ? <span className="font-medium text-emerald-700">{p.soldInPeriod}</span>
+                    : <span className="text-muted-foreground">—</span>}
+                </td>
+                <td className="text-right tabular-nums text-muted-foreground">
+                  {p.costPrice ? fmtMoney(Number(p.costPrice)) : "—"}
+                </td>
+                <td className="text-right tabular-nums">{fmtMoney(Number(p.price))}</td>
+                <td className="text-right tabular-nums">{fmtMoney(p.costValue)}</td>
+                <td className="text-right tabular-nums font-medium">{fmtMoney(p.retailValue)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {valued.length > 50 && (
+          <div className="mt-3 border-t border-line pt-3 text-xs text-muted-foreground">
+            Showing the 50 highest-value products. Use CSV / PDF export above for the complete list of {valued.length} products.
+          </div>
+        )}
+      </div>
     </div>
   );
 }

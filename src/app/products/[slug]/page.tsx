@@ -1,15 +1,13 @@
 import { cache } from "react";
 import { notFound } from "next/navigation";
-import { Truck, ShieldCheck, RotateCcw, Package } from "lucide-react";
+import { Truck, ShieldCheck, RotateCcw } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
 import { fmtMoney } from "@/lib/format";
 import { AddToCartButton } from "@/components/AddToCartButton";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { ProductImageGallery } from "@/components/ProductImageGallery";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { WishlistButton } from "@/components/WishlistButton";
 import { getTradeContext, tradePrice } from "@/lib/trade-pricing";
 import { getAncestors } from "@/lib/category-tree";
 import type { Metadata } from "next";
@@ -66,13 +64,22 @@ export default async function ProductPage({
   const tp = tradePrice(Number(p.price), p.categoryId, trade);
   const showTrade = tp.percent > 0;
 
+  const stockPillClass =
+    p.stock <= 0 ? "stock-pill out" : p.stock <= 5 ? "stock-pill low" : "stock-pill";
+  const stockLabel =
+    p.stock <= 0
+      ? "Out of stock"
+      : p.stock <= 5
+        ? `Low stock · ${p.stock} left`
+        : `In stock · ${p.stock}`;
+
   return (
-    <div className="bg-background text-foreground">
-      {/* Generous bottom padding so the long fitments/details column
-          doesn't crash into the footer on shorter products. */}
-      <div className="mx-auto max-w-site px-[var(--gutter)] py-8 pb-16 lg:pb-24">
+    <div className="bg-white text-ink">
+      {/* Generous bottom padding so the tabs/description block doesn't
+          crash into the footer on shorter products. */}
+      <div className="mx-auto max-w-site px-[var(--gutter)] py-6 pb-16 lg:pb-24">
         <Breadcrumbs
-          className="mb-6"
+          className="mb-5"
           items={[
             { label: "All Categories", href: "/products" },
             ...ancestors.map((a) => ({
@@ -83,12 +90,8 @@ export default async function ProductPage({
           ]}
         />
 
-        {/* Image column is now narrower than the details so the gallery
-            sits as a fixed-size visual element and the rich details
-            (price, identifiers, CTAs, fitments) get the room they need.
-            `items-start` keeps the gallery anchored at the top instead of
-            stretching to the height of the long details column. */}
-        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+        {/* Reference two-column PDP grid: gallery left, details right. */}
+        <div className="pdp">
           {/* Interactive gallery — main image + clickable thumbnails. */}
           <ProductImageGallery
             images={p.images}
@@ -98,120 +101,157 @@ export default async function ProductPage({
           />
 
           {/* DETAILS */}
-          <div className="space-y-5">
-            <div>
-              <div className="mb-2 flex flex-wrap items-center gap-1.5">
-                <Badge variant="secondary" className="text-[10px]">{p.category?.name ?? "Uncategorised"}</Badge>
-                {p.featured && (
-                  <Badge variant="warning" className="text-[10px]">Featured</Badge>
-                )}
-              </div>
-              <h1 className="text-3xl font-bold leading-tight tracking-tight">{p.name}</h1>
-            </div>
-
-            <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-              {showTrade ? (
-                <>
-                  <span className="text-4xl font-bold tabular-nums tracking-tight text-emerald-400">
-                    {fmtMoney(tp.discounted)}
-                  </span>
-                  <span className="text-lg font-medium tabular-nums text-muted-foreground line-through">
-                    {fmtMoney(p.price.toString())}
-                  </span>
-                  <Badge className="bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30 hover:bg-emerald-500/15">
-                    Trade −{tp.percent}%
-                  </Badge>
-                </>
-              ) : (
-                <span className="text-4xl font-bold tabular-nums tracking-tight text-primary">
-                  {fmtMoney(p.price.toString())}
+          <div>
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span className="tag-inline">{p.brand.name}</span>
+              {p.featured && (
+                <span
+                  className="tag-inline"
+                  style={{ background: "#fff4d6", color: "#b8860b" }}
+                >
+                  Featured
                 </span>
               )}
-              <span className={`text-sm font-medium ${p.stock > 0 ? "text-emerald-400" : "text-destructive"}`}>
-                {p.stock > 0 ? `${p.stock} in stock` : "Out of stock"}
-              </span>
             </div>
 
-            <p className="leading-relaxed text-foreground/85">{p.description}</p>
+            <h1>{p.name}</h1>
 
-            {/* OEM + SKU spec block */}
-            {(p.oemNumber || p.sku) && (
-              <Card>
-                <CardContent className="grid grid-cols-2 gap-x-6 gap-y-3 p-5">
-                  {p.oemNumber && (
-                    <div>
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                        OEM number
-                      </div>
-                      <div className="mt-1 font-mono text-base">{p.oemNumber}</div>
-                    </div>
-                  )}
-                  {p.sku && (
-                    <div>
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                        SKU / part number
-                      </div>
-                      <div className="mt-1 font-mono text-base">{p.sku}</div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+            <div className="meta">
+              Brand: <b>{p.brand.name}</b> · Category:{" "}
+              {p.category?.name ?? "Uncategorised"}
+              {p.sku && (
+                <>
+                  {" "}· SKU: <span className="kbd">{p.sku}</span>
+                </>
+              )}
+              {p.oemNumber && (
+                <>
+                  {" "}· OEM: <span className="kbd">{p.oemNumber}</span>
+                </>
+              )}
+            </div>
 
-            {/* Cart actions */}
-            <AddToCartButton
-              product={{
-                productId: p.id,
-                slug: p.slug,
-                name: p.name,
-                price: showTrade ? tp.discounted : Number(p.price),
-                image: p.images[0],
-                stock: p.stock,
-              }}
-            />
+            <div className="price-big">
+              {showTrade ? (
+                <>
+                  <span className="old">{fmtMoney(p.price.toString())}</span>
+                  {fmtMoney(tp.discounted)}
+                  <span
+                    style={{
+                      fontSize: 14,
+                      color: "var(--ok)",
+                      fontWeight: 700,
+                      marginLeft: 8,
+                    }}
+                  >
+                    Trade · save {tp.percent}%
+                  </span>
+                </>
+              ) : (
+                fmtMoney(p.price.toString())
+              )}
+            </div>
 
-            {/* Trust strip */}
-            <div className="grid grid-cols-3 gap-2 pt-2">
-              <TrustItem icon={Truck} label="Free shipping over £200" />
-              <TrustItem icon={RotateCcw} label="30-day returns" />
-              <TrustItem icon={ShieldCheck} label="Genuine parts" />
+            <div className="flex">
+              <span className={stockPillClass}>{stockLabel}</span>
+              {p.stock > 0 && (
+                <span className="muted" style={{ fontSize: 13 }}>
+                  Dispatched same day before 3pm
+                </span>
+              )}
+            </div>
+
+            {/* Fitment guarantee */}
+            <div className="alert">
+              ⚠ Please check your bike model, year and OEM number before
+              ordering. Contact us if unsure.
+            </div>
+
+            {/* Cart actions — qty stepper + add to basket (+ buy now) + wishlist */}
+            <div className="pdp-actions">
+              <AddToCartButton
+                product={{
+                  productId: p.id,
+                  slug: p.slug,
+                  name: p.name,
+                  price: showTrade ? tp.discounted : Number(p.price),
+                  image: p.images[0],
+                  stock: p.stock,
+                }}
+              />
+              <WishlistButton
+                className="h-11 w-11 self-center border-line bg-white"
+                product={{
+                  productId: p.id,
+                  name: p.name,
+                  slug: p.slug,
+                  price: Number(p.price),
+                  image: p.images[0],
+                  brand: p.brand.name,
+                }}
+              />
             </div>
 
             {/* Fitments */}
             {p.compatibilities.length > 0 && (
-              <Card>
-                <CardContent className="p-5">
-                  <div className="mb-3 flex items-center gap-2">
-                    <Package className="h-4 w-4 text-primary" />
-                    <h3 className="text-sm font-semibold">Fits these bikes</h3>
-                    <span className="ml-auto text-[11px] text-muted-foreground">
-                      {p.compatibilities.length} fitment{p.compatibilities.length === 1 ? "" : "s"}
-                    </span>
+              <section id="fitment">
+                <h3 style={{ margin: "24px 0 10px", fontSize: 15 }}>
+                  Fits these bikes{" "}
+                  <span
+                    className="muted"
+                    style={{ fontSize: 12, fontWeight: 500 }}
+                  >
+                    · {p.compatibilities.length} fitment
+                    {p.compatibilities.length === 1 ? "" : "s"}
+                  </span>
+                </h3>
+                <div className="fitlist">
+                  <div className="row h">
+                    <div>Make</div>
+                    <div>Model</div>
+                    <div>Years</div>
                   </div>
-                  <ul className="divide-y divide-border">
-                    {p.compatibilities.map((c) => (
-                      <li
-                        key={c.id}
-                        className="flex items-center justify-between gap-3 py-2.5 text-base"
-                      >
-                        <div className="min-w-0">
-                          {/* Brand name highlighted in the brand red + bumped
-                              one size up so the make leads the row visually. */}
-                          <span className="text-lg font-semibold text-red">{c.bikeModel.brand.name}</span>{" "}
-                          <span className="font-medium">{c.bikeModel.name}</span>
-                        </div>
-                        <span className="shrink-0 font-mono text-xs text-muted-foreground tabular-nums">
-                          {c.yearFrom === c.yearTo
-                            ? c.yearFrom
-                            : `${c.yearFrom}–${c.yearTo}`}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
+                  {p.compatibilities.map((c) => (
+                    <div className="row" key={c.id}>
+                      <div style={{ fontWeight: 700 }}>
+                        {c.bikeModel.brand.name}
+                      </div>
+                      <div>{c.bikeModel.name}</div>
+                      <div className="muted tabular-nums">
+                        {c.yearFrom === c.yearTo
+                          ? c.yearFrom
+                          : `${c.yearFrom}–${c.yearTo}`}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
             )}
           </div>
+        </div>
+
+        {/* Tabs — CSS-only anchors (server component: sections are stacked
+            below, no client tab state). */}
+        <div className="tabs">
+          <a className="on" href="#description">Description</a>
+          {p.compatibilities.length > 0 && <a href="#fitment">Fitment</a>}
+          <a href="#delivery">Delivery &amp; returns</a>
+        </div>
+
+        <div
+          id="description"
+          style={{ padding: "18px 0", maxWidth: 780, color: "#333", fontSize: 15 }}
+        >
+          <p style={{ margin: 0, lineHeight: 1.7 }}>{p.description}</p>
+        </div>
+
+        <div className="hr" style={{ maxWidth: 780 }} />
+
+        {/* Delivery / trust strip */}
+        <div id="delivery" className="grid g-3" style={{ maxWidth: 780 }}>
+          <TrustItem icon={Truck} label="Free shipping over £200" />
+          <TrustItem icon={RotateCcw} label="30-day returns" />
+          <TrustItem icon={ShieldCheck} label="Genuine parts" />
         </div>
       </div>
     </div>
@@ -222,9 +262,9 @@ function TrustItem({
   icon: Icon, label,
 }: { icon: React.ComponentType<{ className?: string }>; label: string }) {
   return (
-    <div className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2.5">
-      <Icon className="h-4 w-4 shrink-0 text-primary" />
-      <span className="text-[11px] leading-tight text-muted-foreground">{label}</span>
+    <div className="flex items-center rounded-lg border border-line bg-soft px-3 py-2.5">
+      <Icon className="h-4 w-4 shrink-0 text-red" />
+      <span className="text-xs font-medium">{label}</span>
     </div>
   );
 }

@@ -1,16 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NavCategoryNode } from "@/lib/nav-cache";
 
-// Collapsible category tree shown on the left of /products and
-// /category/[...path]. Top-level rows act as expanders; clicking the name
-// also navigates to that category. Selected node + its ancestors highlight,
-// and any branch that contains the selection is auto-expanded on first
-// render so the user lands with the right context already open.
+// Reference-style listing sidebar (.sidebar-filters) hosting the collapsible
+// category tree (.cat-tree). Desktop: sticky left column of the .listing
+// grid. Mobile: slide-in drawer opened via the red "Filters" toggle button
+// (+ scrim), matching the engine-aid-hub mockups.
+//
+// Top-level rows navigate on click; the chevron expands/collapses children.
+// Selected node + its ancestors highlight, and any branch that contains the
+// selection is auto-expanded on first render so the user lands with the
+// right context already open.
 
 export function CategorySidebar({
   tree,
@@ -42,48 +46,77 @@ export function CategorySidebar({
     });
   };
 
+  // Mobile drawer + collapsible "Categories" group (presentation only).
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const closeDrawer = () => setDrawerOpen(false);
+
+  // Lock body scroll while the drawer is open (reference behaviour).
+  useEffect(() => {
+    document.body.style.overflow = drawerOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [drawerOpen]);
+
   return (
-    <aside className="hidden w-[300px] shrink-0 lg:block">
-      <div className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto pr-2">
-        <div className="mb-4 text-[14px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          Categories
+    <>
+      <button
+        type="button"
+        className="filter-drawer-toggle"
+        onClick={() => setDrawerOpen(true)}
+        aria-expanded={drawerOpen}
+      >
+        ☰ Filters
+      </button>
+      <div
+        className={cn("filter-scrim", drawerOpen && "open")}
+        onClick={closeDrawer}
+        aria-hidden="true"
+      />
+      <aside className={cn("sidebar-filters", drawerOpen && "open")}>
+        <div className="close-drawer">
+          <button type="button" aria-label="Close filters" onClick={closeDrawer}>
+            ×
+          </button>
         </div>
-        <ul className="space-y-1.5">
-          <li>
+        <div className={cn("cat-tree filter-group", collapsed && "collapsed")}>
+          <h4 onClick={() => setCollapsed((c) => !c)}>Categories</h4>
+          <div className="fg-body">
             <Link
               href="/products"
-              className={cn(
-                "block rounded px-3 py-3 text-[18px] transition",
-                !selectedPath
-                  ? "bg-primary/10 text-foreground font-semibold"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground",
-              )}
+              onClick={closeDrawer}
+              className={cn("cat-link", !selectedPath && "active")}
             >
               All products
             </Link>
-          </li>
-          {tree.map((node) => (
-            <CategoryRow
-              key={node.id}
-              node={node}
-              selectedPath={selectedPath ?? null}
-              openPaths={openPaths}
-              onToggle={toggle}
-            />
-          ))}
-        </ul>
-      </div>
-    </aside>
+            {tree.map((node) => (
+              <CategoryRow
+                key={node.id}
+                node={node}
+                depth={0}
+                selectedPath={selectedPath ?? null}
+                openPaths={openPaths}
+                onToggle={toggle}
+                onNavigate={closeDrawer}
+              />
+            ))}
+          </div>
+        </div>
+      </aside>
+    </>
   );
 }
 
 function CategoryRow({
-  node, selectedPath, openPaths, onToggle,
+  node, depth, selectedPath, openPaths, onToggle, onNavigate,
 }: {
   node: NavCategoryNode;
+  depth: number;
   selectedPath: string | null;
   openPaths: Set<string>;
   onToggle: (path: string) => void;
+  onNavigate: () => void;
 }) {
   const hasChildren = node.children.length > 0;
   const isOpen = openPaths.has(node.path);
@@ -96,54 +129,49 @@ function CategoryRow({
     selectedPath.startsWith(`${node.path}/`);
 
   return (
-    <li>
-      <div
-        className={cn(
-          "group flex items-center gap-1 rounded transition",
-          isSelected && "bg-primary/10",
-        )}
-      >
-        {hasChildren ? (
-          <button
-            type="button"
-            onClick={() => onToggle(node.path)}
-            className="flex h-11 w-8 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground"
-            aria-label={isOpen ? "Collapse" : "Expand"}
-          >
-            <ChevronRight
-              className={cn("h-5 w-5 transition-transform", isOpen && "rotate-90")}
-            />
-          </button>
-        ) : (
-          <span className="block h-11 w-8 shrink-0" />
-        )}
+    <div>
+      <div className="flex items-center">
         <Link
           href={`/products?category=${node.path}`}
+          onClick={onNavigate}
           className={cn(
-            "flex-1 truncate py-2.5 pr-2 text-[18px] transition",
-            isSelected
-              ? "font-semibold text-foreground"
-              : isAncestor
-                ? "text-foreground hover:text-foreground"
-                : "text-muted-foreground hover:text-foreground",
+            "min-w-0 flex-1 truncate",
+            depth === 0 && "cat-link",
+            isSelected && "active",
+            isAncestor && (depth === 0 ? "open" : "font-semibold text-ink"),
           )}
         >
           {node.name}
         </Link>
+        {hasChildren && (
+          <button
+            type="button"
+            onClick={() => onToggle(node.path)}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-muted-foreground transition hover:text-red"
+            aria-label={isOpen ? "Collapse" : "Expand"}
+            aria-expanded={isOpen}
+          >
+            <ChevronRight
+              className={cn("h-4 w-4 transition-transform", isOpen && "rotate-90")}
+            />
+          </button>
+        )}
       </div>
       {hasChildren && isOpen && (
-        <ul className="ml-4 mt-1.5 space-y-1.5 border-l border-border/70 pl-2.5">
+        <div className="cat-sub">
           {node.children.map((child) => (
             <CategoryRow
               key={child.id}
               node={child}
+              depth={depth + 1}
               selectedPath={selectedPath}
               openPaths={openPaths}
               onToggle={onToggle}
+              onNavigate={onNavigate}
             />
           ))}
-        </ul>
+        </div>
       )}
-    </li>
+    </div>
   );
 }

@@ -6,5 +6,5 @@ export default async function AdminBrands() {
     orderBy: { name: "asc" },
     include: { _count: { select: { products: true } } },
   });
-  return <BrandsClient initial={brands.map((b) => ({ id: b.id, name: b.name, slug: b.slug, count: b._count.products }))} />;
+  return <BrandsClient initial={brands.map((b) => ({ id: b.id, name: b.name, slug: b.slug, logoUrl: b.logoUrl, count: b._count.products }))} />;
 }

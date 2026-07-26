@@ -143,14 +143,14 @@ export function SearchOverlay({
 
   return (
     <div
-      className="fixed inset-0 z-[9500] bg-black/70"
+      className="fixed inset-0 z-[9500] bg-ink/40"
       onClick={onClose}
       aria-modal="true"
       role="dialog"
     >
       <div className="flex min-h-screen items-start justify-center px-4 pt-20 sm:pt-24">
         <div
-          className="w-full max-w-2xl overflow-hidden rounded-xl border border-border bg-card shadow-[0_24px_60px_-10px_rgba(0,0,0,0.7),0_0_0_1px_rgba(232,21,27,0.15)]"
+          className="w-full max-w-2xl overflow-hidden rounded-xl border border-line bg-white shadow-[0_24px_60px_-10px_rgba(11,13,18,0.25)]"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Input */}
@@ -245,7 +245,7 @@ export function SearchOverlay({
                       </div>
                       <div className="text-right">
                         <div className="text-[15px] font-semibold tabular-nums">{fmtMoney(r.price)}</div>
-                        <div className={`text-[11.5px] ${r.stock > 0 ? "text-emerald-400" : "text-destructive"}`}>
+                        <div className={`text-[11.5px] ${r.stock > 0 ? "text-emerald-600" : "text-destructive"}`}>
                           {r.stock > 0 ? `${r.stock} in stock` : "Sold out"}
                         </div>
                       </div>
@@ -261,7 +261,7 @@ export function SearchOverlay({
             <button
               type="button"
               onClick={seeAll}
-              className="flex w-full items-center justify-between gap-3 border-t border-border bg-background/40 px-4 py-3 text-sm text-foreground transition hover:bg-accent"
+              className="flex w-full items-center justify-between gap-3 border-t border-line bg-soft px-4 py-3 text-sm text-ink transition hover:bg-accent"
             >
               <span>
                 See all <strong>{total}</strong> result{total === 1 ? "" : "s"} for "{trimmed}"

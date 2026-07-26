@@ -42,26 +42,30 @@ export default {
           foreground: "hsl(var(--card-foreground))",
         },
 
-        // Storefront brand tokens (used by home page)
+        // Storefront brand tokens — reference (engine-aid-hub) palette
         red: {
-          DEFAULT: "#E8151B",
-          600: "#C41217",
-          400: "#FF2D33",
+          DEFAULT: "#e30613",
+          600: "#b8050f",
+          700: "#99000b",
+          400: "#ff2a3a",
+          soft: "#ffe3e6",
         },
         ink: {
-          DEFAULT: "#060607",
-          900: "#0E0F10",
-          800: "#141517",
-          700: "#1C1E21",
-          600: "#242628",
+          DEFAULT: "#0b0d12",
+          900: "#0f1116",
+          800: "#15171c",
+          700: "#1e2128",
+          600: "#2a2d33",
         },
         brand: {
-          DEFAULT: "#E8151B",
-          dark: "#C41217",
-          light: "rgba(232,21,27,0.08)",
+          DEFAULT: "#e30613",
+          dark: "#99000b",
+          light: "rgba(227,6,19,0.08)",
         },
-        gold: "#F5A623",
-        ok: "#22C55E",
+        line: "#e7e7ea",
+        soft: "#f7f7f8",
+        gold: "#b8860b",
+        ok: "#0a8a3a",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -73,7 +77,7 @@ export default {
         body: ["var(--font-body)", "ui-sans-serif", "system-ui", "sans-serif"],
         mono: ["var(--font-mono-ui)", "ui-monospace", "monospace"],
       },
-      maxWidth: { site: "1440px" },
+      maxWidth: { site: "1320px" },
       keyframes: {
         "accordion-down": { from: { height: "0" }, to: { height: "var(--radix-accordion-content-height)" } },
         "accordion-up": { from: { height: "var(--radix-accordion-content-height)" }, to: { height: "0" } },

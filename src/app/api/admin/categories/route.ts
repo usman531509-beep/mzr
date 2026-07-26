@@ -10,10 +10,19 @@ import {
   joinPath, MAX_CATEGORY_DEPTH, uniqueChildSlug,
 } from "@/lib/category-tree";
 
+// Accept an absolute URL (Supabase/Cloudinary in prod) OR a root-relative
+// path (the /uploads/… dev-disk fallback). A bare `.url()` would reject the
+// latter and fail the save with a confusing "Invalid".
+const imageUrlField = z
+  .string()
+  .refine((v) => /^(https?:\/\/|\/)/.test(v), "Must be a URL or path")
+  .nullable()
+  .optional();
+
 const createSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional().nullable(),
-  imageUrl: z.string().url().optional().nullable(),
+  imageUrl: imageUrlField,
   parentId: z.string().nullable().optional(),
   sortOrder: z.number().int().optional(),
 });

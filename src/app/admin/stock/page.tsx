@@ -69,12 +69,15 @@ export default async function StockPage({ searchParams }: { searchParams: SP }) 
   const outRows = products.filter((p) => p.stock === 0);
 
   return (
-    <div className="space-y-4 p-4 lg:p-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Stock</h1>
-        <p className="text-sm text-muted-foreground">
-          Inventory levels with low-stock and out-of-stock alerts.
-        </p>
+    <div className="space-y-4">
+      <div className="adm-top !mb-0">
+        <div>
+          <div className="crumb">Admin</div>
+          <h1 className="font-head text-3xl font-normal uppercase leading-none tracking-wide">Stock</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Inventory levels with low-stock and out-of-stock alerts.
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -103,10 +106,10 @@ export default async function StockPage({ searchParams }: { searchParams: SP }) 
       </div>
 
       {outRows.length > 0 && (
-        <Card className="border-rose-500/30 bg-rose-500/5">
+        <Card className="border-red/30 bg-red-soft/40">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
-              <PackageX className="h-4 w-4 text-rose-400" />
+              <PackageX className="h-4 w-4 text-red" />
               Out of stock — {outRows.length} item{outRows.length === 1 ? "" : "s"}
             </CardTitle>
             <CardDescription>
@@ -116,7 +119,7 @@ export default async function StockPage({ searchParams }: { searchParams: SP }) 
           <CardContent>
             <ul className="flex flex-wrap gap-2">
               {outRows.slice(0, 12).map((p) => (
-                <li key={p.id} className="rounded-md border border-rose-500/30 bg-background px-2.5 py-1 text-[12px]">
+                <li key={p.id} className="rounded-full border border-red/30 bg-white px-2.5 py-1 text-[12px]">
                   {p.name}{" "}
                   <span className="text-muted-foreground">· {p.brand.name}</span>
                 </li>

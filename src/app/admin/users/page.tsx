@@ -1,12 +1,7 @@
 import Link from "next/link";
 import { Phone, Users as UsersIcon, UserCheck, UserX, Briefcase } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/admin/StatCard";
 import { UserCartButton } from "@/components/admin/UserCartButton";
 import { UserOrdersButton } from "@/components/admin/UserOrdersButton";
@@ -107,10 +102,11 @@ export default async function UsersPage({ searchParams }: { searchParams: SP }) 
   const currentAdminId = session?.user?.id;
 
   return (
-    <div className="space-y-4 p-4 lg:p-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="space-y-4">
+      <div className="adm-top !mb-0">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Users</h1>
+          <div className="crumb">Admin · People</div>
+          <h1 className="font-bold">Users</h1>
           <p className="text-sm text-muted-foreground">
             All registered customers, staff, managers and admins. Cart contents
             shown inline so you can follow up with customers who haven&apos;t ordered.
@@ -183,28 +179,26 @@ export default async function UsersPage({ searchParams }: { searchParams: SP }) 
       />
 
       {users.length === 0 ? (
-        <Card>
-          <CardContent className="p-12 text-center text-sm text-muted-foreground">
-            No users yet.
-          </CardContent>
-        </Card>
+        <div className="panel !mb-0 p-12 text-center text-sm text-muted-foreground">
+          No users yet.
+        </div>
       ) : (
-        <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Orders</TableHead>
-                <TableHead>Cart</TableHead>
-                <TableHead className="text-right">Cart total</TableHead>
-                <TableHead>Joined</TableHead>
-                <TableHead className="text-right">Contact</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+        <div className="table-wrap">
+          <table className="t">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Orders</th>
+                <th>Cart</th>
+                <th className="text-right">Cart total</th>
+                <th>Joined</th>
+                <th className="text-right">Contact</th>
+                <th className="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
               {users.map((u) => {
                 const cartItems = u.cart?.items ?? [];
                 const itemCount = cartItems.reduce((s, it) => s + it.quantity, 0);
@@ -213,29 +207,29 @@ export default async function UsersPage({ searchParams }: { searchParams: SP }) 
                   0,
                 );
                 return (
-                  <TableRow key={u.id} className="align-top">
-                    <TableCell>
+                  <tr key={u.id} className="align-top">
+                    <td>
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{u.name ?? "—"}</span>
                         {u.tradeApproved && (
-                          <Badge className="gap-1 bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30 hover:bg-amber-500/15">
-                            <Briefcase className="h-3 w-3" /> Trader
-                          </Badge>
+                          <span className="st warn whitespace-nowrap">
+                            <Briefcase className="mr-1 inline h-3 w-3 align-[-2px]" /> Trader
+                          </span>
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground">{u.email}</div>
-                    </TableCell>
-                    <TableCell>
+                    </td>
+                    <td>
                       <RoleBadge role={u.role} />
-                    </TableCell>
-                    <TableCell>
+                    </td>
+                    <td>
                       <UserActiveToggle
                         id={u.id}
                         active={u.active}
                         disabled={u.id === currentAdminId}
                       />
-                    </TableCell>
-                    <TableCell>
+                    </td>
+                    <td>
                       <UserOrdersButton
                         userName={u.name ?? u.email}
                         orders={u.orders.map((o) => ({
@@ -258,8 +252,8 @@ export default async function UsersPage({ searchParams }: { searchParams: SP }) 
                           })),
                         }))}
                       />
-                    </TableCell>
-                    <TableCell>
+                    </td>
+                    <td>
                       <UserCartButton
                         userName={u.name ?? u.email}
                         items={cartItems.map((it) => ({
@@ -270,18 +264,18 @@ export default async function UsersPage({ searchParams }: { searchParams: SP }) 
                           quantity: it.quantity,
                         }))}
                       />
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
+                    </td>
+                    <td className="text-right font-medium">
                       {itemCount === 0 ? (
                         <span className="text-muted-foreground">—</span>
                       ) : (
                         `£${cartTotal.toFixed(2)}`
                       )}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
+                    </td>
+                    <td className="text-sm text-muted-foreground">
                       {u.createdAt.toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-right">
+                    </td>
+                    <td className="text-right">
                       {u.phone ? (
                         <Button asChild size="sm" variant="outline">
                           <Link href={`tel:${u.phone}`}>
@@ -292,8 +286,8 @@ export default async function UsersPage({ searchParams }: { searchParams: SP }) 
                       ) : (
                         <span className="text-xs text-muted-foreground">No phone</span>
                       )}
-                    </TableCell>
-                    <TableCell className="text-right">
+                    </td>
+                    <td className="text-right">
                       <div className="flex justify-end gap-1.5">
                         <UserPermissionsButton
                           userId={u.id}
@@ -360,32 +354,30 @@ export default async function UsersPage({ searchParams }: { searchParams: SP }) 
                           }}
                         />
                       </div>
-                    </TableCell>
-                  </TableRow>
+                    </td>
+                  </tr>
                 );
               })}
-            </TableBody>
-          </Table>
+            </tbody>
+          </table>
           <Pagination
             total={total}
             pageSize={pageSize}
             currentPage={page}
-            className="px-3 pb-3"
+            className="border-t border-line px-3 py-2"
           />
-        </Card>
+        </div>
       )}
     </div>
   );
 }
 
+// Role → reference .st pill (users.html): admins red, staff/managers blue
+// info, customers grey muted.
 function RoleBadge({ role }: { role: "USER" | "STAFF" | "MANAGER" | "ADMIN" }) {
-  const cls =
-    role === "ADMIN"
-      ? "bg-rose-500/15 text-rose-300 ring-1 ring-inset ring-rose-500/30 hover:bg-rose-500/15"
-      : role === "MANAGER"
-        ? "bg-indigo-500/15 text-indigo-300 ring-1 ring-inset ring-indigo-500/30 hover:bg-indigo-500/15"
-        : role === "STAFF"
-          ? "bg-blue-500/15 text-blue-300 ring-1 ring-inset ring-blue-500/30 hover:bg-blue-500/15"
-          : "bg-muted text-muted-foreground";
-  return <Badge className={cls}>{role}</Badge>;
+  const variant =
+    role === "ADMIN" ? "bad"
+    : role === "MANAGER" || role === "STAFF" ? "info"
+    : "muted";
+  return <span className={`st ${variant}`}>{role}</span>;
 }

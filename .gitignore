@@ -15,3 +15,4 @@ public/uploads/*
 !public/uploads/.gitkeep
 wimbledon-motorbikes*.html
 .vercel
+engine-aid-hub-main/

@@ -2,12 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Minus, Plus, Check, ShoppingCart, Zap } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
 import { useCart, type CartItem } from "@/lib/cart-store";
 
+// Reference PDP purchase controls (.qty stepper + red "Add to basket").
+// The props contract is unchanged so every existing usage keeps compiling;
+// only the rendered markup moved to the theme.css classes. The parent is
+// expected to lay these controls out (the PDP wraps them in .pdp-actions,
+// a flex row), so this renders a fragment of flex items rather than its
+// own wrapper.
 export function AddToCartButton({
   product,
 }: {
@@ -20,9 +24,13 @@ export function AddToCartButton({
 
   if (product.stock <= 0) {
     return (
-      <Button disabled className="w-full" size="lg">
+      <button
+        type="button"
+        disabled
+        className="btn btn-ghost cursor-not-allowed opacity-60"
+      >
         Out of stock
-      </Button>
+      </button>
     );
   }
 
@@ -39,49 +47,44 @@ export function AddToCartButton({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {/* Quantity stepper */}
-      <div className="inline-flex h-10 items-center rounded-md border border-border bg-card">
+    <>
+      {/* Quantity stepper — reference .qty (button / input / button) */}
+      <div className="qty bg-white">
         <button
           type="button"
           onClick={() => setQty((q) => Math.max(1, q - 1))}
           disabled={qty <= 1}
-          className="flex h-full w-10 items-center justify-center text-muted-foreground transition hover:text-foreground disabled:opacity-40"
           aria-label="Decrease quantity"
+          className="disabled:cursor-default disabled:opacity-40"
         >
-          <Minus className="h-3.5 w-3.5" />
+          −
         </button>
-        <span className="min-w-[2rem] text-center text-sm font-semibold tabular-nums">
-          {qty}
-        </span>
+        <input
+          value={qty}
+          readOnly
+          aria-label="Quantity"
+          className="text-sm font-semibold tabular-nums"
+        />
         <button
           type="button"
           onClick={() => setQty((q) => Math.min(product.stock, q + 1))}
           disabled={qty >= product.stock}
-          className="flex h-full w-10 items-center justify-center text-muted-foreground transition hover:text-foreground disabled:opacity-40"
           aria-label="Increase quantity"
+          className="disabled:cursor-default disabled:opacity-40"
         >
-          <Plus className="h-3.5 w-3.5" />
+          +
         </button>
       </div>
 
-      {/* Add to cart */}
-      <Button
-        type="button"
-        variant="outline"
-        size="lg"
-        onClick={handleAdd}
-        className="flex-1 min-w-[10rem]"
-      >
-        {done ? <Check className="h-4 w-4" /> : <ShoppingCart className="h-4 w-4" />}
-        {done ? "Added" : "Add to cart"}
-      </Button>
+      {/* Add to basket */}
+      <button type="button" className="btn btn-red" onClick={handleAdd}>
+        {done ? "✓ Added" : "Add to basket"}
+      </button>
 
-      {/* Buy now */}
-      <Button type="button" size="lg" onClick={handleBuyNow}>
-        <Zap className="h-4 w-4" />
+      {/* Buy now — adds the chosen quantity then heads straight to the cart */}
+      <button type="button" className="btn btn-dark" onClick={handleBuyNow}>
         Buy now
-      </Button>
-    </div>
+      </button>
+    </>
   );
 }

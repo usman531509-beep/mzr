@@ -7,7 +7,14 @@ import { auth } from "@/auth";
 import { logActivity } from "@/lib/activity-log";
 import { NAV_CACHE_TAG } from "@/lib/nav-cache";
 
-const schema = z.object({ name: z.string().min(1), logoUrl: z.string().url().optional().nullable() });
+// Absolute URL (prod storage) or root-relative /uploads/… (dev fallback).
+const logoUrlField = z
+  .string()
+  .refine((v) => /^(https?:\/\/|\/)/.test(v), "Must be a URL or path")
+  .optional()
+  .nullable();
+
+const schema = z.object({ name: z.string().min(1), logoUrl: logoUrlField });
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);

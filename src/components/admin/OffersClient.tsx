@@ -11,9 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
@@ -89,43 +86,43 @@ export function OffersClient({ rows }: { rows: Row[] }) {
             <>{activeCount} active offer{activeCount === 1 ? "" : "s"} showing in the top bar.</>
           )}
         </p>
-        <Button onClick={() => setCreating(true)}>
+        <button type="button" className="btn-red !px-3.5 !py-2 !text-[11px]" onClick={() => setCreating(true)}>
           <Plus className="h-3.5 w-3.5" /> New offer
-        </Button>
+        </button>
       </div>
 
-      <div className="rounded-md border border-border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[60px]">Icon</TableHead>
-              <TableHead>Text</TableHead>
-              <TableHead className="w-[100px] text-center">Position</TableHead>
-              <TableHead className="w-[160px]">Status</TableHead>
-              <TableHead className="w-[100px] text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+      <div className="table-wrap">
+        <table className="t">
+          <thead>
+            <tr>
+              <th className="w-[60px]">Icon</th>
+              <th>Text</th>
+              <th className="w-[100px] !text-center">Position</th>
+              <th className="w-[160px]">Status</th>
+              <th className="w-[100px] !text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
             {rows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="p-10 text-center text-sm text-muted-foreground">
+              <tr>
+                <td colSpan={5} className="!py-10 !text-center text-muted-foreground">
                   <Megaphone className="mx-auto mb-2 h-6 w-6" />
                   No offers yet — click &ldquo;New offer&rdquo; to add one.
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ) : rows.map((o) => (
-              <TableRow key={o.id} className="align-top">
-                <TableCell className="text-center text-lg">
+              <tr key={o.id} className="align-top">
+                <td className="!text-center text-lg">
                   {o.icon ?? <span className="text-muted-foreground">—</span>}
-                </TableCell>
-                <TableCell>
-                  <div className="text-sm font-medium">{o.text}</div>
-                </TableCell>
-                <TableCell className="text-center text-sm tabular-nums">{o.position}</TableCell>
-                <TableCell>
+                </td>
+                <td>
+                  <div className="font-semibold">{o.text}</div>
+                </td>
+                <td className="!text-center tabular-nums">{o.position}</td>
+                <td>
                   <OfferActiveToggle id={o.id} active={o.active} />
-                </TableCell>
-                <TableCell className="text-right">
+                </td>
+                <td className="!text-right">
                   <div className="flex justify-end gap-1">
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditing(o)}>
                       <Pencil className="h-3.5 w-3.5" />
@@ -138,11 +135,11 @@ export function OffersClient({ rows }: { rows: Row[] }) {
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
 
       <OfferDialog
@@ -184,7 +181,7 @@ function OfferActiveToggle({ id, active }: { id: string; active: boolean }) {
   return (
     <div className="flex items-center gap-2">
       <Switch checked={optimistic} onCheckedChange={toggle} disabled={busy} />
-      <span className={`text-xs ${optimistic ? "text-emerald-400" : "text-muted-foreground"}`}>
+      <span className={`st ${optimistic ? "ok" : "muted"}`}>
         {optimistic ? "Active" : "Hidden"}
       </span>
     </div>

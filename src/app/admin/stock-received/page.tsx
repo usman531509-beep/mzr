@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent } from "@/components/ui/card";
 import { StatCard } from "@/components/admin/StatCard";
 import { StockReceivedClient } from "@/components/admin/StockReceivedClient";
 import { Pagination } from "@/components/Pagination";
@@ -117,14 +116,17 @@ export default async function StockReceivedPage({ searchParams }: { searchParams
   }));
 
   return (
-    <div className="space-y-4 p-4 lg:p-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Stock Received</h1>
-        <p className="text-sm text-muted-foreground">
-          Manual stock receipts independent of purchase orders. Each batch
-          locks in its own cost — older stock is sold first (FIFO), so profit
-          reflects the actual cost of each unit sold.
-        </p>
+    <div className="space-y-4">
+      <div className="adm-top !mb-0">
+        <div>
+          <div className="crumb">Admin</div>
+          <h1 className="font-head text-3xl font-normal uppercase leading-none tracking-wide">Stock Received (FIFO)</h1>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            Manual stock receipts independent of purchase orders. Each batch
+            locks in its own cost — older stock is sold first (FIFO), so profit
+            reflects the actual cost of each unit sold.
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -155,12 +157,10 @@ export default async function StockReceivedPage({ searchParams }: { searchParams
         />
       </div>
 
-      <Card>
-        <CardContent className="p-4 lg:p-5">
-          <StockReceivedClient rows={rows} products={productOptions} />
-          <Pagination total={total} pageSize={pageSize} currentPage={page} />
-        </CardContent>
-      </Card>
+      <div className="panel !mb-0">
+        <StockReceivedClient rows={rows} products={productOptions} />
+        <Pagination total={total} pageSize={pageSize} currentPage={page} />
+      </div>
     </div>
   );
 }

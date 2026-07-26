@@ -7,15 +7,11 @@ import { Pencil, Plus, Search, Trash2, X } from "lucide-react";
 
 import { confirmAction } from "@/lib/confirm-store";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Table, TableHeader, TableHead, TableRow, TableBody, TableCell,
-} from "@/components/ui/table";
 
 type Row = { id: string; name: string; slug: string; count: number };
 
@@ -87,16 +83,19 @@ export function ProductBrandsClient({ initial }: { initial: Row[] }) {
 
   return (
     <div className="space-y-4">
-      <header className="flex items-end justify-between gap-3">
+      <div className="adm-top !mb-0">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Product Brands</h1>
-          <p className="text-sm text-muted-foreground">
+          <div className="crumb">Admin</div>
+          <h1 className="font-head text-3xl font-normal uppercase leading-none tracking-wide">Product Brands</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Manufacturer of the part itself (Brembo, NGK, EBC, K&amp;N). Different from the bike-make brand it fits.
           </p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button><Plus className="h-3.5 w-3.5" /> New product brand</Button>
+            <button type="button" className="btn-red !px-4 !py-2.5">
+              <Plus className="h-3.5 w-3.5" /> New product brand
+            </button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>New product brand</DialogTitle></DialogHeader>
@@ -112,65 +111,65 @@ export function ProductBrandsClient({ initial }: { initial: Row[] }) {
             </form>
           </DialogContent>
         </Dialog>
-      </header>
-
-      <div className="relative max-w-sm">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search product brands…"
-          className="h-9 pl-8 pr-8"
-        />
-        {q && (
-          <button type="button" onClick={() => setQ("")}
-            className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-            aria-label="Clear search"
-          ><X className="h-3 w-3" /></button>
-        )}
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Slug</TableHead>
-                <TableHead className="text-right">Products</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={4} className="text-center text-sm text-muted-foreground">
-                  {initial.length === 0 ? "No product brands yet." : "No product brands match your search."}
-                </TableCell></TableRow>
-              ) : filtered.map((b) => (
-                <TableRow key={b.id}>
-                  <TableCell className="font-medium">{b.name}</TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">{b.slug}</TableCell>
-                  <TableCell className="text-right">{b.count}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(b)}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost" size="icon"
-                        onClick={() => del(b.id, b.name)}
-                        className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <div className="toolbar !mb-0">
+        <div className="relative min-w-[220px] max-w-sm flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search product brands…"
+            className="h-9 !pl-8 !pr-8"
+          />
+          {q && (
+            <button type="button" onClick={() => setQ("")}
+              className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-label="Clear search"
+            ><X className="h-3 w-3" /></button>
+          )}
+        </div>
+      </div>
+
+      <div className="table-wrap">
+        <table className="t">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Slug</th>
+              <th className="!text-right">Products</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr><td colSpan={4} className="!py-10 !text-center text-muted-foreground">
+                {initial.length === 0 ? "No product brands yet." : "No product brands match your search."}
+              </td></tr>
+            ) : filtered.map((b) => (
+              <tr key={b.id}>
+                <td className="font-semibold">{b.name}</td>
+                <td><span className="kbd">{b.slug}</span></td>
+                <td className="!text-right">{b.count}</td>
+                <td className="!text-right">
+                  <div className="flex justify-end gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(b)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost" size="icon"
+                      onClick={() => del(b.id, b.name)}
+                      className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <Dialog open={!!editing} onOpenChange={(v) => { if (!v) setEditing(null); }}>
         <DialogContent>

@@ -11,13 +11,8 @@ import {
 import { confirmAction } from "@/lib/confirm-store";
 import { Pagination } from "@/components/Pagination";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import {
-  Table, TableHeader, TableHead, TableRow, TableBody, TableCell,
-} from "@/components/ui/table";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
@@ -260,93 +255,81 @@ export function ProductsPageClient({
 
   return (
     <div className="space-y-4">
-      <header className="flex flex-wrap items-end justify-between gap-3">
+      <div className="adm-top !mb-0">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Products</h1>
-          <p className="text-sm text-muted-foreground">
+          <div className="crumb">Admin</div>
+          <h1 className="font-head text-3xl font-normal uppercase leading-none tracking-wide">Products</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             {isDeletedView
               ? `${pagination.total} deleted part${pagination.total === 1 ? "" : "s"}. Restoring puts them back in the catalogue.`
               : `${products.length} parts in catalogue.`}
           </p>
         </div>
         {!isDeletedView && (
-          <Button onClick={() => { setEditing(undefined); setOpen(true); }}>
-            <Plus className="h-3.5 w-3.5" /> New part
-          </Button>
-        )}
-      </header>
-
-      <Card>
-        <CardContent className="p-4">
-          {/* Three-state tablist:
-                Active / Inactive → live catalogue, client-side split
-                Deleted          → soft-delete bin, server-side fetched
-              Clicking Active or Inactive while in the deleted view triggers a
-              real navigation back to the live page. */}
-          <div
-            role="tablist"
-            aria-label="Product status"
-            className="mb-3 inline-flex rounded-md border border-border bg-background p-0.5"
+          <button
+            type="button"
+            className="btn-red !px-4 !py-2.5"
+            onClick={() => { setEditing(undefined); setOpen(true); }}
           >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={!isDeletedView && activeView === "active"}
-              onClick={() => { if (isDeletedView) switchView("live"); setActiveView("active"); }}
-              className={`inline-flex h-8 items-center gap-2 rounded-[5px] px-3 text-xs font-medium transition ${
-                !isDeletedView && activeView === "active"
-                  ? "bg-primary text-primary-foreground shadow"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Active
-              <span className={`rounded px-1.5 py-0.5 text-[10px] ${
-                !isDeletedView && activeView === "active" ? "bg-primary-foreground/15" : "bg-muted text-muted-foreground"
-              }`}>{isDeletedView ? "—" : activeCount}</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={!isDeletedView && activeView === "inactive"}
-              onClick={() => { if (isDeletedView) switchView("live"); setActiveView("inactive"); }}
-              className={`inline-flex h-8 items-center gap-2 rounded-[5px] px-3 text-xs font-medium transition ${
-                !isDeletedView && activeView === "inactive"
-                  ? "bg-primary text-primary-foreground shadow"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Inactive
-              <span className={`rounded px-1.5 py-0.5 text-[10px] ${
-                !isDeletedView && activeView === "inactive" ? "bg-primary-foreground/15" : "bg-muted text-muted-foreground"
-              }`}>{isDeletedView ? "—" : inactiveCount}</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={isDeletedView}
-              onClick={() => switchView("deleted")}
-              className={`inline-flex h-8 items-center gap-2 rounded-[5px] px-3 text-xs font-medium transition ${
-                isDeletedView
-                  ? "bg-destructive text-destructive-foreground shadow"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Trash2 className="h-3 w-3" />
-              Deleted
-              <span className={`rounded px-1.5 py-0.5 text-[10px] ${
-                isDeletedView ? "bg-destructive-foreground/15" : "bg-muted text-muted-foreground"
-              }`}>{deletedCount}</span>
-            </button>
-          </div>
+            <Plus className="h-3.5 w-3.5" /> New part
+          </button>
+        )}
+      </div>
 
-          <div className="mb-3 flex flex-wrap items-center gap-2">
+      {/* Three-state tablist:
+            Active / Inactive → live catalogue, client-side split
+            Deleted          → soft-delete bin, server-side fetched
+          Clicking Active or Inactive while in the deleted view triggers a
+          real navigation back to the live page. */}
+      <div role="tablist" aria-label="Product status" className="chips !mb-0">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={!isDeletedView && activeView === "active"}
+          onClick={() => { if (isDeletedView) switchView("live"); setActiveView("active"); }}
+          className={`chip inline-flex items-center gap-2 ${!isDeletedView && activeView === "active" ? "active" : ""}`}
+        >
+          Active
+          <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+            !isDeletedView && activeView === "active" ? "bg-white/25" : "bg-soft text-muted-foreground"
+          }`}>{isDeletedView ? "—" : activeCount}</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={!isDeletedView && activeView === "inactive"}
+          onClick={() => { if (isDeletedView) switchView("live"); setActiveView("inactive"); }}
+          className={`chip inline-flex items-center gap-2 ${!isDeletedView && activeView === "inactive" ? "active" : ""}`}
+        >
+          Inactive
+          <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+            !isDeletedView && activeView === "inactive" ? "bg-white/25" : "bg-soft text-muted-foreground"
+          }`}>{isDeletedView ? "—" : inactiveCount}</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={isDeletedView}
+          onClick={() => switchView("deleted")}
+          className={`chip inline-flex items-center gap-2 ${isDeletedView ? "active" : ""}`}
+        >
+          <Trash2 className="h-3 w-3" />
+          Deleted
+          <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+            isDeletedView ? "bg-white/25" : "bg-soft text-muted-foreground"
+          }`}>{deletedCount}</span>
+        </button>
+      </div>
+
+      <div>
+          <div className="toolbar !mb-3">
             <div className="relative min-w-[240px] flex-1 max-w-md">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Name, brand, category, SKU, OEM…"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                className="pl-8 pr-8"
+                className="!pl-8 !pr-8"
               />
               {q && (
                 <button
@@ -422,24 +405,24 @@ export function ProductsPageClient({
             </div>
           </div>
 
-          <div className="rounded-md border border-border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[40%]">Part</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Brand</TableHead>
-                  <TableHead>Fitments</TableHead>
-                  <TableHead className="text-right">Price</TableHead>
-                  <TableHead className="text-right">Stock</TableHead>
-                  <TableHead className="text-center">{isDeletedView ? "Status" : "Active"}</TableHead>
-                  <TableHead></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+          <div className="table-wrap">
+            <table className="t">
+              <thead>
+                <tr>
+                  <th className="w-[40%]">Part</th>
+                  <th>Category</th>
+                  <th>Brand</th>
+                  <th>Fitments</th>
+                  <th className="!text-right">Price</th>
+                  <th className="!text-right">Stock</th>
+                  <th className="!text-center">{isDeletedView ? "Status" : "Active"}</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
                 {filtered.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center text-sm text-muted-foreground">
+                  <tr>
+                    <td colSpan={8} className="!py-10 !text-center text-muted-foreground">
                       {anyFilter
                         ? "No parts match these filters."
                         : isDeletedView
@@ -447,44 +430,44 @@ export function ProductsPageClient({
                           : activeView === "inactive"
                             ? "No inactive parts. Deactivating a part will move it here."
                             : "No active parts yet."}
-                    </TableCell>
-                  </TableRow>
+                    </td>
+                  </tr>
                 ) : filtered.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell>
+                  <tr key={p.id}>
+                    <td>
                       <div className="flex items-center gap-2.5">
-                        <div className="h-9 w-9 shrink-0 overflow-hidden rounded border border-border bg-muted">
+                        <div className="h-9 w-9 shrink-0 overflow-hidden rounded border border-line bg-white">
                           {p.image && (
                             /* eslint-disable-next-line @next/next/no-img-element */
-                            <img src={p.image} alt="" className="h-full w-full object-cover" />
+                            <img src={p.image} alt="" className="h-full w-full object-contain" />
                           )}
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <span className="truncate font-medium">{p.name}</span>
-                            {p.featured && <Badge variant="warning" className="text-[9px]">Featured</Badge>}
-                            {p.demanding && <Badge className="bg-red/15 text-red ring-1 ring-inset ring-red/30 text-[9px] hover:bg-red/15">In demand</Badge>}
+                            <span className="truncate font-semibold">{p.name}</span>
+                            {p.featured && <span className="st warn">Featured</span>}
+                            {p.demanding && <span className="st bad">In demand</span>}
                             {/* The active/inactive view toggle already implies
                                 this for the inactive tab — only show the badge
                                 if an inactive row somehow surfaces on the
                                 active tab (shouldn't, but defensive). */}
                             {!p.active && activeView !== "inactive" && (
-                              <Badge variant="secondary" className="text-[9px]">Inactive</Badge>
+                              <span className="st muted">Inactive</span>
                             )}
                           </div>
                           {(p.sku || p.oemNumber) && (
                             <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
-                              {p.sku && <span>SKU: <span className="font-mono">{p.sku}</span></span>}
-                              {p.oemNumber && <span>OEM: <span className="font-mono">{p.oemNumber}</span></span>}
+                              {p.sku && <span>SKU: <span className="kbd">{p.sku}</span></span>}
+                              {p.oemNumber && <span>OEM: <span className="kbd">{p.oemNumber}</span></span>}
                             </div>
                           )}
                         </div>
                       </div>
-                    </TableCell>
-                    <TableCell className="text-sm">
+                    </td>
+                    <td>
                       {p.category ?? (
                         <span
-                          className="inline-flex items-center gap-1 rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-300"
+                          className="st warn"
                           title={
                             p.savedCategoryName
                               ? `Category "${p.savedCategoryName}" was deleted. Restoring it rehomes this product; reassigning manually clears the link.`
@@ -493,18 +476,18 @@ export function ProductsPageClient({
                         >
                           Uncategorised
                           {p.savedCategoryName && (
-                            <span className="text-muted-foreground/80"> · was {p.savedCategoryName}</span>
+                            <span className="normal-case"> · was {p.savedCategoryName}</span>
                           )}
                         </span>
                       )}
-                    </TableCell>
-                    <TableCell className="text-sm">{p.brand}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{p.compatibilities.length}</TableCell>
-                    <TableCell className="text-right font-medium">{fmtMoney(p.price)}</TableCell>
-                    <TableCell className={`text-right ${p.stock === 0 ? "text-destructive" : ""}`}>{p.stock}</TableCell>
-                    <TableCell className="text-center">
+                    </td>
+                    <td>{p.brand}</td>
+                    <td className="text-muted-foreground">{p.compatibilities.length}</td>
+                    <td className="!text-right font-semibold">{fmtMoney(p.price)}</td>
+                    <td className={`!text-right ${p.stock === 0 ? "font-semibold text-red" : ""}`}>{p.stock}</td>
+                    <td className="!text-center">
                       {isDeletedView ? (
-                        <Badge variant="secondary" className="text-[10px]">Deleted</Badge>
+                        <span className="st muted">Deleted</span>
                       ) : (
                         <Switch
                           checked={p.active}
@@ -513,8 +496,8 @@ export function ProductsPageClient({
                           aria-label={p.active ? "Deactivate product" : "Activate product"}
                         />
                       )}
-                    </TableCell>
-                    <TableCell className="text-right">
+                    </td>
+                    <td className="!text-right">
                       {isDeletedView ? (
                         <div className="flex justify-end gap-1.5">
                           <Button
@@ -558,19 +541,18 @@ export function ProductsPageClient({
                           </DropdownMenuContent>
                         </DropdownMenu>
                       )}
-                    </TableCell>
-                  </TableRow>
+                    </td>
+                  </tr>
                 ))}
-              </TableBody>
-            </Table>
+              </tbody>
+            </table>
           </div>
           <Pagination
             total={pagination.total}
             pageSize={pagination.pageSize}
             currentPage={pagination.page}
           />
-        </CardContent>
-      </Card>
+      </div>
 
       <PartDialog
         open={open}

@@ -81,7 +81,7 @@ export function FinderSheet({
   return (
     <Sheet open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <SheetContent side="bottom" className="rounded-t-2xl p-0 sm:max-w-none">
-        <div className="border-b border-border bg-[linear-gradient(135deg,rgba(232,21,27,0.18),rgba(232,21,27,0.04))] px-5 py-4">
+        <div className="border-b border-line bg-[linear-gradient(135deg,rgba(227,6,19,0.10),rgba(227,6,19,0.02))] px-5 py-4">
           <SheetHeader>
             <SheetTitle className="font-head text-lg font-extrabold uppercase tracking-wide">
               Find your part
@@ -109,7 +109,7 @@ export function FinderSheet({
                 value={brandSlug || ANY}
                 onValueChange={(v) => setBrandSlug(v === ANY ? "" : v)}
               >
-                <SelectTrigger><SelectValue placeholder="Select brand" /></SelectTrigger>
+                <SelectTrigger className="bg-white focus:border-red"><SelectValue placeholder="Select brand" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={ANY}>All brands</SelectItem>
                   {brands.map((b) => <SelectItem key={b.id} value={b.slug}>{b.name}</SelectItem>)}
@@ -124,7 +124,7 @@ export function FinderSheet({
                 onValueChange={(v) => setModelId(v === ANY ? "" : v)}
                 disabled={!brandSlug}
               >
-                <SelectTrigger>
+                <SelectTrigger className="bg-white focus:border-red">
                   <SelectValue placeholder={brandSlug ? "Select model" : "Pick a brand first"} />
                 </SelectTrigger>
                 <SelectContent>
@@ -143,7 +143,7 @@ export function FinderSheet({
                 onValueChange={(v) => setYear(v === ANY ? "" : v)}
                 disabled={!selectedModel}
               >
-                <SelectTrigger>
+                <SelectTrigger className="bg-white focus:border-red">
                   <SelectValue placeholder={selectedModel ? "Any year" : "Pick a model first"} />
                 </SelectTrigger>
                 <SelectContent>

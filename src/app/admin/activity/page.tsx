@@ -1,6 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Activity as ActivityIcon } from "lucide-react";
 import { AdminFilterBar } from "@/components/admin/AdminFilterBar";
 import { Pagination } from "@/components/Pagination";
@@ -13,9 +11,16 @@ type SP = Promise<Record<string, string | string[] | undefined>>;
 
 
 const ROLE_DOT: Record<string, string> = {
-  ADMIN:   "bg-rose-400 ring-rose-400/30",
-  MANAGER: "bg-indigo-400 ring-indigo-400/30",
-  STAFF:   "bg-blue-400 ring-blue-400/30",
+  ADMIN:   "bg-red ring-red/15",
+  MANAGER: "bg-indigo-500 ring-indigo-500/15",
+  STAFF:   "bg-blue-500 ring-blue-500/15",
+};
+
+// Role → reference .st pill variant (matches the users table).
+const ROLE_ST: Record<string, string> = {
+  ADMIN:   "bad",
+  MANAGER: "info",
+  STAFF:   "info",
 };
 
 const FIELD_LABEL: Record<string, string> = {
@@ -93,9 +98,9 @@ function ChangeSummary({ meta }: { meta: unknown }) {
           <span key={field}>
             {i > 0 && <span className="px-1">·</span>}
             <span className="opacity-70">{label}: </span>
-            <span className="font-mono text-rose-300/80">{shortValue(c?.from)}</span>
+            <span className="font-mono text-rose-700/80">{shortValue(c?.from)}</span>
             <span className="px-1 opacity-50">→</span>
-            <span className="font-mono text-emerald-300">{shortValue(c?.to)}</span>
+            <span className="font-mono text-emerald-700">{shortValue(c?.to)}</span>
           </span>
         );
       })}
@@ -153,12 +158,15 @@ export default async function ActivityPage({ searchParams }: { searchParams: SP 
   ]);
 
   return (
-    <div className="space-y-4 p-4 lg:p-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Activity log</h1>
-        <p className="text-sm text-muted-foreground">
-          Back-office activity from admins, managers and staff.
-        </p>
+    <div className="space-y-4">
+      <div className="adm-top !mb-0">
+        <div>
+          <div className="crumb">Admin · Audit</div>
+          <h1 className="font-bold">Activity log</h1>
+          <p className="text-sm text-muted-foreground">
+            Back-office activity from admins, managers and staff.
+          </p>
+        </div>
       </div>
 
       <AdminFilterBar
@@ -180,22 +188,19 @@ export default async function ActivityPage({ searchParams }: { searchParams: SP 
       />
 
       {logs.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center gap-2 p-12 text-center text-sm text-muted-foreground">
-            <ActivityIcon className="h-6 w-6" />
-            <p>No activity recorded for these filters yet.</p>
-          </CardContent>
-        </Card>
+        <div className="panel !mb-0 flex flex-col items-center justify-center gap-2 p-12 text-center text-sm text-muted-foreground">
+          <ActivityIcon className="h-6 w-6" />
+          <p>No activity recorded for these filters yet.</p>
+        </div>
       ) : (
-        <Card>
-          <CardContent className="p-0">
+        <div className="table-wrap">
             <ol className="relative">
               {/* Vertical guide line */}
               <div className="absolute left-[19px] top-0 bottom-0 w-px bg-border" />
               {logs.map((log) => (
                 <li
                   key={log.id}
-                  className="relative flex items-start gap-3 border-b border-border/60 px-4 py-2.5 text-sm last:border-b-0 hover:bg-accent/40"
+                  className="relative flex items-start gap-3 border-b border-line px-4 py-2.5 text-sm last:border-b-0 hover:bg-[#fafbfc]"
                 >
                   {/* Role-coloured dot, sits on the vertical line; nudge down so
                       it aligns with the first text line when content wraps. */}
@@ -216,20 +221,14 @@ export default async function ActivityPage({ searchParams }: { searchParams: SP 
 
                   {/* Activity description; wraps to multiple lines if many fields changed. */}
                   <span className="min-w-0 flex-1">
-                    <Badge
-                      variant="secondary"
-                      className="mr-1.5 align-middle text-[10px] uppercase tracking-wider"
-                    >
+                    <span className={`st ${ROLE_ST[log.userRole] ?? "muted"} mr-1.5 align-middle`}>
                       {log.userRole}
-                    </Badge>
+                    </span>
                     <span className="font-medium">{log.userName}</span>
                     <span className="text-muted-foreground"> {ACTION_LABEL[log.action] ?? log.action} </span>
-                    <Badge
-                      variant="outline"
-                      className="mx-1 align-middle text-[10px] uppercase tracking-wider"
-                    >
+                    <span className="st muted mx-1 align-middle">
                       {MODULE_LOG_LABEL[log.moduleKey] ?? log.moduleKey}
-                    </Badge>
+                    </span>
                     {log.target && <span className="font-medium">{log.target}</span>}
                     <ChangeSummary meta={log.meta} />
                   </span>
@@ -240,10 +239,9 @@ export default async function ActivityPage({ searchParams }: { searchParams: SP 
               total={total}
               pageSize={pageSize}
               currentPage={page}
-              className="px-4 pb-2"
+              className="border-t border-line px-4 py-2"
             />
-          </CardContent>
-        </Card>
+        </div>
       )}
     </div>
   );

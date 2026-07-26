@@ -13,7 +13,12 @@ import {
 const schema = z.object({
   name: z.string().min(1).optional(),
   description: z.string().nullable().optional(),
-  imageUrl: z.string().url().nullable().optional(),
+  // Absolute URL (prod storage) or root-relative /uploads/… (dev fallback).
+  imageUrl: z
+    .string()
+    .refine((v) => /^(https?:\/\/|\/)/.test(v), "Must be a URL or path")
+    .nullable()
+    .optional(),
   parentId: z.string().nullable().optional(),
   sortOrder: z.number().int().optional(),
 });

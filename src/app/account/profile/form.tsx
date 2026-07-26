@@ -4,12 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-
 type Initial = {
   name: string | null; email: string;
   phone: string | null;
@@ -78,118 +72,116 @@ export function ProfileForm({ initial }: { initial: Initial }) {
   };
 
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold tracking-tight">Profile</h1>
-        <p className="text-sm text-muted-foreground">Manage your details and password.</p>
+    <div>
+      <header style={{ marginBottom: 22 }}>
+        <h1 className="font-head text-3xl uppercase leading-none tracking-[0.02em]" style={{ margin: 0 }}>
+          Profile
+        </h1>
+        <p className="muted" style={{ margin: "6px 0 0", fontSize: 14 }}>
+          Manage your details and password.
+        </p>
       </header>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Personal details</CardTitle>
-          <CardDescription>Name, contact, default shipping address.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={saveDetails} className="space-y-5">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>Name</Label>
-                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Email</Label>
-                <Input value={initial.email} disabled />
-              </div>
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label>Phone</Label>
-                <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-              </div>
+      <div className="panel">
+        <h3>Personal details</h3>
+        <p className="muted" style={{ margin: "-8px 0 14px", fontSize: 13 }}>
+          Name, contact, default shipping address.
+        </p>
+        <form onSubmit={saveDetails}>
+          <div className="grid g-2">
+            <div className="field">
+              <label>Name</label>
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
             </div>
+            <div className="field">
+              <label>Email</label>
+              <input value={initial.email} disabled style={{ background: "var(--soft)", color: "var(--muted)" }} />
+            </div>
+          </div>
+          <div className="field">
+            <label>Phone</label>
+            <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          </div>
 
-            {/* Default shipping address — full UK postal layout. Used at
-                checkout when the customer hasn't picked a saved address. */}
-            <div className="space-y-3">
-              <div className="space-y-0.5">
-                <h3 className="text-sm font-semibold">Default shipping address</h3>
-                <p className="text-[12px] text-muted-foreground">
-                  Pre-fills at checkout. You can still pick a different one from your saved addresses below.
-                </p>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label>Address line 1</Label>
-                  <Input
-                    value={form.address}
-                    onChange={(e) => setForm({ ...form, address: e.target.value })}
-                    placeholder="House number / street"
-                  />
-                </div>
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label>
-                    Address line 2 <span className="text-muted-foreground">(optional)</span>
-                  </Label>
-                  <Input
-                    value={form.addressLine2}
-                    onChange={(e) => setForm({ ...form, addressLine2: e.target.value })}
-                    placeholder="Apartment, suite, etc."
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>City / Town</Label>
-                  <Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>
-                    County <span className="text-muted-foreground">(optional)</span>
-                  </Label>
-                  <Input value={form.county} onChange={(e) => setForm({ ...form, county: e.target.value })} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Postcode</Label>
-                  <Input
-                    value={form.postcode}
-                    onChange={(e) => setForm({ ...form, postcode: e.target.value.toUpperCase() })}
-                    placeholder="e.g. SW1A 1AA"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Country</Label>
-                  <Input value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
-                </div>
-              </div>
-            </div>
+          <div className="hr" />
 
-            <div className="flex justify-end">
-              <Button type="submit" disabled={busy}>Save changes</Button>
+          {/* Default shipping address — full UK postal layout. Used at
+              checkout when the customer hasn't picked a saved address. */}
+          <h4 style={{ margin: "0 0 4px", fontSize: 14 }}>Default shipping address</h4>
+          <p className="muted" style={{ margin: "0 0 14px", fontSize: 13 }}>
+            Pre-fills at checkout. You can still pick a different one from your saved addresses below.
+          </p>
+          <div className="field">
+            <label>Address line 1</label>
+            <input
+              value={form.address}
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              placeholder="House number / street"
+            />
+          </div>
+          <div className="field">
+            <label>Address line 2 <span className="muted">(optional)</span></label>
+            <input
+              value={form.addressLine2}
+              onChange={(e) => setForm({ ...form, addressLine2: e.target.value })}
+              placeholder="Apartment, suite, etc."
+            />
+          </div>
+          <div className="grid g-2">
+            <div className="field">
+              <label>City / Town</label>
+              <input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
             </div>
-          </form>
-        </CardContent>
-      </Card>
+            <div className="field">
+              <label>County <span className="muted">(optional)</span></label>
+              <input value={form.county} onChange={(e) => setForm({ ...form, county: e.target.value })} />
+            </div>
+            <div className="field">
+              <label>Postcode</label>
+              <input
+                value={form.postcode}
+                onChange={(e) => setForm({ ...form, postcode: e.target.value.toUpperCase() })}
+                placeholder="e.g. SW1A 1AA"
+              />
+            </div>
+            <div className="field">
+              <label>Country</label>
+              <input value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
+            </div>
+          </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Password</CardTitle>
-          <CardDescription>Use a strong password — 6 characters minimum.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={savePassword} className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>Current password</Label>
-                <Input type="password" value={pw.current} onChange={(e) => setPw({ ...pw, current: e.target.value })} required />
-              </div>
-              <div className="space-y-1.5">
-                <Label>New password</Label>
-                <Input type="password" value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} required minLength={6} />
-              </div>
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button type="submit" className="btn btn-red disabled:opacity-60" disabled={busy}>
+              Save changes
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div className="panel">
+        <h3>Password</h3>
+        <p className="muted" style={{ margin: "-8px 0 14px", fontSize: 13 }}>
+          Use a strong password — 6 characters minimum.
+        </p>
+        <form onSubmit={savePassword}>
+          <div className="grid g-2">
+            <div className="field">
+              <label>Current password</label>
+              <input type="password" value={pw.current} onChange={(e) => setPw({ ...pw, current: e.target.value })} required />
             </div>
-            <Separator />
-            <div className="flex justify-end">
-              <Button type="submit" disabled={busy} variant="outline">Update password</Button>
+            <div className="field">
+              <label>New password</label>
+              <input type="password" value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} required minLength={6} />
             </div>
-          </form>
-        </CardContent>
-      </Card>
+          </div>
+          <div className="hr" />
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button type="submit" className="btn btn-ghost disabled:opacity-60" disabled={busy}>
+              Update password
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

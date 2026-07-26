@@ -4,9 +4,6 @@ import { CheckCircle2, Clock4, ExternalLink, XCircle } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { fmtMoney } from "@/lib/format";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 
 export const dynamic = "force-dynamic";
 
@@ -49,105 +46,104 @@ export default async function SuccessPage({
   const ref = order?.orderNumber ?? (order ? `#${order.id.slice(0, 8)}…` : "");
 
   return (
-    <div className="mx-auto max-w-2xl px-[var(--gutter)] py-6 lg:py-8">
+    <div className="container" style={{ maxWidth: 720, padding: "24px 20px 64px" }}>
       <Breadcrumbs
         className="mb-6"
         items={[{ label: "Checkout", href: "/checkout" }, { label: "Order confirmed" }]}
       />
 
-      <div className="text-center">
+      <div className="panel center" style={{ padding: "48px 28px 40px" }}>
         {paid && (
           <>
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30">
-              <CheckCircle2 className="h-7 w-7" />
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#e6f7ec] text-ok ring-1 ring-inset ring-ok/25">
+              <CheckCircle2 className="h-8 w-8" />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">
+            <h1 className="font-head text-[34px] uppercase leading-none tracking-[0.02em] text-ink lg:text-[40px]">
               Payment received — thank you!
             </h1>
           </>
         )}
         {paymentPending && (
           <>
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/30">
-              <Clock4 className="h-7 w-7" />
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#fff4d6] text-gold ring-1 ring-inset ring-gold/25">
+              <Clock4 className="h-8 w-8" />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">
+            <h1 className="font-head text-[34px] uppercase leading-none tracking-[0.02em] text-ink lg:text-[40px]">
               Payment processing…
             </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="muted mt-2 text-sm">
               Stripe is finalising the transaction. This page updates automatically when it&apos;s done — or check your order in a minute.
             </p>
           </>
         )}
         {paymentFailed && (
           <>
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-rose-500/15 text-rose-300 ring-1 ring-rose-500/30">
-              <XCircle className="h-7 w-7" />
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-soft text-red ring-1 ring-inset ring-red/25">
+              <XCircle className="h-8 w-8" />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">
+            <h1 className="font-head text-[34px] uppercase leading-none tracking-[0.02em] text-ink lg:text-[40px]">
               Payment failed
             </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="muted mt-2 text-sm">
               {latestPayment?.failureMessage ?? "Stripe rejected the card. Try again with a different payment method."}
             </p>
           </>
         )}
         {order && (paid || paymentPending) && (
-          <p className="mt-2 text-sm text-muted-foreground">
-            Order <span className="font-mono text-foreground">{ref}</span> {paid ? "is on its way." : "saved — we&apos;ll start processing once payment clears."}
+          <p className="muted mt-3 text-sm">
+            Order <span className="kbd">{ref}</span>{" "}
+            {paid ? "is on its way." : "saved — we'll start processing once payment clears."}
           </p>
         )}
         {!order && (
-          <p className="mt-2 text-sm text-muted-foreground">Your order has been received.</p>
+          <p className="muted mt-3 text-sm">Your order has been received.</p>
         )}
       </div>
 
       {order && (
-        <Card className="mt-6 text-left">
-          <CardContent className="space-y-3 p-5">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Order summary
-            </h2>
-            <ul className="space-y-1.5">
-              {order.items.map((i) => (
-                <li key={i.id} className="flex justify-between gap-3 text-[13.5px]">
-                  <span>
-                    {i.name} <span className="text-muted-foreground">× {i.quantity}</span>
-                  </span>
-                  <span className="tabular-nums">{fmtMoney(Number(i.price) * i.quantity)}</span>
-                </li>
-              ))}
-            </ul>
-            <Separator />
-            <div className="flex justify-between text-base font-bold">
-              <span>Total</span>
-              <span className="tabular-nums">{fmtMoney(Number(order.total))}</span>
-            </div>
-            {latestPayment?.receiptUrl && (
-              <a
-                href={latestPayment.receiptUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 pt-2 text-xs text-primary hover:underline"
-              >
-                View Stripe receipt <ExternalLink className="h-3 w-3" />
-              </a>
-            )}
-          </CardContent>
-        </Card>
+        <div className="panel mt text-left">
+          <h2 className="mb-3 text-[12px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+            Order summary
+          </h2>
+          <ul className="space-y-1.5" style={{ listStyle: "none", margin: 0, padding: 0 }}>
+            {order.items.map((i) => (
+              <li key={i.id} className="flex justify-between gap-3 text-[13.5px]">
+                <span>
+                  {i.name} <span className="muted">× {i.quantity}</span>
+                </span>
+                <span className="tabular-nums">{fmtMoney(Number(i.price) * i.quantity)}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="hr" style={{ margin: "12px 0" }} />
+          <div className="flex justify-between text-base font-extrabold">
+            <span>Total</span>
+            <span className="tabular-nums text-red">{fmtMoney(Number(order.total))}</span>
+          </div>
+          {latestPayment?.receiptUrl && (
+            <a
+              href={latestPayment.receiptUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-red hover:underline"
+            >
+              View Stripe receipt <ExternalLink className="h-3 w-3" />
+            </a>
+          )}
+        </div>
       )}
 
       <div className="mt-8 flex flex-wrap justify-center gap-3">
-        <Button asChild>
-          <Link href="/products">Continue shopping</Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link href="/account/orders">My orders</Link>
-        </Button>
+        <Link href="/products" className="btn btn-red">
+          Continue shopping
+        </Link>
+        <Link href="/account/orders" className="btn btn-ghost">
+          My orders
+        </Link>
         {!paid && (
-          <Button asChild variant="outline">
-            <Link href="/checkout">Try again</Link>
-          </Button>
+          <Link href="/checkout" className="btn btn-ghost">
+            Try again
+          </Link>
         )}
       </div>
     </div>

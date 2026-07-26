@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 
 export type TradeRequestDetails = {
   id: string;
@@ -163,12 +162,8 @@ export function TradeRequestView({ request }: { request: TradeRequestDetails }) 
 }
 
 function StatusPill({ status }: { status: "PENDING" | "APPROVED" | "REJECTED" }) {
-  const className = status === "APPROVED"
-    ? "bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30 hover:bg-emerald-500/15"
-    : status === "REJECTED"
-      ? "bg-rose-500/15 text-rose-300 ring-1 ring-inset ring-rose-500/30 hover:bg-rose-500/15"
-      : "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30 hover:bg-amber-500/15";
-  return <Badge className={className}>{status.charAt(0) + status.slice(1).toLowerCase()}</Badge>;
+  const variant = status === "APPROVED" ? "ok" : status === "REJECTED" ? "bad" : "warn";
+  return <span className={`st ${variant}`}>{status.charAt(0) + status.slice(1).toLowerCase()}</span>;
 }
 
 function Section({
@@ -197,7 +192,7 @@ function Row({
 }) {
   return (
     <div className="flex items-start gap-3">
-      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white/10 bg-ink-700 text-muted-foreground">
+      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-line bg-soft text-muted-foreground">
         {icon}
       </span>
       <div className="min-w-0 flex-1">

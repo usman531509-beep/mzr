@@ -310,7 +310,7 @@ export function PartDialog({
               name="brandIds"
               render={({ field }) => (
                 <div className="space-y-2">
-                  <div className="rounded-md border border-border bg-background/40 p-3">
+                  <div className="rounded-md border border-line bg-white p-3">
                     {brands.length === 0 ? (
                       <p className="text-sm text-muted-foreground">No bike brands yet — add some in Admin → Bike Brands.</p>
                     ) : (

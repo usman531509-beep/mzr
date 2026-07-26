@@ -32,7 +32,7 @@ export function TrackClient({
 
   if (couriers.length === 0) {
     return (
-      <div className="rounded-md border border-dashed border-border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
+      <div className="rounded-lg border border-dashed border-line bg-soft p-6 text-center text-sm text-muted-foreground">
         No couriers are set up yet. Please check back soon.
       </div>
     );
@@ -60,11 +60,11 @@ export function TrackClient({
   };
 
   return (
-    <form onSubmit={handleTrack} className="space-y-4">
-      <div className="space-y-1.5">
-        <Label className="text-xs">Courier</Label>
+    <form onSubmit={handleTrack}>
+      <div className="field">
+        <Label>Courier</Label>
         <Select value={courierId} onValueChange={setCourierId}>
-          <SelectTrigger>
+          <SelectTrigger className="bg-white">
             <SelectValue placeholder="Select a courier" />
           </SelectTrigger>
           <SelectContent>
@@ -75,26 +75,31 @@ export function TrackClient({
         </Select>
       </div>
 
-      <div className="space-y-1.5">
-        <Label className="text-xs">Tracking number</Label>
+      <div className="field">
+        <Label>Tracking number</Label>
         <Input
           value={number}
           onChange={(e) => setNumber(e.target.value)}
           placeholder="Paste the tracking number from your order"
           autoFocus
+          className="h-auto"
         />
       </div>
 
-      <Button type="submit" className="w-full" disabled={!selected || !number.trim()}>
+      <Button
+        type="submit"
+        className="h-11 w-full font-bold uppercase tracking-wider"
+        disabled={!selected || !number.trim()}
+      >
         <Search className="h-3.5 w-3.5" /> Track on {selected?.name ?? "courier"}
       </Button>
 
       {selected && (
-        <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-          <div className="flex items-center gap-2 min-w-0">
+        <div className="mt-3.5 flex items-center justify-between gap-2 rounded-lg border border-line bg-soft px-3 py-2 text-xs text-muted-foreground">
+          <div className="flex min-w-0 items-center gap-2">
             {selected.logoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={selected.logoUrl} alt="" className="h-5 w-5 shrink-0 rounded bg-white object-contain p-0.5" />
+              <img src={selected.logoUrl} alt="" className="h-5 w-5 shrink-0 rounded border border-line bg-white object-contain p-0.5" />
             )}
             <span className="truncate">{finalUrl || selected.trackingUrl}</span>
           </div>
@@ -102,7 +107,7 @@ export function TrackClient({
             href={finalUrl || selected.trackingUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex shrink-0 items-center gap-1 text-primary hover:underline"
+            className="inline-flex shrink-0 items-center gap-1 text-red hover:underline"
           >
             Open <ExternalLink className="h-3 w-3" />
           </a>

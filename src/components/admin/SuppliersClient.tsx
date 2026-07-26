@@ -10,11 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
@@ -44,11 +40,12 @@ type Row = {
   purchaseOrders: POSummary[];
 };
 
+// PO status → reference-theme .st badge modifier.
 const PO_STATUS: Record<string, string> = {
-  DRAFT:     "bg-muted text-muted-foreground",
-  PLACED:    "bg-blue-500/15 text-blue-300 ring-1 ring-inset ring-blue-500/30",
-  RECEIVED:  "bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30",
-  CANCELLED: "bg-rose-500/15 text-rose-300 ring-1 ring-inset ring-rose-500/30",
+  DRAFT:     "muted",
+  PLACED:    "info",
+  RECEIVED:  "ok",
+  CANCELLED: "bad",
 };
 
 export function SuppliersClient({ rows }: { rows: Row[] }) {
@@ -78,38 +75,38 @@ export function SuppliersClient({ rows }: { rows: Row[] }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-end">
-        <Button onClick={() => setCreating(true)}>
+        <button type="button" className="btn-red !px-4 !py-2.5" onClick={() => setCreating(true)}>
           <Plus className="h-3.5 w-3.5" /> New supplier
-        </Button>
+        </button>
       </div>
 
-      <div className="rounded-md border border-border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Supplier</TableHead>
-              <TableHead>Contact</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead className="text-right">POs</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+      <div className="table-wrap">
+        <table className="t">
+          <thead>
+            <tr>
+              <th>Supplier</th>
+              <th>Contact</th>
+              <th>Location</th>
+              <th className="!text-right">POs</th>
+              <th>Status</th>
+              <th className="!text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
             {rows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="p-10 text-center text-sm text-muted-foreground">
+              <tr>
+                <td colSpan={6} className="!py-10 !text-center text-muted-foreground">
                   <Truck className="mx-auto mb-2 h-6 w-6" />
                   No suppliers yet.
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ) : rows.map((s) => (
-              <TableRow key={s.id} className="align-top">
-                <TableCell>
-                  <div className="font-medium">{s.name}</div>
+              <tr key={s.id} className="align-top">
+                <td>
+                  <div className="font-semibold">{s.name}</div>
                   {s.notes && <div className="line-clamp-1 text-xs text-muted-foreground">{s.notes}</div>}
-                </TableCell>
-                <TableCell className="text-sm">
+                </td>
+                <td>
                   <div>{s.contactName ?? "—"}</div>
                   {s.email && (
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -121,8 +118,8 @@ export function SuppliersClient({ rows }: { rows: Row[] }) {
                       <Phone className="h-3 w-3" /> {s.phone}
                     </div>
                   )}
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">
+                </td>
+                <td className="text-muted-foreground">
                   {[s.city, s.country].filter(Boolean).length > 0 ? (
                     <div className="flex items-start gap-1">
                       <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
@@ -132,22 +129,22 @@ export function SuppliersClient({ rows }: { rows: Row[] }) {
                       </div>
                     </div>
                   ) : "—"}
-                </TableCell>
-                <TableCell className="text-right text-sm">
+                </td>
+                <td className="!text-right">
                   {s.poCount > 0 ? (
                     <button
                       type="button"
                       onClick={() => setHistory(s)}
-                      className="inline-flex items-center gap-1 underline-offset-2 hover:underline"
+                      className="inline-flex items-center gap-1 text-red underline-offset-2 hover:underline"
                     >
                       <History className="h-3 w-3" /> {s.poCount}
                     </button>
                   ) : <span className="text-muted-foreground">0</span>}
-                </TableCell>
-                <TableCell>
+                </td>
+                <td>
                   <SupplierActiveToggle id={s.id} active={s.active} />
-                </TableCell>
-                <TableCell className="text-right">
+                </td>
+                <td className="!text-right">
                   <div className="flex justify-end gap-1">
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditing(s)}>
                       <Pencil className="h-3.5 w-3.5" />
@@ -160,11 +157,11 @@ export function SuppliersClient({ rows }: { rows: Row[] }) {
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
 
       <SupplierDialog
@@ -211,7 +208,7 @@ function SupplierActiveToggle({ id, active }: { id: string; active: boolean }) {
   return (
     <div className="flex items-center gap-2">
       <Switch checked={optimistic} onCheckedChange={toggle} disabled={busy} />
-      <span className={`text-xs ${optimistic ? "text-emerald-400" : "text-muted-foreground"}`}>
+      <span className={`st ${optimistic ? "ok" : "muted"}`}>
         {optimistic ? "Active" : "Inactive"}
       </span>
     </div>
@@ -327,9 +324,9 @@ function HistoryDialog({ supplier, onClose }: { supplier: Row | null; onClose: (
           {supplier.purchaseOrders.map((po) => (
             <li key={po.id} className="flex items-start gap-3 py-2.5 text-sm">
               <span className="font-mono text-[11px] text-muted-foreground">{po.poNumber}</span>
-              <Badge className={PO_STATUS[po.status] ?? "bg-muted text-muted-foreground"}>
+              <span className={`st ${PO_STATUS[po.status] ?? "muted"}`}>
                 {po.status}
-              </Badge>
+              </span>
               <div className="min-w-0 flex-1">
                 <div className="text-[12px] text-muted-foreground">
                   {new Date(po.createdAt).toLocaleString("en-GB")}

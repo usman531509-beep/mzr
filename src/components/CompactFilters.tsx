@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Check, ChevronDown, Loader2, Search, X } from "lucide-react";
+import { Check, ChevronDown, Loader2, Search } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -33,11 +33,11 @@ type BikeModel = {
   brand: { name: string; slug: string };
 };
 
-// Horizontal filter row shown above the product grid. Hosts Category +
-// Brand + Model + Year + a free-text search. Pure URL-driven: every chip
-// pushes a search-param patch and refreshes the server-rendered grid.
-// Picking a category navigates to /category/<path> directly so the route
-// can do descendant rollup; everything else stays on the current pathname.
+// Active-filter pill bar (reference .active-filters) shown above the product
+// grid. Hosts a search field (.af-search) plus Category + Brand + Model +
+// Year pills (.af-pill) with a popover picker and a remove ✕. Pure
+// URL-driven: every pill pushes a search-param patch and refreshes the
+// server-rendered grid.
 
 export function CompactFilters({
   brands,
@@ -176,10 +176,10 @@ export function CompactFilters({
   const noProductBrands = productBrands.length === 0;
 
   return (
-    <div className="flex flex-wrap items-center gap-2.5">
+    <div className="active-filters">
       {/* Search within current filters */}
-      <div className="relative flex-1 min-w-[220px] max-w-md">
-        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <div className="af-search">
+        <Search className="af-search-ico h-4 w-4 shrink-0" aria-hidden="true" />
         <input
           type="search"
           value={qInput}
@@ -189,16 +189,15 @@ export function CompactFilters({
               ? `Search in ${selectedModel?.name ?? selectedBrand?.name} parts…`
               : "Search parts by name, OEM, SKU…"
           }
-          className="h-11 w-full rounded-full border border-border bg-card pl-10 pr-9 text-[15px] outline-none transition focus:border-primary/50"
         />
         {qInput && (
           <button
             type="button"
             onClick={() => setQInput("")}
             aria-label="Clear search"
-            className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-soft text-sm leading-none text-ink transition hover:bg-red hover:text-white"
           >
-            <X className="h-3.5 w-3.5" />
+            ×
           </button>
         )}
       </div>
@@ -317,19 +316,15 @@ export function CompactFilters({
       {pending && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
 
       {anyActive && (
-        <button
-          type="button"
-          onClick={clearAll}
-          className="ml-auto inline-flex items-center gap-1 rounded-full px-3 py-2 text-sm font-medium text-muted-foreground transition hover:text-foreground"
-        >
-          <X className="h-3.5 w-3.5" /> Clear
+        <button type="button" onClick={clearAll} className="af-clear">
+          × Clear
         </button>
       )}
     </div>
   );
 }
 
-// --- Filter chip: pill button with a popover list --------------------------
+// --- Filter pill (.af-pill): label + value + caret with a popover list ------
 
 function FilterChip({
   label, value, clearable, onClear, children, disabled, hint,
@@ -345,29 +340,25 @@ function FilterChip({
   const [open, setOpen] = useState(false);
 
   return (
-    <div
-      className={cn(
-        "inline-flex items-center rounded-full border bg-card transition",
-        value ? "border-primary/50 text-foreground" : "border-border text-muted-foreground",
-        disabled && "opacity-50",
-      )}
-    >
+    <div className={cn("af-pill", disabled && "cursor-not-allowed opacity-50")}>
       <Popover open={open} onOpenChange={(v) => !disabled && setOpen(v)}>
         <PopoverTrigger asChild>
           <button
             type="button"
             disabled={disabled}
-            className="flex h-11 items-center gap-2 px-4 text-sm disabled:cursor-not-allowed"
+            className="flex cursor-pointer items-center gap-2 bg-transparent disabled:cursor-not-allowed"
             aria-label={hint ?? `${label} filter`}
             title={hint}
           >
-            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] opacity-70">
-              {label}
-            </span>
-            <span className="text-[15px] font-medium text-foreground">
-              {value ?? (hint ? "—" : "Any")}
-            </span>
-            <ChevronDown className="h-4 w-4 opacity-60" />
+            <span className="af-label">{label}</span>
+            {value ? (
+              <span className="af-value">{value}</span>
+            ) : (
+              <span className="text-[13px] font-medium text-muted-foreground">
+                {hint ? "—" : "Any"}
+              </span>
+            )}
+            <ChevronDown className="af-caret h-3.5 w-3.5" />
           </button>
         </PopoverTrigger>
         <PopoverContent
@@ -382,10 +373,10 @@ function FilterChip({
         <button
           type="button"
           onClick={onClear}
-          className="mr-2 flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          className="af-x"
           aria-label={`Clear ${label.toLowerCase()}`}
         >
-          <X className="h-3 w-3" />
+          ×
         </button>
       )}
     </div>

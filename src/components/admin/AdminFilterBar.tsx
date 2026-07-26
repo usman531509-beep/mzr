@@ -74,20 +74,21 @@ export function AdminFilterBar({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    // Reference `.toolbar`: white panel with bordered inputs/selects.
+    <div className="flex flex-wrap items-center gap-2 rounded-[10px] border border-line bg-white p-3">
       <div className="relative min-w-[220px] flex-1 max-w-md">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={searchPlaceholder}
-          className="h-9 pl-8 pr-8"
+          className="h-9 border-line bg-white pl-8 pr-8"
         />
         {q && (
           <button
             type="button"
             onClick={() => setQ("")}
-            className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            className="absolute right-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:bg-soft hover:text-red"
             aria-label="Clear search"
           >
             <X className="h-3 w-3" />
@@ -99,7 +100,7 @@ export function AdminFilterBar({
         const value = sp.get(f.param) ?? ANY;
         return (
           <Select key={f.param} value={value} onValueChange={(v) => setFilter(f.param, v)}>
-            <SelectTrigger className="h-9 w-[160px]">
+            <SelectTrigger className="h-9 w-[160px] border-line bg-white">
               <SelectValue placeholder={f.label} />
             </SelectTrigger>
             <SelectContent>
@@ -118,7 +119,7 @@ export function AdminFilterBar({
         <button
           type="button"
           onClick={clearAll}
-          className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground transition hover:text-foreground"
+          className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground transition hover:text-red"
         >
           <X className="h-3 w-3" /> Clear
         </button>

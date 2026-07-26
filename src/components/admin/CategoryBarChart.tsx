@@ -1,14 +1,13 @@
 "use client";
 
 import {
-  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell,
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
 } from "recharts";
 
-const PALETTE = [
-  "#e8151b", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6",
-  "#ec4899", "#14b8a6", "#f97316", "#22d3ee", "#a3e635",
-];
+const fmtGBP = (v: number) =>
+  v >= 1000 ? `£${(v / 1000).toFixed(1)}k` : `£${v.toFixed(0)}`;
 
+// Single red series on light axes/grid, matching the reference chart panels.
 export function CategoryBarChart({
   data,
 }: {
@@ -24,44 +23,37 @@ export function CategoryBarChart({
   return (
     <ResponsiveContainer width="100%" height={260}>
       <BarChart data={data} layout="vertical" margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
-        <CartesianGrid stroke="rgba(255,255,255,0.05)" horizontal={false} />
+        <CartesianGrid stroke="#e7e7ea" horizontal={false} />
         <XAxis
           type="number"
-          stroke="rgba(255,255,255,0.4)"
+          stroke="#6b7280"
           tickLine={false}
           axisLine={false}
           fontSize={11}
-          tickFormatter={(v: number) =>
-            v >= 1000 ? `£${(v / 1000).toFixed(1)}k` : `£${v.toFixed(0)}`
-          }
+          tickFormatter={(v: number) => fmtGBP(v)}
         />
         <YAxis
           type="category"
           dataKey="name"
-          stroke="rgba(255,255,255,0.6)"
+          stroke="#6b7280"
           tickLine={false}
           axisLine={false}
           fontSize={11}
           width={100}
         />
         <Tooltip
-          cursor={{ fill: "rgba(255,255,255,0.04)" }}
+          cursor={{ fill: "rgba(11,13,18,0.04)" }}
           contentStyle={{
-            background: "#0f1115",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 6,
+            background: "#ffffff",
+            border: "1px solid #e7e7ea",
+            borderRadius: 8,
             fontSize: 12,
+            color: "#0b0d12",
+            boxShadow: "0 2px 6px rgba(0,0,0,.05)",
           }}
-          formatter={(value) => {
-            const v = Number(value ?? 0);
-            return [v >= 1000 ? `£${(v / 1000).toFixed(1)}k` : `£${v.toFixed(0)}`, "Revenue"];
-          }}
+          formatter={(value) => [fmtGBP(Number(value ?? 0)), "Revenue"]}
         />
-        <Bar dataKey="revenue" radius={[0, 4, 4, 0]}>
-          {data.map((_, i) => (
-            <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
-          ))}
-        </Bar>
+        <Bar dataKey="revenue" fill="#e30613" radius={[0, 4, 4, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );

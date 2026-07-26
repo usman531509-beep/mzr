@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Loader2, Package, ArrowRight } from "lucide-react";
+import { Loader2, Package, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtMoney } from "@/lib/format";
 
@@ -124,21 +124,15 @@ export function NavSearch() {
   };
 
   return (
-    <div ref={wrapRef} className="relative w-72 xl:w-96">
-      {/* Real, typeable input — replaces the previous pseudo-button.
-          Form wrapper so Enter submits even when no results have loaded
-          yet. */}
+    <div ref={wrapRef} className="relative w-full min-w-0">
+      {/* Reference-styled search pill (.h-search from theme.css): grey pill
+          that lights up red on focus, with the uppercase SEARCH button. */}
       <form
         onSubmit={(e) => { e.preventDefault(); submitAll(); }}
         role="search"
         aria-label="Site search"
-        className="flex h-10 w-full items-center gap-2 rounded-md border border-white/15 bg-white/[0.04] px-3 text-sm transition focus-within:border-red/60 focus-within:bg-white/[0.07] hover:border-red/40"
+        className="h-search"
       >
-        {loading ? (
-          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-white/60" />
-        ) : (
-          <Search className="h-4 w-4 shrink-0 text-white/60" />
-        )}
         <input
           ref={inputRef}
           type="search"
@@ -146,26 +140,28 @@ export function NavSearch() {
           onChange={(e) => { setQ(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
-          placeholder="Search parts, OEM, SKU…"
+          placeholder="Search by part name, OEM, SKU or bike model…"
           autoComplete="off"
-          className="h-full w-full min-w-0 flex-1 bg-transparent text-white placeholder:text-white/45 outline-none"
         />
+        <button type="submit" aria-label="Search">
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
+        </button>
       </form>
 
       {/* Autocomplete dropdown — anchored under the input. Only renders
           when there's a query of ≥2 chars and the input is focused / has
           been interacted with. */}
       {dropdownOpen && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-lg border border-white/10 bg-ink-800 shadow-[0_24px_60px_-10px_rgba(0,0,0,0.7),0_0_0_1px_rgba(232,21,27,0.12)]">
-          <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-red to-transparent" />
+        <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-line bg-white shadow-[0_30px_60px_-20px_rgba(0,0,0,0.25)]">
+          <div className="absolute inset-x-0 top-0 h-[3px] bg-red" />
           {results.length === 0 && !loading ? (
-            <div className="flex flex-col items-center gap-1.5 px-4 py-6 text-center text-sm text-white/55">
+            <div className="flex flex-col items-center gap-1.5 px-4 py-6 text-center text-sm text-muted-foreground">
               <Package className="h-5 w-5 opacity-50" />
               No results for &ldquo;{trimmed}&rdquo;.
               <button
                 type="button"
                 onClick={submitAll}
-                className="mt-1 inline-flex items-center gap-1 text-[12.5px] text-red hover:text-white"
+                className="mt-1 inline-flex items-center gap-1 text-[12.5px] font-bold text-red hover:underline"
               >
                 Browse all products <ArrowRight className="h-3 w-3" />
               </button>
@@ -181,29 +177,30 @@ export function NavSearch() {
                       onClick={() => navigate(r.slug)}
                       className={cn(
                         "flex w-full items-center gap-3 px-3 py-2 text-left transition",
-                        i === active ? "bg-white/[0.06]" : "hover:bg-white/[0.04]",
+                        i === active ? "bg-soft" : "hover:bg-soft",
                       )}
                     >
-                      <div className="h-10 w-10 shrink-0 overflow-hidden rounded border border-white/10 bg-black/30">
+                      <div className="h-10 w-10 shrink-0 overflow-hidden rounded border border-line bg-soft">
                         {r.image && (
                           /* eslint-disable-next-line @next/next/no-img-element */
-                          <img src={r.image} alt="" className="h-full w-full object-cover" />
+                          <img src={r.image} alt="" className="h-full w-full object-contain bg-white" />
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-[14px] font-medium text-white">{r.name}</div>
-                        <div className="truncate text-[12px] text-white/55">
+                        <div className="truncate text-[14px] font-semibold text-ink">{r.name}</div>
+                        <div className="truncate text-[12px] text-muted-foreground">
                           {r.brand} · {r.category}
-                          {r.oemNumber && <> · OEM <span className="font-mono">{r.oemNumber}</span></>}
+                          {r.sku && <> · SKU {r.sku}</>}
+                          {r.oemNumber && <> · OEM {r.oemNumber}</>}
                         </div>
                       </div>
                       <div className="shrink-0 text-right">
-                        <div className="text-[13px] font-medium tabular-nums text-white">
+                        <div className="text-[13px] font-bold tabular-nums text-ink">
                           {fmtMoney(Number(r.price))}
                         </div>
                         <div className={cn(
                           "text-[11px] tabular-nums",
-                          r.stock === 0 ? "text-rose-300" : "text-white/45",
+                          r.stock === 0 ? "text-red" : "text-muted-foreground",
                         )}>
                           {r.stock === 0 ? "Out of stock" : `${r.stock} in stock`}
                         </div>
@@ -216,7 +213,7 @@ export function NavSearch() {
                 <button
                   type="button"
                   onClick={submitAll}
-                  className="flex w-full items-center justify-between gap-2 border-t border-white/10 bg-black/20 px-3 py-2 text-[13px] text-white/75 transition hover:bg-white/[0.04] hover:text-white"
+                  className="flex w-full items-center justify-between gap-2 border-t border-line bg-soft px-3 py-2 text-[13px] font-semibold text-ink transition hover:text-red"
                 >
                   <span>See all {total} results</span>
                   <ArrowRight className="h-3.5 w-3.5" />

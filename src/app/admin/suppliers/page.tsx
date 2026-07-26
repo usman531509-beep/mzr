@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent } from "@/components/ui/card";
 import { AdminFilterBar } from "@/components/admin/AdminFilterBar";
 import { SuppliersClient } from "@/components/admin/SuppliersClient";
 import type { Prisma } from "@prisma/client";
@@ -70,12 +69,15 @@ export default async function SuppliersPage({ searchParams }: { searchParams: SP
   }));
 
   return (
-    <div className="space-y-4 p-4 lg:p-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Suppliers</h1>
-        <p className="text-sm text-muted-foreground">
-          Parts vendors with their contact details and purchase history.
-        </p>
+    <div className="space-y-4">
+      <div className="adm-top !mb-0">
+        <div>
+          <div className="crumb">Admin</div>
+          <h1 className="font-head text-3xl font-normal uppercase leading-none tracking-wide">Suppliers</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Parts vendors with their contact details and purchase history.
+          </p>
+        </div>
       </div>
 
       <AdminFilterBar
@@ -88,11 +90,7 @@ export default async function SuppliersPage({ searchParams }: { searchParams: SP
         ]}
       />
 
-      <Card>
-        <CardContent className="p-4 lg:p-5">
-          <SuppliersClient rows={rows} />
-        </CardContent>
-      </Card>
+      <SuppliersClient rows={rows} />
     </div>
   );
 }

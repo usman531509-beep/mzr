@@ -9,10 +9,6 @@ import {
 import { confirmAction } from "@/lib/confirm-store";
 import { fmtMoney } from "@/lib/format";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -56,11 +52,13 @@ export type PORow = {
 
 const STATUSES = ["DRAFT", "PLACED", "RECEIVED", "CANCELLED"] as const;
 
+// Light reference-theme tints matching the .st badge palette (theme.css):
+// info blue for PLACED, ok green for RECEIVED, bad red for CANCELLED.
 const STATUS_CLASS: Record<string, string> = {
-  DRAFT:     "bg-muted text-muted-foreground",
-  PLACED:    "bg-blue-500/15 text-blue-300 ring-1 ring-inset ring-blue-500/30 hover:bg-blue-500/15",
-  RECEIVED:  "bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30 hover:bg-emerald-500/15",
-  CANCELLED: "bg-rose-500/15 text-rose-300 ring-1 ring-inset ring-rose-500/30 hover:bg-rose-500/15",
+  DRAFT:     "!bg-soft !text-muted-foreground",
+  PLACED:    "!bg-[#e3edff] !text-[#1e57c3] !border-transparent",
+  RECEIVED:  "!bg-[#e6f7ec] !text-[#0a8a3a] !border-transparent",
+  CANCELLED: "!bg-[#fbe2e2] !text-[#c0392b] !border-transparent",
 };
 
 export function POClient({ rows }: { rows: PORow[] }) {
@@ -102,35 +100,35 @@ export function POClient({ rows }: { rows: PORow[] }) {
 
   return (
     <>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>PO</TableHead>
-            <TableHead>Supplier</TableHead>
-            <TableHead>Items</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Total</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
+      <table className="t">
+        <thead>
+          <tr>
+            <th>PO</th>
+            <th>Supplier</th>
+            <th>Items</th>
+            <th>Status</th>
+            <th className="!text-right">Total</th>
+            <th>Date</th>
+            <th className="!text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
           {rows.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={7} className="p-10 text-center text-sm text-muted-foreground">
+            <tr>
+              <td colSpan={7} className="!py-10 !text-center text-muted-foreground">
                 <ClipboardList className="mx-auto mb-2 h-6 w-6" />
                 No purchase orders yet.
-              </TableCell>
-            </TableRow>
+              </td>
+            </tr>
           ) : rows.map((p) => (
-            <TableRow key={p.id} className="align-top">
-              <TableCell className="font-mono text-xs">{p.poNumber}</TableCell>
-              <TableCell className="text-sm">{p.supplierName}</TableCell>
-              <TableCell>
+            <tr key={p.id} className="align-top">
+              <td><span className="kbd">{p.poNumber}</span></td>
+              <td className="font-semibold">{p.supplierName}</td>
+              <td>
                 <button
                   type="button"
                   onClick={() => setDoc({ po: p, autoprint: false })}
-                  className="text-left text-sm underline-offset-2 hover:underline"
+                  className="text-left text-red underline-offset-2 hover:underline"
                 >
                   {p.itemCount} unit{p.itemCount === 1 ? "" : "s"}
                 </button>
@@ -139,23 +137,23 @@ export function POClient({ rows }: { rows: PORow[] }) {
                     Expected: {new Date(p.expectedAt).toLocaleDateString("en-GB")}
                   </div>
                 )}
-              </TableCell>
-              <TableCell>
+              </td>
+              <td>
                 <Select value={p.status} onValueChange={(v) => setStatus(p.id, v)}>
-                  <SelectTrigger className={`h-8 w-[130px] ${STATUS_CLASS[p.status] ?? ""}`}>
+                  <SelectTrigger className={`h-8 w-[130px] rounded-full text-[11px] font-bold uppercase tracking-wide ${STATUS_CLASS[p.status] ?? ""}`}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                   </SelectContent>
                 </Select>
-              </TableCell>
-              <TableCell className="text-right font-medium tabular-nums">{fmtMoney(p.total)}</TableCell>
-              <TableCell className="text-sm text-muted-foreground">
+              </td>
+              <td className="!text-right font-semibold tabular-nums">{fmtMoney(p.total)}</td>
+              <td className="text-muted-foreground">
                 {new Date(p.createdAt).toLocaleDateString("en-GB")}
                 {p.createdBy && <div className="text-[10px]">by {p.createdBy}</div>}
-              </TableCell>
-              <TableCell className="text-right">
+              </td>
+              <td className="!text-right">
                 <div className="flex justify-end gap-1">
                   <Button
                     variant="ghost" size="icon" className="h-8 w-8"
@@ -180,11 +178,11 @@ export function POClient({ rows }: { rows: PORow[] }) {
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
-              </TableCell>
-            </TableRow>
+              </td>
+            </tr>
           ))}
-        </TableBody>
-      </Table>
+        </tbody>
+      </table>
 
       <PODocumentDialog state={doc} onClose={() => setDoc(null)} />
     </>

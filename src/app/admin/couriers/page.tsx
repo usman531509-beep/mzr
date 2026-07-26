@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent } from "@/components/ui/card";
 import { CouriersClient } from "@/components/admin/CouriersClient";
 
 export const dynamic = "force-dynamic";
@@ -21,19 +20,18 @@ export default async function CouriersPage() {
   }));
 
   return (
-    <div className="space-y-4 p-4 lg:p-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Couriers</h1>
-        <p className="text-sm text-muted-foreground">
-          Shipping carriers used to fulfil orders. The tracking URL is where customers go to track a shipment.
-        </p>
+    <div className="space-y-4">
+      <div className="adm-top !mb-0">
+        <div>
+          <div className="crumb">Admin</div>
+          <h1 className="font-head text-3xl font-normal uppercase leading-none tracking-wide">Couriers</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Shipping carriers used to fulfil orders. The tracking URL is where customers go to track a shipment.
+          </p>
+        </div>
       </div>
 
-      <Card>
-        <CardContent className="p-4 lg:p-5">
-          <CouriersClient rows={rows} />
-        </CardContent>
-      </Card>
+      <CouriersClient rows={rows} />
     </div>
   );
 }

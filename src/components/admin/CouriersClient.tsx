@@ -10,9 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 
@@ -52,56 +49,56 @@ export function CouriersClient({ rows }: { rows: Row[] }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-end">
-        <Button onClick={() => setCreating(true)}>
+        <button type="button" className="btn-red !px-4 !py-2.5" onClick={() => setCreating(true)}>
           <Plus className="h-3.5 w-3.5" /> New courier
-        </Button>
+        </button>
       </div>
 
-      <div className="rounded-md border border-border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Courier</TableHead>
-              <TableHead>Tracking page</TableHead>
-              <TableHead className="text-right">Orders</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+      <div className="table-wrap">
+        <table className="t">
+          <thead>
+            <tr>
+              <th>Courier</th>
+              <th>Tracking page</th>
+              <th className="!text-right">Orders</th>
+              <th>Status</th>
+              <th className="!text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
             {rows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="p-10 text-center text-sm text-muted-foreground">
+              <tr>
+                <td colSpan={5} className="!py-10 !text-center text-muted-foreground">
                   <MapPin className="mx-auto mb-2 h-6 w-6" />
                   No couriers yet — add one to start sending tracking info to customers.
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ) : rows.map((c) => (
-              <TableRow key={c.id} className="align-top">
-                <TableCell>
-                  <div className="font-medium">{c.name}</div>
+              <tr key={c.id} className="align-top">
+                <td>
+                  <div className="font-semibold">{c.name}</div>
                   <div className="font-mono text-[11px] text-muted-foreground">{c.slug}</div>
-                </TableCell>
-                <TableCell className="text-sm">
+                </td>
+                <td>
                   <a
                     href={c.trackingUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-primary hover:underline"
+                    className="inline-flex items-center gap-1 text-red hover:underline"
                   >
                     <span className="line-clamp-1 max-w-[320px] break-all">{c.trackingUrl}</span>
                     <ExternalLink className="h-3 w-3 shrink-0" />
                   </a>
-                </TableCell>
-                <TableCell className="text-right text-sm">
+                </td>
+                <td className="!text-right">
                   {c.orderCount > 0 ? (
                     <span>{c.orderCount}</span>
                   ) : <span className="text-muted-foreground">0</span>}
-                </TableCell>
-                <TableCell>
+                </td>
+                <td>
                   <CourierActiveToggle id={c.id} active={c.active} />
-                </TableCell>
-                <TableCell className="text-right">
+                </td>
+                <td className="!text-right">
                   <div className="flex justify-end gap-1">
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditing(c)}>
                       <Pencil className="h-3.5 w-3.5" />
@@ -114,11 +111,11 @@ export function CouriersClient({ rows }: { rows: Row[] }) {
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
 
       <CourierDialog
@@ -160,7 +157,7 @@ function CourierActiveToggle({ id, active }: { id: string; active: boolean }) {
   return (
     <div className="flex items-center gap-2">
       <Switch checked={optimistic} onCheckedChange={toggle} disabled={busy} />
-      <span className={`text-xs ${optimistic ? "text-emerald-400" : "text-muted-foreground"}`}>
+      <span className={`st ${optimistic ? "ok" : "muted"}`}>
         {optimistic ? "Active" : "Inactive"}
       </span>
     </div>

@@ -10,13 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  Table, TableHeader, TableHead, TableBody, TableRow, TableCell,
-} from "@/components/ui/table";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -102,51 +98,51 @@ export function ExpensesClient({
         </Button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid g-2 !mb-0">
         <Stat label="Total" value={fmtMoney(totalAmount)} />
         <Stat label="Entries" value={String(totalCount)} />
       </div>
 
-      <div className="rounded-md border border-border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Title</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Vendor</TableHead>
-              <TableHead>Payment</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
-              <TableHead></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+      <div className="table-wrap">
+        <table className="t">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Title</th>
+              <th>Category</th>
+              <th>Vendor</th>
+              <th>Payment</th>
+              <th className="text-right">Amount</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
             {expenses.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center text-sm text-muted-foreground">
+              <tr>
+                <td colSpan={7} className="text-center text-sm text-muted-foreground">
                   No expenses recorded for this range.
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ) : expenses.map((e) => (
-              <TableRow key={e.id}>
-                <TableCell className="text-sm text-muted-foreground">
+              <tr key={e.id}>
+                <td className="text-sm text-muted-foreground">
                   {new Date(e.paidOn).toLocaleDateString("en-GB")}
-                </TableCell>
-                <TableCell>
+                </td>
+                <td>
                   <div className="font-medium">{e.title}</div>
                   {e.notes && (
                     <div className="line-clamp-1 text-xs text-muted-foreground">{e.notes}</div>
                   )}
-                </TableCell>
-                <TableCell>
-                  <Badge variant="secondary">{e.category}</Badge>
-                </TableCell>
-                <TableCell className="text-sm">{e.vendor ?? "—"}</TableCell>
-                <TableCell className="text-sm">{e.paymentMethod ?? "—"}</TableCell>
-                <TableCell className="text-right font-medium tabular-nums">
+                </td>
+                <td>
+                  <span className="st muted">{e.category}</span>
+                </td>
+                <td className="text-sm">{e.vendor ?? "—"}</td>
+                <td className="text-sm">{e.paymentMethod ?? "—"}</td>
+                <td className="text-right font-medium tabular-nums">
                   {fmtMoney(e.amount)}
-                </TableCell>
-                <TableCell className="text-right">
+                </td>
+                <td className="text-right">
                   <div className="flex justify-end gap-1">
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(e)}>
                       <Pencil className="h-3.5 w-3.5" />
@@ -159,11 +155,11 @@ export function ExpensesClient({
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
 
       {/* Remount with a fresh key whenever the dialog opens for a different
@@ -181,11 +177,12 @@ export function ExpensesClient({
   );
 }
 
+// Reference .stat card (theme.css) — label + value.
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-border bg-card p-4">
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className="mt-1 text-xl font-bold tabular-nums">{value}</div>
+    <div className="stat">
+      <div className="lbl">{label}</div>
+      <div className="val tabular-nums">{value}</div>
     </div>
   );
 }

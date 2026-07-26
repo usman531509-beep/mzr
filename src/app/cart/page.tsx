@@ -1,14 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
+import { Trash2, ShoppingBag } from "lucide-react";
 
 import { useCart, cartTotals } from "@/lib/cart-store";
 import { fmtMoney } from "@/lib/format";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 
 export default function CartPage() {
   const items = useCart((s) => s.items);
@@ -17,123 +14,172 @@ export default function CartPage() {
   const totals = cartTotals(items);
 
   return (
-    <div className="mx-auto max-w-6xl px-[var(--gutter)] py-6 lg:py-8">
-      <Breadcrumbs className="mb-4" items={[{ label: "Cart" }]} />
+    <div className="container" style={{ padding: "24px 20px 48px" }}>
+      <Breadcrumbs className="mb-4" items={[{ label: "Basket" }]} />
 
-      <h1 className="mb-6 text-2xl font-bold tracking-tight lg:text-3xl">Your cart</h1>
+      <h1 className="font-head text-[34px] uppercase leading-none tracking-[0.02em] text-ink lg:text-[42px]">
+        Your basket
+      </h1>
 
       {items.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center gap-3 p-16 text-center">
-            <ShoppingBag className="h-10 w-10 text-muted-foreground" />
-            <h2 className="text-lg font-semibold">Your cart is empty</h2>
-            <p className="max-w-sm text-sm text-muted-foreground">
-              Browse our catalogue and add some parts to your cart.
-            </p>
-            <Button asChild size="sm" className="mt-2">
-              <Link href="/products">Shop parts</Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="panel center mt" style={{ padding: "64px 24px" }}>
+          <ShoppingBag className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
+          <h2 className="mb-1 text-lg font-bold text-ink">Your basket is empty</h2>
+          <p className="muted mx-auto mb-5 max-w-sm text-sm">
+            Browse our catalogue and add some parts to your basket.
+          </p>
+          <Link href="/products" className="btn btn-red">
+            Shop parts
+          </Link>
+        </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-          <div className="space-y-3">
-            {items.map((i) => (
-              <Card key={i.productId}>
-                <CardContent className="flex gap-3 p-4 sm:gap-4 sm:p-5">
-                  <div className="h-20 w-20 shrink-0 overflow-hidden rounded border border-border bg-secondary sm:h-24 sm:w-24">
-                    {i.image ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img src={i.image} alt="" className="h-full w-full object-cover" />
-                    ) : null}
-                  </div>
-                  <div className="flex min-w-0 flex-1 flex-col">
-                    <Link
-                      href={`/products/${i.slug}`}
-                      className="line-clamp-2 text-sm font-semibold leading-tight hover:underline sm:text-base"
-                    >
-                      {i.name}
-                    </Link>
-                    <div className="mt-1 text-[13px] text-muted-foreground">
-                      {fmtMoney(i.price)} each
-                    </div>
-                    <div className="mt-auto flex items-center gap-3 pt-3">
-                      <div className="inline-flex h-8 items-center rounded-md border border-border bg-card">
+        <div className="split mt">
+          {/* Line items */}
+          <div className="table-wrap" style={{ height: "fit-content" }}>
+            <table className="t">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Qty</th>
+                  <th>Unit</th>
+                  <th>Total</th>
+                  <th aria-label="Remove" />
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((i) => (
+                  <tr key={i.productId}>
+                    <td>
+                      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                        <div
+                          style={{
+                            width: 56,
+                            height: 56,
+                            flexShrink: 0,
+                            overflow: "hidden",
+                            borderRadius: 8,
+                            border: "1px solid var(--line)",
+                            background: "#fff",
+                          }}
+                        >
+                          {i.image ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={i.image}
+                              alt=""
+                              className="h-full w-full object-contain p-0.5"
+                            />
+                          ) : null}
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <Link
+                            href={`/products/${i.slug}`}
+                            className="line-clamp-2 text-[13.5px] font-bold leading-tight text-ink hover:text-red"
+                          >
+                            {i.name}
+                          </Link>
+                          <div className="muted" style={{ fontSize: 12 }}>
+                            {fmtMoney(i.price)} each
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="qty">
                         <button
                           type="button"
                           onClick={() => setQty(i.productId, i.quantity - 1)}
                           disabled={i.quantity <= 1}
-                          className="flex h-full w-8 items-center justify-center text-muted-foreground transition hover:text-foreground disabled:opacity-40"
-                          aria-label="Decrease"
+                          className="disabled:cursor-not-allowed disabled:opacity-40"
+                          aria-label="Decrease quantity"
                         >
-                          <Minus className="h-3 w-3" />
+                          −
                         </button>
-                        <span className="min-w-[1.75rem] text-center text-[13px] font-semibold tabular-nums">
-                          {i.quantity}
-                        </span>
+                        <input
+                          value={i.quantity}
+                          readOnly
+                          aria-label="Quantity"
+                          style={{ width: 40, textAlign: "center" }}
+                        />
                         <button
                           type="button"
                           onClick={() => setQty(i.productId, i.quantity + 1)}
                           disabled={i.quantity >= i.stock}
-                          className="flex h-full w-8 items-center justify-center text-muted-foreground transition hover:text-foreground disabled:opacity-40"
-                          aria-label="Increase"
+                          className="disabled:cursor-not-allowed disabled:opacity-40"
+                          aria-label="Increase quantity"
                         >
-                          <Plus className="h-3 w-3" />
+                          +
                         </button>
                       </div>
+                    </td>
+                    <td className="tabular-nums">{fmtMoney(i.price)}</td>
+                    <td className="font-bold tabular-nums">{fmtMoney(i.price * i.quantity)}</td>
+                    <td>
                       <button
                         type="button"
                         onClick={() => remove(i.productId)}
-                        className="inline-flex items-center gap-1 text-[12px] font-medium text-muted-foreground transition hover:text-destructive"
+                        aria-label={`Remove ${i.name}`}
+                        className="text-muted-foreground transition hover:text-red"
                       >
-                        <Trash2 className="h-3 w-3" /> Remove
+                        <Trash2 className="h-4 w-4" />
                       </button>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-base font-bold tabular-nums sm:text-lg">
-                      {fmtMoney(i.price * i.quantity)}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
-          <Card className="h-fit lg:sticky lg:top-20">
-            <CardHeader>
-              <CardTitle>Order summary</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Row label="Subtotal" value={fmtMoney(totals.subtotal)} />
-              <Row
-                label="Shipping"
-                value={totals.shipping === 0 ? "FREE" : fmtMoney(totals.shipping)}
-              />
-              <Row label="VAT (20%)" value={fmtMoney(totals.tax)} />
-              <Separator />
-              <Row label="Total" value={fmtMoney(totals.total)} bold />
-              <div className="space-y-2 pt-2">
-                <Button asChild className="w-full" size="lg">
-                  <Link href="/checkout">Checkout</Link>
-                </Button>
-                <Button asChild variant="outline" className="w-full">
-                  <Link href="/products">Continue shopping</Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Order summary */}
+          <div className="summary">
+            <h3
+              className="font-head"
+              style={{
+                margin: "0 0 12px",
+                fontSize: 22,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+              }}
+            >
+              Order summary
+            </h3>
+            <div className="ln">
+              <span>Subtotal</span>
+              <span className="tabular-nums">{fmtMoney(totals.subtotal)}</span>
+            </div>
+            <div className="ln">
+              <span>Shipping</span>
+              {totals.shipping === 0 ? (
+                <span style={{ color: "var(--ok)", fontWeight: 700 }}>FREE</span>
+              ) : (
+                <span className="tabular-nums">{fmtMoney(totals.shipping)}</span>
+              )}
+            </div>
+            <div className="ln">
+              <span>VAT (20%)</span>
+              <span className="tabular-nums">{fmtMoney(totals.tax)}</span>
+            </div>
+            <div className="ln total">
+              <span>Total</span>
+              <span className="tabular-nums text-red">{fmtMoney(totals.total)}</span>
+            </div>
+            <Link
+              href="/checkout"
+              className="btn btn-red"
+              style={{ width: "100%", justifyContent: "center", marginTop: 14 }}
+            >
+              Checkout
+            </Link>
+            <Link
+              href="/products"
+              className="btn btn-ghost"
+              style={{ width: "100%", textAlign: "center", marginTop: 8, display: "inline-block" }}
+            >
+              Continue shopping
+            </Link>
+          </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
-  return (
-    <div className={`flex justify-between ${bold ? "text-base font-bold" : "text-sm"}`}>
-      <span className={bold ? "" : "text-muted-foreground"}>{label}</span>
-      <span className="tabular-nums">{value}</span>
     </div>
   );
 }

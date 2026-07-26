@@ -2,12 +2,15 @@
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 
+// Status hues mapped to the light reference palette: warn gold for pending,
+// info blue for paid, brand red for shipped (reference "dispatched"), ok
+// green for delivered, bad red for cancelled.
 const COLORS: Record<string, string> = {
-  PENDING:   "#f59e0b",
-  PAID:      "#3b82f6",
-  SHIPPED:   "#6366f1",
-  DELIVERED: "#10b981",
-  CANCELLED: "#ef4444",
+  PENDING:   "#b8860b",
+  PAID:      "#1e57c3",
+  SHIPPED:   "#e30613",
+  DELIVERED: "#0a8a3a",
+  CANCELLED: "#c0392b",
 };
 
 export function StatusPieChart({ data }: { data: { status: string; count: number }[] }) {
@@ -28,24 +31,26 @@ export function StatusPieChart({ data }: { data: { status: string; count: number
           innerRadius={45}
           outerRadius={75}
           paddingAngle={2}
-          stroke="rgba(0,0,0,0.4)"
+          stroke="#ffffff"
         >
           {data.map((d) => (
-            <Cell key={d.status} fill={COLORS[d.status] ?? "#64748b"} />
+            <Cell key={d.status} fill={COLORS[d.status] ?? "#9ca3af"} />
           ))}
         </Pie>
         <Tooltip
           contentStyle={{
-            background: "#0f1115",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 6,
+            background: "#ffffff",
+            border: "1px solid #e7e7ea",
+            borderRadius: 8,
             fontSize: 12,
+            color: "#0b0d12",
+            boxShadow: "0 2px 6px rgba(0,0,0,.05)",
           }}
           formatter={(value, name) => [Number(value ?? 0), String(name)]}
         />
         <Legend
           iconType="circle"
-          wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }}
+          wrapperStyle={{ fontSize: 11, color: "#6b7280" }}
         />
       </PieChart>
     </ResponsiveContainer>

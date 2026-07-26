@@ -1,7 +1,5 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { AdminFilterBar } from "@/components/admin/AdminFilterBar";
 import { POClient } from "@/components/admin/POClient";
@@ -60,20 +58,19 @@ export default async function PurchaseOrdersPage({ searchParams }: { searchParam
   ]);
 
   return (
-    <div className="space-y-4 p-4 lg:p-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="space-y-4">
+      <div className="adm-top !mb-0">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Purchase Orders</h1>
-          <p className="text-sm text-muted-foreground">
+          <div className="crumb">Admin</div>
+          <h1 className="font-head text-3xl font-normal uppercase leading-none tracking-wide">Purchase Orders</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Record what you order from suppliers. Each PO is a printable
             procurement document — it doesn&apos;t change stock on its own.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/admin/purchase-orders/new">
-            <Plus className="h-3.5 w-3.5" /> New purchase order
-          </Link>
-        </Button>
+        <Link href="/admin/purchase-orders/new" className="btn-red !px-4 !py-2.5 hover:no-underline">
+          <Plus className="h-3.5 w-3.5" /> New purchase order
+        </Link>
       </div>
 
       <AdminFilterBar
@@ -90,8 +87,7 @@ export default async function PurchaseOrdersPage({ searchParams }: { searchParam
         ]}
       />
 
-      <Card>
-        <CardContent className="p-0">
+      <div className="table-wrap">
           <POClient
             rows={pos.map((p) => ({
               id: p.id,
@@ -129,8 +125,7 @@ export default async function PurchaseOrdersPage({ searchParams }: { searchParam
             currentPage={page}
             className="px-3 pb-2"
           />
-        </CardContent>
-      </Card>
+      </div>
     </div>
   );
 }

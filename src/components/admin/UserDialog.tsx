@@ -524,22 +524,22 @@ function TradeTab({
 function StatusBadge({ status }: { status: TradeRequestView["status"] }) {
   if (status === "APPROVED") {
     return (
-      <Badge className="gap-1 bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30 hover:bg-emerald-500/15">
-        <CheckCircle2 className="h-3 w-3" /> Approved
-      </Badge>
+      <span className="st ok whitespace-nowrap">
+        <CheckCircle2 className="mr-1 inline h-3 w-3 align-[-2px]" /> Approved
+      </span>
     );
   }
   if (status === "REJECTED") {
     return (
-      <Badge className="gap-1 bg-rose-500/15 text-rose-300 ring-1 ring-inset ring-rose-500/30 hover:bg-rose-500/15">
-        <XCircle className="h-3 w-3" /> Rejected
-      </Badge>
+      <span className="st bad whitespace-nowrap">
+        <XCircle className="mr-1 inline h-3 w-3 align-[-2px]" /> Rejected
+      </span>
     );
   }
   return (
-    <Badge className="gap-1 bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30 hover:bg-amber-500/15">
-      <Clock className="h-3 w-3" /> Pending
-    </Badge>
+    <span className="st warn whitespace-nowrap">
+      <Clock className="mr-1 inline h-3 w-3 align-[-2px]" /> Pending
+    </span>
   );
 }
 

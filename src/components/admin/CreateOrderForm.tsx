@@ -12,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
@@ -232,7 +231,7 @@ export function CreateOrderForm({
                 </SelectContent>
               </Select>
               {selectedUser?.tradeApproved && (
-                <p className="mt-1.5 text-[12px] text-emerald-300">
+                <p className="mt-1.5 text-[12px] text-emerald-700">
                   Trade approved customer, category discounts will be applied automatically.
                 </p>
               )}
@@ -327,7 +326,7 @@ export function CreateOrderForm({
                           ) : (
                             <>£{p.price.toFixed(2)}</>
                           )}
-                          {discounted && <Badge className="ml-1 bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30 hover:bg-emerald-500/15">Trade</Badge>}
+                          {discounted && <span className="st ok ml-1">Trade</span>}
                         </div>
                       </div>
                       <div className="flex h-8 items-stretch overflow-hidden rounded-md border border-border">
@@ -415,8 +414,8 @@ export function CreateOrderForm({
               />
               {discount > 0 && (
                 <Row
-                  label={<span className="text-emerald-400">Discount</span>}
-                  value={<span className="text-emerald-400">−£{discount.toFixed(2)}</span>}
+                  label={<span className="text-emerald-700">Discount</span>}
+                  value={<span className="text-emerald-700">−£{discount.toFixed(2)}</span>}
                 />
               )}
               <Row label="VAT (20%)" value={`£${tax.toFixed(2)}`} />

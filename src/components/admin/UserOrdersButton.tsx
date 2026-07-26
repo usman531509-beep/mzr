@@ -123,9 +123,9 @@ export function UserOrdersButton({
                     <span className="font-mono text-[11px] text-muted-foreground">{o.orderNumber ?? `#${o.id.slice(0, 8)}`}</span>
                     <OrderStatusBadge status={o.status} />
                     {o.byAdmin && (
-                      <Badge className="gap-1 bg-blue-500/15 text-blue-300 ring-1 ring-inset ring-blue-500/30 hover:bg-blue-500/15">
-                        <ShieldCheck className="h-3 w-3" /> By admin
-                      </Badge>
+                      <span className="st info whitespace-nowrap">
+                        <ShieldCheck className="mr-1 inline h-3 w-3 align-[-2px]" /> By admin
+                      </span>
                     )}
                     <span className="ml-auto flex items-center gap-1 text-[11px] text-muted-foreground">
                       <Clock className="h-3 w-3" />
@@ -144,7 +144,7 @@ export function UserOrdersButton({
                             <div className="text-[11px] text-muted-foreground">
                               {discounted ? (
                                 <>
-                                  <span className="text-emerald-300">{fmtMoney(it.price)}</span>{" "}
+                                  <span className="text-emerald-700">{fmtMoney(it.price)}</span>{" "}
                                   <span className="line-through">{fmtMoney(it.originalPrice)}</span>
                                 </>
                               ) : (

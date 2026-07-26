@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
-  LineChart, Boxes, PoundSterling, ArrowRight, Download, FileText,
+  LineChart, Boxes, PoundSterling, Download, FileText,
 } from "lucide-react";
 import { auth } from "@/auth";
 import { canAccessModule } from "@/lib/permissions";
-import { Card, CardContent } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
 
@@ -55,42 +54,36 @@ export default async function ReportsLandingPage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-2xl font-bold tracking-tight">Reports</h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Analyse the business, surface trends, and export polished CSV /
-          PDF for your accountant. Every report respects the date-range
-          picker pick a window and the figures update.
-        </p>
-      </header>
+      <div className="adm-top !mb-0">
+        <div>
+          <div className="crumb">Admin · Reports</div>
+          <h1 className="font-bold">Reports</h1>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            Analyse the business, surface trends, and export polished CSV /
+            PDF for your accountant. Every report respects the date-range
+            picker pick a window and the figures update.
+          </p>
+        </div>
+      </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {/* Report tiles — reference .cat-card grid per reports.html. */}
+      <div className="grid g-3">
         {visible.map((t) => (
-          <Link key={t.href} href={t.href} className="group">
-            <Card className="h-full transition group-hover:border-primary/50">
-              <CardContent className="flex h-full flex-col gap-3 p-5">
-                <div className="flex items-center gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-md bg-red/12 text-red ring-1 ring-inset ring-red/20">
-                    <t.icon className="h-5 w-5" />
-                  </span>
-                  <h2 className="text-lg font-semibold tracking-tight">{t.title}</h2>
-                </div>
-                <p className="text-sm leading-relaxed text-muted-foreground">{t.blurb}</p>
-                <div className="mt-auto flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-red transition group-hover:translate-x-0.5">
-                  Open report <ArrowRight className="h-3 w-3" />
-                </div>
-              </CardContent>
-            </Card>
+          <Link key={t.href} href={t.href} className="cat-card !mb-0">
+            <div className="ico !border-0 !bg-red-soft text-red">
+              <t.icon className="h-6 w-6" />
+            </div>
+            <div className="name">{t.title}</div>
+            <div className="count">{t.blurb}</div>
           </Link>
         ))}
       </div>
 
       {/* Export legend — clarifies what the two buttons inside each
           report actually produce, so admins don't have to guess. */}
-      <Card>
-        <CardContent className="grid gap-4 p-5 sm:grid-cols-2">
+      <div className="panel !mb-0 grid gap-4 sm:grid-cols-2">
           <div className="flex items-start gap-3">
-            <span className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-md bg-muted">
+            <span className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-md bg-soft">
               <Download className="h-4 w-4" />
             </span>
             <div>
@@ -101,7 +94,7 @@ export default async function ReportsLandingPage() {
             </div>
           </div>
           <div className="flex items-start gap-3">
-            <span className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-md bg-muted">
+            <span className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-md bg-soft">
               <FileText className="h-4 w-4" />
             </span>
             <div>
@@ -111,8 +104,7 @@ export default async function ReportsLandingPage() {
               </p>
             </div>
           </div>
-        </CardContent>
-      </Card>
+      </div>
     </div>
   );
 }

@@ -7,7 +7,6 @@ import { Pencil, Plus, Search, Trash2, X } from "lucide-react";
 
 import { confirmAction } from "@/lib/confirm-store";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -16,9 +15,6 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Table, TableHeader, TableHead, TableRow, TableBody, TableCell,
-} from "@/components/ui/table";
 
 type Row = { id: string; name: string; brand: string; brandId: string; yearStart: number; yearEnd: number; count: number };
 
@@ -113,14 +109,17 @@ export function BikeModelsClient({
 
   return (
     <div className="space-y-4">
-      <header className="flex items-end justify-between gap-3">
+      <div className="adm-top !mb-0">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Bike models</h1>
-          <p className="text-sm text-muted-foreground">Models drive the compatibility filter on the storefront.</p>
+          <div className="crumb">Admin</div>
+          <h1 className="font-head text-3xl font-normal uppercase leading-none tracking-wide">Bike Models</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Models drive the compatibility filter on the storefront.</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button><Plus className="h-3.5 w-3.5" /> New model</Button>
+            <button type="button" className="btn-red !px-4 !py-2.5">
+              <Plus className="h-3.5 w-3.5" /> New model
+            </button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>New bike model</DialogTitle></DialogHeader>
@@ -155,16 +154,16 @@ export function BikeModelsClient({
             </form>
           </DialogContent>
         </Dialog>
-      </header>
+      </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="toolbar !mb-0">
         <div className="relative min-w-[220px] flex-1 max-w-sm">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search models or brand…"
-            className="h-9 pl-8 pr-8"
+            className="h-9 !pl-8 !pr-8"
           />
           {q && (
             <button type="button" onClick={() => setQ("")}
@@ -182,55 +181,53 @@ export function BikeModelsClient({
         </Select>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Brand</TableHead>
-                <TableHead>Model</TableHead>
-                <TableHead>Years</TableHead>
-                <TableHead className="text-right">Parts fitted</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
-                  {initial.length === 0 ? "No bike models yet." : "No models match these filters."}
-                </TableCell></TableRow>
-              ) : filtered.map((m) => (
-                <TableRow key={m.id}>
-                  <TableCell className="font-medium">{m.brand}</TableCell>
-                  {/* Compose the display label inline so admins don't have
-                      to type "CBR 150 (2020-2023)" into the model name. The
-                      stored `name` stays clean ("CBR 150") — the years come
-                      from the dedicated yearStart/yearEnd inputs. */}
-                  <TableCell>
-                    {m.name} <span className="text-muted-foreground">({m.yearStart}–{m.yearEnd})</span>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{m.yearStart}–{m.yearEnd}</TableCell>
-                  <TableCell className="text-right">{m.count}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(m)}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost" size="icon"
-                        onClick={() => del(m.id, `${m.brand} ${m.name}`)}
-                        className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <div className="table-wrap">
+        <table className="t">
+          <thead>
+            <tr>
+              <th>Brand</th>
+              <th>Model</th>
+              <th>Years</th>
+              <th className="!text-right">Parts fitted</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr><td colSpan={5} className="!py-10 !text-center text-muted-foreground">
+                {initial.length === 0 ? "No bike models yet." : "No models match these filters."}
+              </td></tr>
+            ) : filtered.map((m) => (
+              <tr key={m.id}>
+                <td className="font-semibold">{m.brand}</td>
+                {/* Compose the display label inline so admins don't have
+                    to type "CBR 150 (2020-2023)" into the model name. The
+                    stored `name` stays clean ("CBR 150") — the years come
+                    from the dedicated yearStart/yearEnd inputs. */}
+                <td>
+                  {m.name} <span className="text-muted-foreground">({m.yearStart}–{m.yearEnd})</span>
+                </td>
+                <td className="text-muted-foreground">{m.yearStart}–{m.yearEnd}</td>
+                <td className="!text-right">{m.count}</td>
+                <td className="!text-right">
+                  <div className="flex justify-end gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEdit(m)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost" size="icon"
+                      onClick={() => del(m.id, `${m.brand} ${m.name}`)}
+                      className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <Dialog open={!!editing} onOpenChange={(v) => { if (!v) setEditing(null); }}>
         <DialogContent>

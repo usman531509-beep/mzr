@@ -150,8 +150,8 @@ export function StockReceiptDialog({
                 <button
                   type="button"
                   className={cn(
-                    "flex h-10 w-full items-center justify-between gap-2 rounded-md border border-border bg-input px-3 text-sm",
-                    "hover:border-border focus:outline-none focus:ring-1 focus:ring-ring",
+                    "flex h-10 w-full items-center justify-between gap-2 rounded-md border border-line bg-white px-3 text-sm",
+                    "hover:border-line focus:outline-none focus:ring-1 focus:ring-ring",
                     !selected && "text-muted-foreground",
                   )}
                 >

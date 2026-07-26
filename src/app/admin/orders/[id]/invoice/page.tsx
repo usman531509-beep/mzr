@@ -26,7 +26,7 @@ export default async function InvoicePage({
     <div className="bg-white text-black print:bg-white print:text-black">
       <div className="border-b border-gray-200 bg-gray-50 print:hidden">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-6 py-3 text-sm">
-          <Link href="/admin/orders" className="text-blue-600 hover:underline">
+          <Link href="/admin/orders" className="text-red hover:underline">
             ← Back to orders
           </Link>
           <div className="flex gap-2">

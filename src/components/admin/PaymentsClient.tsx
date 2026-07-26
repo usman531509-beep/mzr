@@ -10,13 +10,9 @@ import {
 
 import { fmtMoney } from "@/lib/format";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
 
 type PaymentStatus = "PENDING" | "SUCCEEDED" | "FAILED" | "CANCELED" | "REFUNDED";
 
@@ -41,12 +37,14 @@ export type PaymentRow = {
   user: { name: string | null; email: string } | null;
 };
 
-const STATUS_META: Record<string, { label: string; icon: typeof CheckCircle2; className: string }> = {
-  SUCCEEDED: { label: "Succeeded", icon: CheckCircle2, className: "bg-emerald-500/15 text-emerald-300 ring-emerald-500/30" },
-  PENDING:   { label: "Pending",   icon: Clock4,       className: "bg-amber-500/15 text-amber-300 ring-amber-500/30" },
-  FAILED:    { label: "Failed",    icon: XCircle,      className: "bg-rose-500/15 text-rose-300 ring-rose-500/30" },
-  CANCELED:  { label: "Canceled",  icon: XCircle,      className: "bg-muted text-muted-foreground ring-border" },
-  REFUNDED:  { label: "Refunded",  icon: RotateCcw,    className: "bg-blue-500/15 text-blue-300 ring-blue-500/30" },
+// Status → reference .st pill variant (theme.css) per payments.html:
+// Succeeded=ok, Pending=warn, Failed=bad, Canceled=muted, Refunded=info.
+const STATUS_META: Record<string, { label: string; icon: typeof CheckCircle2; variant: string }> = {
+  SUCCEEDED: { label: "Succeeded", icon: CheckCircle2, variant: "ok" },
+  PENDING:   { label: "Pending",   icon: Clock4,       variant: "warn" },
+  FAILED:    { label: "Failed",    icon: XCircle,      variant: "bad" },
+  CANCELED:  { label: "Canceled",  icon: XCircle,      variant: "muted" },
+  REFUNDED:  { label: "Refunded",  icon: RotateCcw,    variant: "info" },
 };
 
 export function PaymentsClient({ rows }: { rows: PaymentRow[] }) {
@@ -111,80 +109,81 @@ export function PaymentsClient({ rows }: { rows: PaymentRow[] }) {
         </div>
       </div>
 
-      <div className="rounded-md border border-border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Payment</TableHead>
-              <TableHead>Order</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
-              <TableHead>When</TableHead>
-              <TableHead className="text-right">Receipt</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+      <div className="table-wrap">
+        <table className="t">
+          <thead>
+            <tr>
+              <th>Payment</th>
+              <th>Order</th>
+              <th>Customer</th>
+              <th>Status</th>
+              <th className="text-right">Amount</th>
+              <th>When</th>
+              <th className="text-right">Receipt</th>
+            </tr>
+          </thead>
+          <tbody>
             {filtered.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="p-10 text-center text-sm text-muted-foreground">
+              <tr>
+                <td colSpan={7} className="p-10 text-center text-sm text-muted-foreground">
                   <CreditCard className="mx-auto mb-2 h-6 w-6" />
                   {rows.length === 0 ? "No payments yet." : "No payments match these filters."}
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ) : filtered.map((p) => {
               const meta = STATUS_META[p.status] ?? STATUS_META.PENDING;
               const Icon = meta.icon;
               return (
-                <TableRow key={p.id} className="align-top">
-                  <TableCell>
+                <tr key={p.id} className="align-top">
+                  <td>
                     <div className="font-mono text-[11px]">{p.providerPaymentId}</div>
                     <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{p.provider}</div>
-                  </TableCell>
-                  <TableCell>
+                  </td>
+                  <td>
                     <Link
                       href={`/admin/orders`}
-                      className="font-mono text-xs hover:underline"
+                      className="font-mono text-xs text-ink hover:underline"
                     >
                       {p.order.orderNumber ?? `${p.order.id.slice(0, 8)}…`}
                     </Link>
                     <div className="text-[11px] text-muted-foreground">
                       Order total {fmtMoney(p.order.total)} · {p.order.status}
                     </div>
-                  </TableCell>
-                  <TableCell className="text-sm">
+                  </td>
+                  <td className="text-sm">
                     <div>{p.user?.name ?? p.order.customerName}</div>
                     <div className="text-[11px] text-muted-foreground">{p.order.customerEmail}</div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={`gap-1 ring-1 ring-inset ${meta.className} hover:${meta.className}`}>
-                      <Icon className="h-3 w-3" /> {meta.label}
-                    </Badge>
+                  </td>
+                  <td>
+                    <span className={`st ${meta.variant} whitespace-nowrap`}>
+                      <Icon className="mr-1 inline h-3 w-3 align-[-2px]" />
+                      {meta.label}
+                    </span>
                     {p.failureMessage && (
-                      <div className="mt-1 line-clamp-2 max-w-[260px] text-[11px] text-rose-400/80" title={p.failureMessage}>
+                      <div className="mt-1 line-clamp-2 max-w-[260px] text-[11px] text-rose-700/80" title={p.failureMessage}>
                         {p.failureMessage}
                       </div>
                     )}
-                  </TableCell>
-                  <TableCell className="text-right font-medium tabular-nums">
+                  </td>
+                  <td className="text-right font-medium tabular-nums">
                     {fmtMoney(p.amount)}
                     <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
                       {p.currency}
                     </div>
-                  </TableCell>
-                  <TableCell className="text-sm">
+                  </td>
+                  <td className="text-sm">
                     <div>{new Date(p.createdAt).toLocaleDateString("en-GB")}</div>
                     <div className="text-[11px] text-muted-foreground">
                       {new Date(p.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
                     </div>
-                  </TableCell>
-                  <TableCell className="text-right">
+                  </td>
+                  <td className="text-right">
                     {p.receiptUrl ? (
                       <a
                         href={p.receiptUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-primary hover:underline"
+                        className="inline-flex items-center gap-1 text-red hover:underline"
                       >
                         <Receipt className="h-3.5 w-3.5" /> View
                         <ExternalLink className="h-3 w-3" />
@@ -192,12 +191,12 @@ export function PaymentsClient({ rows }: { rows: PaymentRow[] }) {
                     ) : (
                       <span className="text-xs text-muted-foreground">—</span>
                     )}
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               );
             })}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
     </div>
   );

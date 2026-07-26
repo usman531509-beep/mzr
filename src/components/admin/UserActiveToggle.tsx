@@ -49,7 +49,7 @@ export function UserActiveToggle({
         disabled={disabled || busy}
         aria-label={optimistic ? "Deactivate user" : "Activate user"}
       />
-      <span className={`text-xs ${optimistic ? "text-emerald-400" : "text-muted-foreground"}`}>
+      <span className={`text-xs ${optimistic ? "text-emerald-700" : "text-muted-foreground"}`}>
         {optimistic ? "Active" : "Inactive"}
       </span>
     </div>

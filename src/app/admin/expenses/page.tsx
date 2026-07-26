@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent } from "@/components/ui/card";
 import { ExpensesClient } from "@/components/admin/ExpensesClient";
 import type { Prisma } from "@prisma/client";
 
@@ -61,16 +60,18 @@ export default async function ExpensesPage({ searchParams }: { searchParams: SP 
   ]);
 
   return (
-    <div className="space-y-4 p-4 lg:p-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Expenses</h1>
-        <p className="text-sm text-muted-foreground">
-          Track operational costs · {rangeLabel}.
-        </p>
+    <div className="space-y-4">
+      <div className="adm-top !mb-0">
+        <div>
+          <div className="crumb">Admin · Sales</div>
+          <h1 className="font-bold">Expenses</h1>
+          <p className="text-sm text-muted-foreground">
+            Track operational costs · {rangeLabel}.
+          </p>
+        </div>
       </div>
 
-      <Card>
-        <CardContent className="p-4 lg:p-5">
+      <div className="panel !mb-0">
           <ExpensesClient
             expenses={expenses.map((e) => ({
               id: e.id,
@@ -89,8 +90,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: SP 
             totalCount={totalAgg._count._all}
             allCategories={categoryRows.map((c) => c.category)}
           />
-        </CardContent>
-      </Card>
+      </div>
     </div>
   );
 }

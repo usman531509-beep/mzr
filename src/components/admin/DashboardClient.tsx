@@ -83,7 +83,7 @@ export function DashboardClient({
   return (
     <>
       {/* ── TOP CATEGORIES ────────────────────────────────────── */}
-      <Card>
+      <Card className="rounded-[10px] border-line shadow-none">
         <CardHeader className="flex-row items-end justify-between">
           <div>
             <CardTitle className="text-lg">Top categories</CardTitle>
@@ -107,7 +107,7 @@ export function DashboardClient({
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {previewCategories.map((c) => (
-                <div key={c.id} className="rounded-lg border border-border bg-background p-4 transition hover:border-primary/40">
+                <div key={c.id} className="rounded-[10px] border border-line bg-soft p-4 transition hover:border-red/50">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -122,11 +122,11 @@ export function DashboardClient({
                       <Plus className="h-3.5 w-3.5" /> Add
                     </Button>
                   </div>
-                  <div className="mt-3 flex items-center justify-end border-t border-border pt-2">
+                  <div className="mt-3 flex items-center justify-end border-t border-line pt-2">
                     <Link
                       href={`/products?category=${c.slug}`}
                       target="_blank"
-                      className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+                      className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-red"
                     >
                       <ExternalLink className="h-3 w-3" /> View on store
                     </Link>
@@ -139,7 +139,7 @@ export function DashboardClient({
       </Card>
 
       {/* ── RECENT PARTS ──────────────────────────────────────── */}
-      <Card className="mt-6">
+      <Card className="mt-6 rounded-[10px] border-line shadow-none">
         <CardHeader className="flex-row items-end justify-between gap-3">
           <div>
             <CardTitle className="text-lg">Recent parts</CardTitle>
@@ -183,8 +183,8 @@ export function DashboardClient({
                       >
                         {p.name}
                       </Link>
-                      {p.featured && <Badge variant="warning" className="text-[9px]">Featured</Badge>}
-                      {p.demanding && <Badge className="bg-red/15 text-red ring-1 ring-inset ring-red/30 text-[9px] hover:bg-red/15">In demand</Badge>}
+                      {p.featured && <Badge variant="warning" className="bg-[#fff4d6] text-gold text-[9px]">Featured</Badge>}
+                      {p.demanding && <Badge className="bg-red-soft text-red ring-1 ring-inset ring-red/30 text-[9px] hover:bg-red-soft">In demand</Badge>}
                       {!p.active && <Badge variant="secondary" className="text-[9px]">Inactive</Badge>}
                     </div>
                     <div className="text-[11px] text-muted-foreground">

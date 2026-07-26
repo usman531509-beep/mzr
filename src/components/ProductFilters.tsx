@@ -138,7 +138,9 @@ export function ProductFilters({
     + (sort !== "new" ? 1 : 0);
 
   return (
-    <Card className="h-fit lg:sticky lg:top-20">
+    // Light reference-style filter panel: white card, hairline border,
+    // sticky below the tall storefront header (header + red nav ≈ 150px).
+    <Card className="h-fit rounded-[14px] border-line bg-white lg:sticky lg:top-[170px]">
       {/* Mobile-only toggle header — desktop has no header */}
       <button
         type="button"
@@ -183,8 +185,8 @@ export function ProductFilters({
           {/* Bike finder */}
           <div className="space-y-3">
             <div className="flex items-center gap-1.5">
-              <Filter className="h-3.5 w-3.5 text-primary" />
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">
+              <Filter className="h-3.5 w-3.5 text-red" />
+              <h3 className="font-head text-[15px] uppercase tracking-[0.06em] text-ink">
                 Find parts for your bike
               </h3>
             </div>

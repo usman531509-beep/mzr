@@ -1,6 +1,7 @@
 // Lightweight, dependency-free skeleton primitives used by `loading.tsx`
 // route boundaries. Tailwind's `animate-pulse` is enough — no need for a
-// shimmer library. The colours match the dark theme (`bg-muted/60`).
+// shimmer library. Colours ride the light theme tokens (`bg-muted/60` is a
+// soft grey on white).
 
 import { cn } from "@/lib/utils";
 
@@ -37,8 +38,8 @@ export function CardGridSkeleton({ count = 8 }: { count?: number }) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="overflow-hidden rounded-lg border border-border">
-          <Skeleton className="aspect-[4/3] w-full rounded-none" />
+        <div key={i} className="overflow-hidden rounded-[18px] border border-line bg-white">
+          <Skeleton className="aspect-square w-full rounded-none" />
           <div className="space-y-2 p-3.5">
             <Skeleton className="h-4 w-2/3" />
             <Skeleton className="h-3 w-1/2" />

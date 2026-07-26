@@ -12,7 +12,6 @@ import { fmtMoney } from "@/lib/format";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import { PayClient } from "./PayClient";
 import { PaidCartClear } from "./PaidCartClear";
 
@@ -21,7 +20,7 @@ export const dynamic = "force-dynamic";
 const PLACEHOLDER =
   "data:image/svg+xml;utf8," +
   encodeURIComponent(
-    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'><rect width='4' height='3' fill='%231C1E21'/></svg>`,
+    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'><rect width='4' height='3' fill='%23f3f4f8'/></svg>`,
   );
 
 export default async function PayPage({
@@ -67,7 +66,7 @@ export default async function PayPage({
           flow rather than a bare modal. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,rgba(232,21,27,0.10),transparent_55%),radial-gradient(ellipse_at_bottom_left,rgba(255,255,255,0.04),transparent_55%)]"
+        className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,rgba(227,6,19,0.07),transparent_55%),radial-gradient(ellipse_at_bottom_left,rgba(227,6,19,0.04),transparent_55%)]"
       />
 
       <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-5 lg:px-8 lg:py-7">
@@ -81,8 +80,8 @@ export default async function PayPage({
             priority
           />
         </Link>
-        <div className="hidden items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground sm:flex">
-          <Lock className="h-3.5 w-3.5" /> Secure payment
+        <div className="hidden items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:flex">
+          <Lock className="h-3.5 w-3.5 text-red" /> Secure payment
         </div>
       </header>
 
@@ -90,10 +89,10 @@ export default async function PayPage({
         {/* Order heading */}
         <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-red">
               Invoice
             </div>
-            <h1 className="mt-1 font-head text-3xl font-bold tracking-tight lg:text-4xl">
+            <h1 className="mt-1 font-head text-3xl uppercase leading-none tracking-[0.02em] text-ink lg:text-4xl">
               {order.orderNumber ?? `#${order.id.slice(0, 8)}`}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -101,24 +100,26 @@ export default async function PayPage({
             </p>
           </div>
           {isPaid ? (
-            <Badge className="gap-1.5 bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30 hover:bg-emerald-500/15">
+            <span className="st ok" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
               <CheckCircle2 className="h-3.5 w-3.5" /> Paid
-            </Badge>
+            </span>
           ) : (
-            <Badge className="gap-1.5 bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30 hover:bg-amber-500/15">
+            <span className="st warn" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
               Awaiting payment · {fmtMoney(total)}
-            </Badge>
+            </span>
           )}
         </div>
 
         {isPaid ? (
-          <Card className="overflow-hidden">
+          <Card className="overflow-hidden border-line bg-white">
             <PaidCartClear />
-            <div className="bg-emerald-500/10 px-8 py-10 text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-300">
+            <div className="bg-[#e6f7ec] px-8 py-10 text-center">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white text-ok shadow-sm ring-1 ring-inset ring-ok/25">
                 <CheckCircle2 className="h-7 w-7" />
               </div>
-              <h2 className="mt-4 text-xl font-semibold">Payment completed</h2>
+              <h2 className="mt-4 font-head text-2xl uppercase tracking-[0.02em] text-ink">
+                Payment completed
+              </h2>
               <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
                 Thanks — we&apos;ve received {fmtMoney(total)} and the order is
                 being processed. A receipt has been emailed to {order.customerEmail}.
@@ -128,7 +129,7 @@ export default async function PayPage({
                   <Link href="/account/orders">View order history</Link>
                 </Button>
                 {receiptUrl && (
-                  <Button asChild variant="outline" size="sm">
+                  <Button asChild variant="outline" size="sm" className="border-line bg-white">
                     <a href={receiptUrl} target="_blank" rel="noopener noreferrer">
                       Stripe receipt
                     </a>
@@ -140,10 +141,10 @@ export default async function PayPage({
         ) : (
           <div className="grid gap-5 lg:grid-cols-[1.05fr_1fr]">
             {/* Order summary */}
-            <Card>
+            <Card className="border-line bg-white">
               <CardContent className="space-y-5 p-6">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
                     Your order
                   </h2>
                   <span className="text-xs text-muted-foreground">
@@ -156,12 +157,12 @@ export default async function PayPage({
                     const img = it.product?.images?.[0] ?? PLACEHOLDER;
                     return (
                       <li key={it.id} className="flex items-center gap-3">
-                        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
+                        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-md border border-line bg-white">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={img} alt="" className="h-full w-full object-cover" />
+                          <img src={img} alt="" className="h-full w-full object-contain p-0.5" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-medium">{it.name}</div>
+                          <div className="truncate text-sm font-medium text-ink">{it.name}</div>
                           <div className="text-[11px] text-muted-foreground">
                             {fmtMoney(Number(it.price))} × {it.quantity}
                           </div>
@@ -174,7 +175,7 @@ export default async function PayPage({
                   })}
                 </ul>
 
-                <Separator />
+                <Separator className="bg-line" />
 
                 <div className="space-y-1.5 text-sm">
                   <Row label="Subtotal" value={fmtMoney(subtotal)} />
@@ -183,18 +184,22 @@ export default async function PayPage({
                   <Row label="VAT (20%)" value={fmtMoney(tax)} />
                 </div>
 
-                <Separator />
+                <Separator className="bg-line" />
 
                 <div className="flex items-baseline justify-between">
-                  <span className="text-sm uppercase tracking-wider text-muted-foreground">Total due</span>
-                  <span className="font-head text-2xl font-bold tabular-nums">{fmtMoney(total)}</span>
+                  <span className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                    Total due
+                  </span>
+                  <span className="font-head text-3xl tabular-nums tracking-[0.02em] text-red">
+                    {fmtMoney(total)}
+                  </span>
                 </div>
 
-                <div className="rounded-lg border border-border bg-muted/30 p-4 text-xs">
-                  <div className="mb-1 flex items-center gap-1.5 font-semibold uppercase tracking-wider text-muted-foreground">
-                    <ShieldCheck className="h-3.5 w-3.5" /> Ship to
+                <div className="rounded-lg border border-line bg-soft p-4 text-xs">
+                  <div className="mb-1 flex items-center gap-1.5 font-bold uppercase tracking-wider text-muted-foreground">
+                    <ShieldCheck className="h-3.5 w-3.5 text-red" /> Ship to
                   </div>
-                  <div className="text-foreground">{order.customerName}</div>
+                  <div className="font-semibold text-ink">{order.customerName}</div>
                   <div className="text-muted-foreground">
                     {order.shippingAddress}{order.shippingAddressLine2 ? `, ${order.shippingAddressLine2}` : ""}
                   </div>
@@ -207,14 +212,14 @@ export default async function PayPage({
             </Card>
 
             {/* Payment */}
-            <Card>
+            <Card className="h-fit border-line bg-white">
               <CardContent className="p-6">
                 <div className="mb-4 flex items-center justify-between">
-                  <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
                     Pay securely
                   </h2>
                   <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                    <Lock className="h-3 w-3" /> 256-bit TLS
+                    <Lock className="h-3 w-3 text-red" /> 256-bit TLS
                   </span>
                 </div>
                 <PayClient token={token} total={total} orderId={order.id} />
@@ -230,7 +235,7 @@ export default async function PayPage({
           </span>
           <span>We never see your card details</span>
           <span>VAT applied at 20%</span>
-          <Link href="/" className="hover:text-foreground">© MZR Parts</Link>
+          <Link href="/" className="hover:text-red">© MZR Parts</Link>
         </div>
       </main>
     </div>
@@ -240,8 +245,8 @@ export default async function PayPage({
 function Row({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
   return (
     <div className="flex items-baseline justify-between">
-      <span className={muted ? "text-muted-foreground" : "text-muted-foreground"}>{label}</span>
-      <span className="tabular-nums">{value}</span>
+      <span className="text-muted-foreground">{label}</span>
+      <span className={`tabular-nums ${muted ? "text-ok" : "text-ink"}`}>{value}</span>
     </div>
   );
 }

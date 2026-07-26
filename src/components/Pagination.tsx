@@ -3,13 +3,18 @@
 import { useMemo } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 // URL-driven pagination. The current page is read from `?page=` so the
 // server-rendered list (which fetches via skip/take based on the same param)
 // stays the single source of truth. Other filters in the URL are preserved
-// across page changes.
+// across page changes. Styled as light white pills with a red active page,
+// per the reference design.
+
+const pillBase =
+  "inline-flex h-9 items-center justify-center rounded-full border text-[13px] font-semibold transition disabled:pointer-events-none disabled:opacity-40";
+const pillGhost =
+  "border-line bg-white text-ink hover:border-red hover:text-red";
 
 export function Pagination({
   total, pageSize, currentPage, className,
@@ -79,52 +84,54 @@ export function Pagination({
       className,
     )}>
       <div>
-        Showing <span className="font-semibold text-foreground">{start}</span>–
-        <span className="font-semibold text-foreground">{end}</span> of{" "}
-        <span className="font-semibold text-foreground">{total}</span>
+        Showing <span className="font-semibold text-ink">{start}</span>–
+        <span className="font-semibold text-ink">{end}</span> of{" "}
+        <span className="font-semibold text-ink">{total}</span>
       </div>
-      <div className="flex items-center gap-1">
-        <Button
-          variant="ghost" size="sm"
+      <div className="flex flex-wrap items-center gap-1.5">
+        <button
+          type="button"
           disabled={page <= 1}
           onClick={() => go(page - 1)}
-          className="h-8 gap-1 px-2"
+          className={cn(pillBase, pillGhost, "gap-1 px-3.5")}
           aria-label="Previous page"
         >
           <ChevronLeft className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Prev</span>
-        </Button>
+        </button>
         {pageList.map((p, i) =>
           p === "…" ? (
             <span key={`gap-${i}`} className="px-1 text-muted-foreground/60">
               <MoreHorizontal className="h-3.5 w-3.5" />
             </span>
           ) : (
-            <Button
+            <button
               key={p}
-              variant={p === page ? "default" : "ghost"}
-              size="sm"
+              type="button"
               onClick={() => go(p)}
               className={cn(
-                "h-8 min-w-[2rem] px-2 tabular-nums",
-                p === page && "pointer-events-none",
+                pillBase,
+                "min-w-[2.25rem] px-2 tabular-nums",
+                p === page
+                  ? "pointer-events-none border-red bg-red text-white"
+                  : pillGhost,
               )}
               aria-current={p === page ? "page" : undefined}
             >
               {p}
-            </Button>
+            </button>
           ),
         )}
-        <Button
-          variant="ghost" size="sm"
+        <button
+          type="button"
           disabled={page >= totalPages}
           onClick={() => go(page + 1)}
-          className="h-8 gap-1 px-2"
+          className={cn(pillBase, pillGhost, "gap-1 px-3.5")}
           aria-label="Next page"
         >
           <span className="hidden sm:inline">Next</span>
           <ChevronRight className="h-3.5 w-3.5" />
-        </Button>
+        </button>
       </div>
     </div>
   );

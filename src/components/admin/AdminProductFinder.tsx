@@ -198,9 +198,9 @@ function DefaultRow({ p, onAdd }: { p: FinderProduct; onAdd: () => void }) {
     <div className="flex items-center justify-between gap-3 rounded border border-border p-2">
       {p.image ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={p.image} alt={p.name} className="h-10 w-10 shrink-0 rounded border border-border object-cover" />
+        <img src={p.image} alt={p.name} className="h-10 w-10 shrink-0 rounded border border-line bg-white object-contain" />
       ) : (
-        <div className="h-10 w-10 shrink-0 rounded border border-border bg-muted" />
+        <div className="h-10 w-10 shrink-0 rounded border border-line bg-soft" />
       )}
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium">{p.name}</div>

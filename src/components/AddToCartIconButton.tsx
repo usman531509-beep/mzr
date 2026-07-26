@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { ShoppingCart, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cart-store";
 
-// Compact add-to-cart button for product cards. Stops the click from
-// bubbling so the card's wrapping <Link> doesn't navigate to the detail page.
+// Compact add-to-cart button for product cards, styled as the reference
+// card's red "+ Add" pill (.h-add). Stops the click from bubbling so the
+// card's wrapping <Link> doesn't navigate to the detail page.
 
 type Item = {
   productId: string;
@@ -25,9 +25,9 @@ export function AddToCartIconButton({ product }: { product: Item }) {
 
   if (product.stock <= 0) {
     return (
-      <Button size="sm" className="w-full" disabled>
+      <button type="button" className="h-add !bg-soft !text-muted-foreground" disabled>
         Out of stock
-      </Button>
+      </button>
     );
   }
 
@@ -41,14 +41,19 @@ export function AddToCartIconButton({ product }: { product: Item }) {
   };
 
   return (
-    <Button
-      size="sm"
-      className="w-full"
+    <button
+      type="button"
+      className="h-add"
       onClick={handle}
       aria-label={`Add ${product.name} to cart`}
     >
-      {added ? <Check className="h-3.5 w-3.5" /> : <ShoppingCart className="h-3.5 w-3.5" />}
-      {added ? "Added" : "Add to cart"}
-    </Button>
+      {added ? (
+        <>
+          <Check className="h-3.5 w-3.5" /> Added
+        </>
+      ) : (
+        "+ Add"
+      )}
+    </button>
   );
 }

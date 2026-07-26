@@ -3,19 +3,23 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import {
-  CheckCircle2, Home, Loader2, MapPin, Pencil, Plus, Star, Trash2,
-} from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 import { confirmAction } from "@/lib/confirm-store";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+
+// Compact button sizing — theme.css re-declares .btn-red/.btn-ghost later in
+// the file (hero CTA variants) which out-cascades .btn-sm, so small inline
+// actions restate the reference small-button metrics here.
+const smBtn: React.CSSProperties = {
+  padding: "7px 12px", borderRadius: 8, fontSize: 13,
+  letterSpacing: ".02em", textTransform: "none", fontWeight: 700, boxShadow: "none",
+};
 
 export type AddressRow = {
   id: string;
@@ -82,92 +86,71 @@ export function AddressesClient({ initial }: { initial: AddressRow[] }) {
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-end">
-        <Button onClick={() => setCreating(true)}>
-          <Plus className="h-3.5 w-3.5" /> New address
-        </Button>
-      </div>
-
+    <div>
       {initial.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-2 p-10 text-center text-sm text-muted-foreground">
-            <MapPin className="h-6 w-6" />
+        <div className="panel" style={{ padding: 36, textAlign: "center" }}>
+          <p className="muted" style={{ margin: 0, fontSize: 14 }}>
             No saved addresses yet. Add one and we&apos;ll pre-fill the
             checkout form for you.
-          </CardContent>
-        </Card>
+          </p>
+        </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid g-2">
           {initial.map((a) => (
-            <Card key={a.id} className={a.isDefault ? "border-primary/40" : ""}>
-              <CardContent className="space-y-3 p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    {a.label ? (
-                      <span className="font-semibold">{a.label}</span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-muted-foreground">
-                        <Home className="h-3.5 w-3.5" /> Address
-                      </span>
-                    )}
-                    {a.isDefault && (
-                      <Badge className="gap-1 bg-primary/15 text-primary ring-1 ring-inset ring-primary/30 hover:bg-primary/15">
-                        <Star className="h-3 w-3" /> Default
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost" size="icon" className="h-8 w-8"
-                      onClick={() => setEditing(a)}
-                      title="Edit"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost" size="icon"
-                      className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      onClick={() => del(a)}
-                      disabled={busyId === a.id}
-                      title="Delete"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
+            <div
+              className="panel"
+              key={a.id}
+              style={a.isDefault ? { borderColor: "var(--red)", marginBottom: 0 } : { marginBottom: 0 }}
+            >
+              <h3 style={{ marginBottom: 8 }}>
+                {a.label || "Address"}{" "}
+                {a.isDefault && <span className="tag-inline">Default</span>}
+              </h3>
+              <div style={{ fontSize: 14, lineHeight: 1.55 }}>
+                <div style={{ fontWeight: 600 }}>{a.recipientName}</div>
+                <div>{a.line1}</div>
+                {a.line2 && <div>{a.line2}</div>}
+                <div>
+                  {a.city}
+                  {a.county ? `, ${a.county}` : ""}
                 </div>
-
-                <div className="space-y-0.5 text-sm">
-                  <div className="font-medium">{a.recipientName}</div>
-                  <div>{a.line1}</div>
-                  {a.line2 && <div>{a.line2}</div>}
-                  <div>
-                    {a.city}
-                    {a.county ? `, ${a.county}` : ""}
-                  </div>
-                  <div className="font-mono text-xs">{a.postcode}</div>
-                  <div className="text-muted-foreground">{a.country}</div>
-                  {a.phone && (
-                    <div className="pt-1 text-[11px] text-muted-foreground">{a.phone}</div>
-                  )}
-                </div>
-
+                <div>{a.postcode}</div>
+                <div className="muted">{a.country}</div>
+                {a.phone && <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{a.phone}</div>}
+              </div>
+              <div className="mt flex" style={{ flexWrap: "wrap", gap: 6 }}>
+                <button type="button" className="btn btn-ghost btn-sm" style={smBtn} onClick={() => setEditing(a)}>
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm disabled:opacity-60"
+                  style={{ ...smBtn, color: "var(--bad)" }}
+                  onClick={() => del(a)}
+                  disabled={busyId === a.id}
+                >
+                  Delete
+                </button>
                 {!a.isDefault && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full gap-1.5"
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm disabled:opacity-60"
+                    style={smBtn}
                     onClick={() => setDefault(a)}
                     disabled={busyId === a.id}
                   >
-                    <CheckCircle2 className="h-3.5 w-3.5" /> Make default
-                  </Button>
+                    Make default
+                  </button>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       )}
+
+      <button type="button" className="btn btn-red mt" onClick={() => setCreating(true)}>
+        + Add address
+      </button>
 
       <AddressDialog
         key={creating ? "create" : (editing?.id ?? "closed")}
@@ -286,7 +269,7 @@ function AddressDialog({
               type="checkbox"
               checked={form.isDefault}
               onChange={(e) => setForm({ ...form, isDefault: e.target.checked })}
-              className="h-4 w-4 rounded border-border"
+              className="h-4 w-4 rounded border-line accent-red"
             />
             <span>Set as default shipping address</span>
           </label>

@@ -8,8 +8,6 @@ import { Check, Copy, Eye, ExternalLink, FileText, Pencil, Plus, Printer, Search
 
 import { Pagination } from "@/components/Pagination";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -24,9 +22,6 @@ import {
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from "@/components/ui/select";
-import {
-  Table, TableHeader, TableHead, TableRow, TableBody, TableCell,
-} from "@/components/ui/table";
 import { fmtMoney } from "@/lib/format";
 
 type OrderRow = {
@@ -70,12 +65,14 @@ type CourierOption = { id: string; name: string; trackingUrl: string };
 
 const STATUSES = ["PENDING", "PAID", "SHIPPED", "DELIVERED", "CANCELLED"] as const;
 
+// Light reference-theme tints for the inline status <Select> triggers —
+// mirrors the .st pill palette (warn / info / ok / bad).
 const STATUS_TRIGGER: Record<string, string> = {
-  PENDING:   "border-amber-500/40 text-amber-300",
-  PAID:      "border-blue-500/40 text-blue-300",
-  SHIPPED:   "border-indigo-500/40 text-indigo-300",
-  DELIVERED: "border-emerald-500/40 text-emerald-300",
-  CANCELLED: "border-rose-500/40 text-rose-300",
+  PENDING:   "border-amber-300 bg-amber-50 text-amber-700",
+  PAID:      "border-blue-300 bg-blue-50 text-blue-700",
+  SHIPPED:   "border-indigo-300 bg-indigo-50 text-indigo-700",
+  DELIVERED: "border-emerald-300 bg-emerald-50 text-emerald-700",
+  CANCELLED: "border-rose-300 bg-rose-50 text-rose-700",
 };
 
 export function OrdersClient({
@@ -139,9 +136,10 @@ export function OrdersClient({
 
   return (
     <div className="space-y-4">
-      <header className="flex flex-wrap items-end justify-between gap-3">
+      <div className="adm-top !mb-0">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Orders</h1>
+          <div className="crumb">Admin · Sales</div>
+          <h1 className="font-bold">Orders</h1>
           <p className="text-sm text-muted-foreground">
             {filtered.length} of {initial.length} orders
           </p>
@@ -151,16 +149,16 @@ export function OrdersClient({
             <Plus className="h-3.5 w-3.5" /> New order
           </Link>
         </Button>
-      </header>
+      </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="toolbar !mb-0">
         <div className="relative min-w-[220px] flex-1 max-w-md">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search id, customer, email, phone…"
-            className="h-9 pl-8 pr-8"
+            className="h-9 bg-white !pl-8 !pr-8"
           />
           {q && (
             <button
@@ -174,7 +172,7 @@ export function OrdersClient({
           )}
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="h-9 w-[160px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="h-9 w-[160px] bg-white"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
             {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
@@ -182,76 +180,75 @@ export function OrdersClient({
         </Select>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Order</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
-                  {initial.length === 0 ? "No orders yet." : "No orders match these filters."}
-                </TableCell></TableRow>
-              ) : filtered.map((o) => (
-                <TableRow key={o.id}>
-                  <TableCell className="font-mono text-xs">{o.orderNumber ?? `${o.id.slice(0, 8)}…`}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="font-medium">{o.customer}</span>
-                      {o.createdByAdmin && (
-                        <Badge className="gap-1 bg-blue-500/15 text-blue-300 ring-1 ring-inset ring-blue-500/30 hover:bg-blue-500/15">
-                          <ShieldCheck className="h-3 w-3" /> By admin
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="text-[11px] text-muted-foreground">{o.email}</div>
+      <div className="table-wrap">
+        <table className="t">
+          <thead>
+            <tr>
+              <th>Order</th>
+              <th>Customer</th>
+              <th>Date</th>
+              <th>Status</th>
+              <th className="text-right">Total</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr><td colSpan={6} className="text-center text-sm text-muted-foreground">
+                {initial.length === 0 ? "No orders yet." : "No orders match these filters."}
+              </td></tr>
+            ) : filtered.map((o) => (
+              <tr key={o.id}>
+                <td className="font-mono text-xs">{o.orderNumber ?? `${o.id.slice(0, 8)}…`}</td>
+                <td>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="font-medium">{o.customer}</span>
                     {o.createdByAdmin && (
-                      <div className="text-[10px] text-muted-foreground">via {o.createdByAdmin}</div>
+                      <span className="st info">
+                        <ShieldCheck className="mr-1 inline h-3 w-3 align-[-2px]" />
+                        By admin
+                      </span>
                     )}
-                  </TableCell>
-                  <TableCell className="text-sm">{new Date(o.createdAt).toLocaleDateString("en-GB")}</TableCell>
-                  <TableCell>
-                    <Select value={o.status} onValueChange={(v) => handleStatusChange(o, v)}>
-                      <SelectTrigger className={`h-8 w-[140px] border ${STATUS_TRIGGER[o.status] ?? ""}`}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    {o.status === "SHIPPED" && o.trackingNumber && (
-                      <div className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
-                        <Truck className="h-3 w-3" />
-                        <span className="truncate max-w-[110px]">{o.courierName ?? "Courier"} · {o.trackingNumber}</span>
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right font-medium">{fmtMoney(o.total)}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setOpen(o)}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <Pagination
-            total={pagination.total}
-            pageSize={pagination.pageSize}
-            currentPage={pagination.page}
-            className="px-3 pb-2"
-          />
-        </CardContent>
-      </Card>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">{o.email}</div>
+                  {o.createdByAdmin && (
+                    <div className="text-[10px] text-muted-foreground">via {o.createdByAdmin}</div>
+                  )}
+                </td>
+                <td className="text-sm">{new Date(o.createdAt).toLocaleDateString("en-GB")}</td>
+                <td>
+                  <Select value={o.status} onValueChange={(v) => handleStatusChange(o, v)}>
+                    <SelectTrigger className={`h-8 w-[140px] rounded-full border font-semibold ${STATUS_TRIGGER[o.status] ?? ""}`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {o.status === "SHIPPED" && o.trackingNumber && (
+                    <div className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <Truck className="h-3 w-3" />
+                      <span className="truncate max-w-[110px]">{o.courierName ?? "Courier"} · {o.trackingNumber}</span>
+                    </div>
+                  )}
+                </td>
+                <td className="text-right font-medium">{fmtMoney(o.total)}</td>
+                <td className="text-right">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setOpen(o)}>
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <Pagination
+          total={pagination.total}
+          pageSize={pagination.pageSize}
+          currentPage={pagination.page}
+          className="border-t border-line px-3 py-2"
+        />
+      </div>
 
       <Sheet open={!!open} onOpenChange={(v) => !v && setOpen(null)}>
         <SheetContent className="w-full sm:max-w-md">

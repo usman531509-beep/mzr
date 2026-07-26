@@ -4,14 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AlertTriangle, Loader2, PackageX, Pencil } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table, TableHeader, TableHead, TableBody, TableRow, TableCell,
-} from "@/components/ui/table";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
@@ -69,98 +64,96 @@ export function StockClient({
         ]}
       />
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Product</TableHead>
-                <TableHead>Brand</TableHead>
-                <TableHead className="text-right">Retail</TableHead>
-                <TableHead className="text-right">Cost</TableHead>
-                <TableHead className="text-right">Margin</TableHead>
-                <TableHead className="text-right">Stock</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Value (retail)</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={9} className="text-center text-sm text-muted-foreground">
-                    {totalAll === 0 ? "No products yet." : "No products match these filters."}
-                  </TableCell>
-                </TableRow>
-              ) : rows.map((r) => {
-                const margin = r.costPrice != null ? r.price - r.costPrice : null;
-                const marginPct = r.costPrice != null && r.costPrice > 0
-                  ? ((r.price - r.costPrice) / r.price) * 100
-                  : null;
-                return (
-                  <TableRow key={r.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Thumb src={r.image} alt={r.name} />
-                        <div className="min-w-0">
-                          <div className="truncate font-medium">{r.name}</div>
-                          <div className="text-[11px] text-muted-foreground">
-                            {r.sku && <>SKU {r.sku}{r.oemNumber ? " · " : ""}</>}
-                            {r.oemNumber && <>OEM {r.oemNumber}</>}
-                            {!r.sku && !r.oemNumber && r.category}
-                          </div>
+      <div className="table-wrap">
+        <table className="t">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Brand</th>
+              <th className="!text-right">Retail</th>
+              <th className="!text-right">Cost</th>
+              <th className="!text-right">Margin</th>
+              <th className="!text-right">Stock</th>
+              <th>Status</th>
+              <th className="!text-right">Value (retail)</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={9} className="!py-10 !text-center text-muted-foreground">
+                  {totalAll === 0 ? "No products yet." : "No products match these filters."}
+                </td>
+              </tr>
+            ) : rows.map((r) => {
+              const margin = r.costPrice != null ? r.price - r.costPrice : null;
+              const marginPct = r.costPrice != null && r.costPrice > 0
+                ? ((r.price - r.costPrice) / r.price) * 100
+                : null;
+              return (
+                <tr key={r.id}>
+                  <td>
+                    <div className="flex items-center gap-3">
+                      <Thumb src={r.image} alt={r.name} />
+                      <div className="min-w-0">
+                        <div className="truncate font-semibold">{r.name}</div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {r.sku && <>SKU {r.sku}{r.oemNumber ? " · " : ""}</>}
+                          {r.oemNumber && <>OEM {r.oemNumber}</>}
+                          {!r.sku && !r.oemNumber && r.category}
                         </div>
                       </div>
-                    </TableCell>
-                    <TableCell className="text-sm">{r.brand}</TableCell>
-                    <TableCell className="text-right text-sm tabular-nums">
-                      {fmtMoney(r.price)}
-                    </TableCell>
-                    <TableCell className="text-right text-sm tabular-nums">
-                      {r.costPrice == null ? (
-                        <span className="text-muted-foreground">—</span>
-                      ) : (
-                        fmtMoney(r.costPrice)
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right text-sm tabular-nums">
-                      {margin == null ? (
-                        <span className="text-muted-foreground">—</span>
-                      ) : (
-                        <span className={margin >= 0 ? "text-emerald-300" : "text-rose-400"}>
-                          {fmtMoney(margin)}
-                          {marginPct != null && (
-                            <span className="ml-1 text-[10px] text-muted-foreground">
-                              ({marginPct.toFixed(0)}%)
-                            </span>
-                          )}
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right font-semibold tabular-nums">
-                      {r.stock}
-                      <div className="text-[10px] text-muted-foreground">
-                        ≤ {r.lowStockThreshold}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <StockBadge stock={r.stock} threshold={r.lowStockThreshold} />
-                    </TableCell>
-                    <TableCell className="text-right text-sm tabular-nums">
-                      {fmtMoney(r.price * r.stock)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button size="sm" variant="outline" onClick={() => setEditing(r)}>
-                        <Pencil className="h-3.5 w-3.5" /> Update
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                    </div>
+                  </td>
+                  <td>{r.brand}</td>
+                  <td className="!text-right tabular-nums">
+                    {fmtMoney(r.price)}
+                  </td>
+                  <td className="!text-right tabular-nums">
+                    {r.costPrice == null ? (
+                      <span className="text-muted-foreground">—</span>
+                    ) : (
+                      fmtMoney(r.costPrice)
+                    )}
+                  </td>
+                  <td className="!text-right tabular-nums">
+                    {margin == null ? (
+                      <span className="text-muted-foreground">—</span>
+                    ) : (
+                      <span className={margin >= 0 ? "text-[#0a8a3a]" : "text-red"}>
+                        {fmtMoney(margin)}
+                        {marginPct != null && (
+                          <span className="ml-1 text-[10px] text-muted-foreground">
+                            ({marginPct.toFixed(0)}%)
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </td>
+                  <td className="!text-right font-semibold tabular-nums">
+                    {r.stock}
+                    <div className="text-[10px] font-normal text-muted-foreground">
+                      ≤ {r.lowStockThreshold}
+                    </div>
+                  </td>
+                  <td>
+                    <StockBadge stock={r.stock} threshold={r.lowStockThreshold} />
+                  </td>
+                  <td className="!text-right tabular-nums">
+                    {fmtMoney(r.price * r.stock)}
+                  </td>
+                  <td className="!text-right">
+                    <Button size="sm" variant="outline" onClick={() => setEditing(r)}>
+                      <Pencil className="h-3.5 w-3.5" /> Update
+                    </Button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
       <StockDialog
         row={editing}
@@ -174,31 +167,31 @@ export function StockClient({
 function StockBadge({ stock, threshold }: { stock: number; threshold: number }) {
   if (stock === 0) {
     return (
-      <Badge className="gap-1 bg-rose-500/15 text-rose-300 ring-1 ring-inset ring-rose-500/30 hover:bg-rose-500/15">
+      <span className="st bad inline-flex items-center gap-1">
         <PackageX className="h-3 w-3" /> Out of stock
-      </Badge>
+      </span>
     );
   }
   if (stock <= threshold) {
     return (
-      <Badge className="gap-1 bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30 hover:bg-amber-500/15">
+      <span className="st warn inline-flex items-center gap-1">
         <AlertTriangle className="h-3 w-3" /> Low
-      </Badge>
+      </span>
     );
   }
   return (
-    <Badge className="bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30 hover:bg-emerald-500/15">
+    <span className="st ok">
       In stock
-    </Badge>
+    </span>
   );
 }
 
 function Thumb({ src, alt }: { src: string | null; alt: string }) {
   return (
-    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded border border-border bg-muted">
+    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded border border-line bg-white">
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt={alt} className="h-full w-full object-cover" />
+        <img src={src} alt={alt} className="h-full w-full object-contain" />
       ) : null}
     </div>
   );

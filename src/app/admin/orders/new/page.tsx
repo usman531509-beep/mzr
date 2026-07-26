@@ -40,10 +40,11 @@ export default async function AdminCreateOrderPage() {
   const discountByCategory = Object.fromEntries(tradeRows.map((r) => [r.categoryId, r.percent]));
 
   return (
-    <div className="space-y-4 p-4 lg:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="space-y-4">
+      <div className="adm-top !mb-0">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Create Order</h1>
+          <div className="crumb">Admin · Sales · Orders</div>
+          <h1 className="font-bold">Create Order</h1>
           <p className="text-sm text-muted-foreground">
             Build an order on behalf of a customer. The order will be tagged as
             created by you and appear in the customer&apos;s order history.

@@ -7,16 +7,13 @@ import { fmtMoney } from "@/lib/format";
 import { ukHourNow, greetingFor, firstNameOf } from "@/lib/greeting";
 import { StatCard } from "@/components/admin/StatCard";
 import { DashboardClient, type DashboardCategory } from "@/components/admin/DashboardClient";
-import { RevenueLineChart } from "@/components/admin/RevenueLineChart";
-import { StatusPieChart } from "@/components/admin/StatusPieChart";
-import { CategoryBarChart } from "@/components/admin/CategoryBarChart";
+import { KpiCard } from "@/components/admin/KpiCard";
+import { SalesTrendCard } from "@/components/admin/SalesTrendCard";
+import { CategoryDonut } from "@/components/admin/CategoryDonut";
 import { TopProductsList } from "@/components/admin/TopProductsList";
+import { RecentOrdersTable } from "@/components/admin/RecentOrdersTable";
 import { DateRangeFilter } from "@/components/admin/DateRangeFilter";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table, TableHeader, TableHead, TableRow, TableBody, TableCell,
-} from "@/components/ui/table";
+import { Card, CardContent } from "@/components/ui/card";
 
 export const dynamic = "force-dynamic";
 
@@ -75,15 +72,23 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
   const itemRangeFilter    = from && to ? { order: { is: { createdAt: { gte: from, lte: to } } } } : {};
   const expenseRangeFilter = from && to ? { paidOn: { gte: from, lte: to } } : {};
 
+  // Fixed trailing 14-day window powering the KPI sparklines + "this week"
+  // deltas — independent of the selected range so the cards always show a
+  // consistent recent trend (last 7 days vs the 7 before).
+  const kpiStart = new Date();
+  kpiStart.setHours(0, 0, 0, 0);
+  kpiStart.setDate(kpiStart.getDate() - 13);
+
   // All dashboard queries fire in parallel as a single batch — the second
   // group used to wait for the first to finish, costing one extra DB
   // round-trip (~70ms when the DB is in another region).
   const [
     productsCount, ordersCount, usersCount, revenueAgg,
     recentOrders, products, brands, productBrands, categories, models,
-    statusCounts, ordersForChart, orderItemsAgg,
+    ordersForChart, orderItemsAgg,
     expensesAgg, oosCount, stockProducts, pendingAgg,
     lifetimeRevenueAgg, lifetimeOrdersCount,
+    kpiOrders, kpiProducts, kpiUsers,
   ] = await Promise.all([
     prisma.product.count({ where: { deletedAt: null } }),
     // Financial metrics only count orders that have actually been delivered.
@@ -94,8 +99,14 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
       where: { ...orderRangeFilter, status: "DELIVERED" },
     }),
     // Recent orders panel still shows every order (regardless of status) so
-    // admins can take action on pending / paid / shipped ones.
-    prisma.order.findMany({ where: orderRangeFilter, orderBy: { createdAt: "desc" }, take: 5 }),
+    // admins can take action on pending / paid / shipped ones. Pull the first
+    // line item + its product image for the reference-style table row.
+    prisma.order.findMany({
+      where: orderRangeFilter,
+      orderBy: { createdAt: "desc" },
+      take: 6,
+      include: { items: { take: 1, include: { product: { select: { images: true } } } } },
+    }),
     // Dashboard preview only — the full catalogue lives on /admin/products
     // with its own pagination + search. Cap at 10 newest with the relations
     // the card UI needs, nothing more.
@@ -132,11 +143,6 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
       orderBy: [{ brandId: "asc" }, { name: "asc" }],
       include: { brand: true },
     }),
-    prisma.order.groupBy({
-      by: ["status"],
-      _count: { _all: true },
-      where: orderRangeFilter,
-    }),
     prisma.order.findMany({
       where: { ...orderRangeFilter, status: "DELIVERED" },
       select: { createdAt: true, total: true, status: true },
@@ -146,7 +152,7 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
       where: itemRangeFilter,
       include: {
         order: { select: { status: true, createdAt: true } },
-        product: { select: { categoryId: true, costPrice: true } },
+        product: { select: { categoryId: true, costPrice: true, images: true, slug: true } },
         // FIFO cost attribution: when populated, each row's qty × unitCost is
         // the real cost of goods sold (instead of the single mutable
         // Product.costPrice which doesn't reflect batch history).
@@ -178,6 +184,19 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
       _sum: { total: true },
     }),
     prisma.order.count({ where: { status: "DELIVERED" } }),
+    // Trailing 14-day series for the KPI sparklines + week-over-week deltas.
+    prisma.order.findMany({
+      where: { status: "DELIVERED", createdAt: { gte: kpiStart } },
+      select: { createdAt: true, total: true },
+    }),
+    prisma.product.findMany({
+      where: { deletedAt: null, createdAt: { gte: kpiStart } },
+      select: { createdAt: true },
+    }),
+    prisma.user.findMany({
+      where: { role: "USER", createdAt: { gte: kpiStart } },
+      select: { createdAt: true },
+    }),
   ]);
   const lowStockRows = stockProducts.filter((p) => p.stock > 0 && p.stock <= p.lowStockThreshold);
   const lowStockCount = lowStockRows.length;
@@ -232,47 +251,109 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
 
   // ---------- Chart data --------------------------------------------------
 
-  // Revenue + order count bucketed across the active range. Days with no
-  // orders still appear (zero) so the line chart has a continuous x-axis.
-  // For "all time" we fall back to a 30-day rolling window so the chart
-  // stays readable.
-  const chartFrom = from ?? (() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    d.setDate(d.getDate() - 29);
-    return d;
-  })();
-  const chartTo = to ?? new Date();
-  const chartDays = rangeDays ?? 30;
-  const days: { date: string; key: string; revenue: number; orders: number }[] = [];
-  for (let i = 0; i < chartDays; i++) {
-    const d = new Date(chartFrom);
-    d.setDate(chartFrom.getDate() + i);
-    if (d > chartTo) break;
-    const key = d.toISOString().slice(0, 10);
-    const label = d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-    days.push({ date: label, key, revenue: 0, orders: 0 });
+  // Sales-trend series. Bounded ranges (today/week/month/90d/custom) bucket
+  // daily. "All time" spans from the first delivered order to today and steps
+  // up to weekly / monthly buckets as the span grows, so the line always
+  // covers the actual sales history instead of an empty rolling window.
+  const trendTo = to ?? new Date();
+  let trendFrom: Date;
+  if (from) {
+    trendFrom = new Date(from);
+  } else {
+    // ordersForChart is delivered-only, ordered ascending → [0] is the oldest.
+    const firstDelivered = ordersForChart[0]?.createdAt;
+    trendFrom = firstDelivered ? new Date(firstDelivered) : new Date(trendTo);
+    if (!firstDelivered) trendFrom.setDate(trendFrom.getDate() - 29);
   }
-  const dayIndex = new Map(days.map((d, i) => [d.key, i]));
+  trendFrom.setHours(0, 0, 0, 0);
+
+  const spanDays = Math.max(1, Math.ceil((trendTo.getTime() - trendFrom.getTime()) / 86400000) + 1);
+  const unit: "day" | "week" | "month" =
+    spanDays <= 92 ? "day" : spanDays <= 730 ? "week" : "month";
+
+  // Canonical bucket key + axis label for a date, at the chosen granularity.
+  const bucketOf = (d: Date): { key: string; label: string } => {
+    if (unit === "month") {
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      return { key, label: d.toLocaleDateString(undefined, { month: "short", year: "2-digit" }) };
+    }
+    if (unit === "week") {
+      const w = new Date(d);
+      w.setDate(w.getDate() - ((w.getDay() + 6) % 7)); // back to Monday
+      w.setHours(0, 0, 0, 0);
+      return { key: w.toISOString().slice(0, 10), label: w.toLocaleDateString(undefined, { month: "short", day: "numeric" }) };
+    }
+    return { key: d.toISOString().slice(0, 10), label: d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) };
+  };
+
+  // Pre-seed empty buckets across the whole span so the x-axis is continuous.
+  const days: { date: string; key: string; revenue: number; orders: number }[] = [];
+  const dayIndex = new Map<string, number>();
+  {
+    const cursor = new Date(trendFrom);
+    let guard = 0;
+    while (cursor <= trendTo && guard < 5000) {
+      const { key, label } = bucketOf(cursor);
+      if (!dayIndex.has(key)) {
+        dayIndex.set(key, days.length);
+        days.push({ date: label, key, revenue: 0, orders: 0 });
+      }
+      if (unit === "day") cursor.setDate(cursor.getDate() + 1);
+      else if (unit === "week") cursor.setDate(cursor.getDate() + 7);
+      else cursor.setMonth(cursor.getMonth() + 1);
+      guard++;
+    }
+  }
   for (const o of ordersForChart) {
     if (o.status !== "DELIVERED") continue;
-    const key = o.createdAt.toISOString().slice(0, 10);
-    const idx = dayIndex.get(key);
+    const idx = dayIndex.get(bucketOf(o.createdAt).key);
     if (idx === undefined) continue;
     days[idx].revenue += Number(o.total);
     days[idx].orders += 1;
   }
 
-  // Order count per status (for the donut).
-  const STATUSES = ["PENDING", "PAID", "SHIPPED", "DELIVERED", "CANCELLED"] as const;
-  const statusMap = Object.fromEntries(
-    statusCounts.map((s) => [s.status, s._count._all]),
-  ) as Record<string, number>;
-  const statusData = STATUSES.map((s) => ({ status: s, count: statusMap[s] ?? 0 }));
+  // KPI sparklines + week-over-week deltas. Bucket the trailing 14 days, then
+  // compare the most recent 7 days against the 7 before them.
+  const KPI_DAYS = 14;
+  const kpiKeys: string[] = [];
+  for (let i = 0; i < KPI_DAYS; i++) {
+    const d = new Date(kpiStart);
+    d.setDate(kpiStart.getDate() + i);
+    kpiKeys.push(d.toISOString().slice(0, 10));
+  }
+  const kpiIdx = new Map(kpiKeys.map((k, i) => [k, i]));
+  const revSeries = new Array<number>(KPI_DAYS).fill(0);
+  const ordSeries = new Array<number>(KPI_DAYS).fill(0);
+  const prodSeries = new Array<number>(KPI_DAYS).fill(0);
+  const userSeries = new Array<number>(KPI_DAYS).fill(0);
+  for (const o of kpiOrders) {
+    const idx = kpiIdx.get(o.createdAt.toISOString().slice(0, 10));
+    if (idx === undefined) continue;
+    revSeries[idx] += Number(o.total);
+    ordSeries[idx] += 1;
+  }
+  for (const p of kpiProducts) {
+    const idx = kpiIdx.get(p.createdAt.toISOString().slice(0, 10));
+    if (idx !== undefined) prodSeries[idx] += 1;
+  }
+  for (const u of kpiUsers) {
+    const idx = kpiIdx.get(u.createdAt.toISOString().slice(0, 10));
+    if (idx !== undefined) userSeries[idx] += 1;
+  }
+  const wow = (series: number[]): number | null => {
+    const prev = series.slice(0, 7).reduce((a, b) => a + b, 0);
+    const last = series.slice(7).reduce((a, b) => a + b, 0);
+    if (prev === 0) return last > 0 ? 100 : null;
+    return ((last - prev) / prev) * 100;
+  };
+  const revenueDelta = wow(revSeries);
+  const ordersDelta = wow(ordSeries);
+  const productsDelta = wow(prodSeries);
+  const customersDelta = wow(userSeries);
 
   // Revenue per category from non-cancelled orders. Top 10.
   const catRevenue = new Map<string, number>();
-  const productRevenue = new Map<string, { name: string; quantity: number; revenue: number }>();
+  const productRevenue = new Map<string, { name: string; quantity: number; revenue: number; image: string | null; slug: string | null }>();
   let traderDiscount = 0;
   let traderDiscountedItems = 0;
   for (const it of orderItemsAgg) {
@@ -288,7 +369,10 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
       cur.quantity += it.quantity;
       cur.revenue += line;
     } else {
-      productRevenue.set(it.productId, { name: it.name, quantity: it.quantity, revenue: line });
+      productRevenue.set(it.productId, {
+        name: it.name, quantity: it.quantity, revenue: line,
+        image: it.product.images[0] ?? null, slug: it.product.slug,
+      });
     }
     const original = Number(it.originalPrice);
     const paid     = Number(it.price);
@@ -310,6 +394,18 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
   const topProducts = Array.from(productRevenue.values())
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 10);
+
+  // Recent-orders table rows: first line item + its image, formatted date.
+  const recentOrderRows = recentOrders.map((o) => ({
+    id: o.id,
+    orderNumber: o.orderNumber,
+    product: o.items[0]?.name ?? "Order",
+    image: o.items[0]?.product.images[0] ?? null,
+    date: o.createdAt.toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
+    status: o.status,
+    total: Number(o.total),
+    customer: o.customerName,
+  }));
 
   // Category counts come straight from Postgres via _count above; the
   // "recent parts in this category" inline lists from the old dashboard
@@ -355,20 +451,22 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
 
   return (
     <div className="space-y-6">
+      {/* Page hero — the breadcrumb in the top bar already carries the
+          Admin › Dashboard context, so the title leads straight with a greeting. */}
       <header>
-        <h1 className="text-2xl font-bold tracking-tight">
-          {greeting}, <span className="text-primary">{firstName}</span>
+        <h1 className="text-2xl font-bold tracking-tight text-ink">
+          {greeting}, <span className="text-red">{firstName}</span>
         </h1>
-        <p className="text-sm text-muted-foreground">Here's your store overview · {rangeLabel}.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Here's your store overview · {rangeLabel}.</p>
       </header>
 
       <DateRangeFilter />
 
       {(oosCount > 0 || lowStockCount > 0) && (
-        <Card className="border-amber-500/30 bg-amber-500/5">
+        <Card className="rounded-[10px] border-[#f0d99a] bg-[#fff8e6] shadow-none">
           <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-amber-500/15 text-amber-300">
+              <div className="flex h-9 w-9 items-center justify-center rounded-md bg-[#fff4d6] text-gold">
                 <ShoppingCart className="h-4 w-4" />
               </div>
               <div>
@@ -388,23 +486,111 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
                 </div>
               </div>
             </div>
-            <Link href="/admin/stock" className="text-xs font-medium text-amber-300 hover:underline">
+            <Link href="/admin/stock" className="text-xs font-semibold text-gold hover:underline">
               Open stock →
             </Link>
           </CardContent>
         </Card>
       )}
 
-      {/* ---- Performance (range-scoped) ----------------------------------- */}
-      <SectionHeader title="Performance" subtitle={rangeLabel} />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard
-          label="Revenue"
+      {/* ---- Hero KPIs ------------------------------------------------- */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiCard
+          filled id="rev"
+          label="Total Revenue"
           value={fmtMoney(totalRevenue)}
+          delta={revenueDelta}
+          data={revSeries}
           icon={DollarSign}
-          accent="success"
-          sub={`${ordersCount} delivered order${ordersCount === 1 ? "" : "s"}`}
+          href="/admin/reports/financial"
         />
+        <KpiCard
+          id="ord"
+          label="Total Orders"
+          value={ordersCount.toLocaleString()}
+          delta={ordersDelta}
+          data={ordSeries}
+          icon={ShoppingCart}
+          href="/admin/orders"
+        />
+        <KpiCard
+          id="prod"
+          label="Total Products"
+          value={productsCount.toLocaleString()}
+          delta={productsDelta}
+          data={prodSeries}
+          icon={Package}
+          href="/admin/products"
+        />
+        <KpiCard
+          id="cust"
+          label="Active Customers"
+          value={usersCount.toLocaleString()}
+          delta={customersDelta}
+          data={userSeries}
+          icon={Users}
+          href="/admin/customers"
+        />
+      </div>
+
+      {/* ---- Sales trend + category donut ----------------------------- */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <SalesTrendCard
+            data={days.map((d) => ({ date: d.date, revenue: d.revenue, orders: d.orders }))}
+            total={totalRevenue}
+            delta={revenueDelta}
+            rangeLabel={rangeLabel}
+          />
+        </div>
+        <CategoryDonut data={categoryRevenueData} />
+      </div>
+
+      {/* ---- Top products + recent orders ----------------------------- */}
+      <div className="grid gap-4 lg:grid-cols-5">
+        <div className="lg:col-span-2">
+          <TopProductsList rows={topProducts} />
+        </div>
+        <div className="lg:col-span-3">
+          <RecentOrdersTable rows={recentOrderRows} />
+        </div>
+      </div>
+
+      {/* ---- Operations (current state, range-agnostic) --------------- */}
+      <SectionHeader title="Operations" subtitle="Current state" />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Pending orders"
+          value={pendingCount}
+          icon={ShoppingCart}
+          accent={pendingCount > 0 ? "warning" : undefined}
+          sub={pendingCount > 0 ? `${fmtMoney(pendingTotal)} awaiting` : "All clear"}
+        />
+        <StatCard
+          label="Out of stock"
+          value={oosCount}
+          icon={Package}
+          accent={oosCount > 0 ? "primary" : undefined}
+          sub={oosCount > 0 ? "Restock now" : "All stocked"}
+        />
+        <StatCard
+          label="Low stock"
+          value={lowStockCount}
+          icon={Package}
+          accent={lowStockCount > 0 ? "warning" : undefined}
+          sub={lowStockCount > 0 ? "Below threshold" : "Healthy"}
+        />
+        <StatCard
+          label="Inventory value"
+          value={fmtMoney(inventoryValue)}
+          icon={DollarSign}
+          sub="At retail · all stock"
+        />
+      </div>
+
+      {/* ---- Financial (range-scoped) --------------------------------- */}
+      <SectionHeader title="Financial" subtitle={rangeLabel} />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Net profit"
           value={fmtMoney(grossProfit)}
@@ -437,139 +623,6 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
         />
       </div>
 
-      {/* ---- Operational snapshot (always current, range-agnostic) ------- */}
-      <SectionHeader title="Operations" subtitle="Current state" />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Pending orders"
-          value={pendingCount}
-          icon={ShoppingCart}
-          accent={pendingCount > 0 ? "warning" : undefined}
-          sub={pendingCount > 0 ? `${fmtMoney(pendingTotal)} awaiting` : "All clear"}
-        />
-        <StatCard
-          label="Out of stock"
-          value={oosCount}
-          icon={Package}
-          accent={oosCount > 0 ? "primary" : undefined}
-          sub={oosCount > 0 ? "Restock now" : "All stocked"}
-        />
-        <StatCard
-          label="Low stock"
-          value={lowStockCount}
-          icon={Package}
-          accent={lowStockCount > 0 ? "warning" : undefined}
-          sub={lowStockCount > 0 ? "Below threshold" : "Healthy"}
-        />
-        <StatCard
-          label="Inventory value"
-          value={fmtMoney(inventoryValue)}
-          icon={DollarSign}
-          sub="At retail · all stock"
-        />
-      </div>
-
-      {/* ---- Lifetime totals (range-agnostic context) -------------------- */}
-      <SectionHeader title="All-time totals" subtitle="Cumulative since launch" />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Lifetime revenue"
-          value={fmtMoney(lifetimeRevenue)}
-          icon={DollarSign}
-          accent="success"
-          sub={`${lifetimeOrdersCount} delivered order${lifetimeOrdersCount === 1 ? "" : "s"}`}
-        />
-        <StatCard label="Customers" value={usersCount} icon={Users} sub="Registered users" />
-        <StatCard label="Products" value={productsCount} icon={Package} sub="Active in catalogue" />
-        <StatCard
-          label="Orders this period"
-          value={ordersCount}
-          icon={ShoppingCart}
-          accent="primary"
-          sub={`${rangeLabel} · delivered`}
-        />
-      </div>
-
-      <SectionHeader title="Trends" subtitle={rangeLabel} />
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-lg">Revenue · {rangeLabel.toLowerCase()}</CardTitle>
-            <CardDescription>Daily revenue from non-cancelled orders.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <RevenueLineChart data={days.map((d) => ({ date: d.date, revenue: d.revenue, orders: d.orders }))} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Orders by status</CardTitle>
-            <CardDescription>{rangeLabel} distribution.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <StatusPieChart data={statusData} />
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-lg">Revenue by category</CardTitle>
-            <CardDescription>Top 10 categories · {rangeLabel.toLowerCase()}.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <CategoryBarChart data={categoryRevenueData} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Top 10 selling products</CardTitle>
-            <CardDescription>Best-sellers · {rangeLabel.toLowerCase()}.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <TopProductsList rows={topProducts} />
-          </CardContent>
-        </Card>
-      </div>
-
-      <SectionHeader title="Recent activity" subtitle="All statuses" />
-      <Card>
-        <CardHeader className="flex-row items-end justify-between">
-          <div>
-            <CardTitle className="text-lg">Recent orders</CardTitle>
-            <CardDescription>Latest 5 orders in {rangeLabel.toLowerCase()} · all statuses.</CardDescription>
-          </div>
-          <Link href="/admin/orders" className="text-xs font-medium text-primary hover:underline">View all →</Link>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border border-border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Order</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentOrders.length === 0 ? (
-                  <TableRow><TableCell colSpan={4} className="text-center text-sm text-muted-foreground">No orders yet.</TableCell></TableRow>
-                ) : recentOrders.map((o) => (
-                  <TableRow key={o.id}>
-                    <TableCell className="font-mono text-xs">{o.orderNumber ?? `${o.id.slice(0, 8)}…`}</TableCell>
-                    <TableCell>{o.customerName}</TableCell>
-                    <TableCell><StatusBadge status={o.status} /></TableCell>
-                    <TableCell className="text-right font-medium">{fmtMoney(Number(o.total))}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Categories + parts */}
       <DashboardClient
         categoriesData={categoriesData}
@@ -592,8 +645,8 @@ export default async function AdminDashboard({ searchParams }: { searchParams: S
 
 function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <div className="flex items-baseline justify-between border-b border-border pb-1 pt-2">
-      <h2 className="text-sm font-semibold uppercase tracking-wider text-foreground/80">
+    <div className="flex items-baseline justify-between border-b border-line pb-1 pt-2">
+      <h2 className="text-sm font-bold uppercase tracking-wider text-ink/70">
         {title}
       </h2>
       {subtitle && (
@@ -605,10 +658,3 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const v =
-    status === "DELIVERED" ? "success" :
-    status === "PAID" || status === "SHIPPED" ? "default" :
-    status === "CANCELLED" ? "destructive" : "secondary";
-  return <Badge variant={v as never}>{status}</Badge>;
-}

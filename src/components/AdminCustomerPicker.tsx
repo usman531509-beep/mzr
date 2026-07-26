@@ -5,7 +5,6 @@ import { Briefcase, Loader2, Search, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 
 export type PickedCustomer = {
   id: string;
@@ -48,10 +47,10 @@ export function AdminCustomerPicker({
   }, [open, q]);
 
   return (
-    <Card className="border-blue-500/30 bg-blue-500/5">
+    <Card className="border-blue-200 bg-blue-50/50">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Briefcase className="h-4 w-4 text-blue-400" />
+          <Briefcase className="h-4 w-4 text-blue-600" />
           Order on behalf of customer
         </CardTitle>
         <CardDescription>
@@ -61,14 +60,14 @@ export function AdminCustomerPicker({
       </CardHeader>
       <CardContent className="space-y-3">
         {selected ? (
-          <div className="flex items-center justify-between gap-3 rounded-md border border-blue-500/30 bg-background p-3">
+          <div className="flex items-center justify-between gap-3 rounded-md border border-blue-200 bg-white p-3">
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium">{selected.name || selected.email}</span>
                 {selected.tradeApproved && (
-                  <Badge className="gap-1 bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30 hover:bg-amber-500/15">
-                    <Briefcase className="h-3 w-3" /> Trader
-                  </Badge>
+                  <span className="st warn">
+                    <Briefcase className="mr-1 inline h-3 w-3 align-[-2px]" /> Trader
+                  </span>
                 )}
               </div>
               <div className="text-xs text-muted-foreground">{selected.email}</div>
@@ -111,9 +110,9 @@ export function AdminCustomerPicker({
                         <div className="flex items-center gap-2">
                           <span className="truncate font-medium">{u.name || u.email}</span>
                           {u.tradeApproved && (
-                            <Badge className="gap-1 bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30 hover:bg-amber-500/15">
-                              <Briefcase className="h-3 w-3" /> Trader
-                            </Badge>
+                            <span className="st warn">
+                              <Briefcase className="mr-1 inline h-3 w-3 align-[-2px]" /> Trader
+                            </span>
                           )}
                         </div>
                         <div className="truncate text-xs text-muted-foreground">{u.email}</div>

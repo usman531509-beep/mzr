@@ -1,13 +1,8 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { fmtMoney } from "@/lib/format";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/admin/StatCard";
 import { RevenueLineChart } from "@/components/admin/RevenueLineChart";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
 import { ReportHeader } from "@/components/admin/reports/ReportHeader";
 import { resolveRange } from "@/lib/reports/date-range";
 import { requireReportAccess } from "@/lib/reports/auth";
@@ -177,111 +172,103 @@ export default async function SalesReport({ searchParams }: { searchParams: SP }
       </div>
 
       {days.length > 0 && (
-        <Card>
-          <CardContent className="p-5">
-            <div className="mb-3 flex items-end justify-between">
-              <div>
-                <h2 className="text-sm font-semibold tracking-tight">Revenue by day</h2>
-                <p className="text-xs text-muted-foreground">Delivered orders only.</p>
-              </div>
-              <Badge variant="secondary">{range.label}</Badge>
+        <div className="panel !mb-0">
+          <div className="mb-3 flex items-end justify-between">
+            <div>
+              <h3 className="!mb-0">Revenue by day</h3>
+              <p className="text-xs text-muted-foreground">Delivered orders only.</p>
             </div>
-            <RevenueLineChart data={days.map((d) => ({ date: d.date, revenue: d.revenue, orders: d.orders }))} />
-          </CardContent>
-        </Card>
+            <span className="st muted">{range.label}</span>
+          </div>
+          <RevenueLineChart data={days.map((d) => ({ date: d.date, revenue: d.revenue, orders: d.orders }))} />
+        </div>
       )}
 
-      <Card>
-        <CardContent className="p-0">
-          <div className="flex items-end justify-between gap-3 p-5 pb-3">
-            <div>
-              <h2 className="text-sm font-semibold tracking-tight">Top 15 products by revenue</h2>
-              <p className="text-xs text-muted-foreground">Higher rank = bigger contribution this period.</p>
-            </div>
+      <div className="panel !mb-0">
+        <div className="mb-3 flex items-end justify-between gap-3">
+          <div>
+            <h3 className="!mb-0">Top 15 products by revenue</h3>
+            <p className="text-xs text-muted-foreground">Higher rank = bigger contribution this period.</p>
           </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="pl-5">#</TableHead>
-                <TableHead>Product</TableHead>
-                <TableHead className="text-right">Units</TableHead>
-                <TableHead className="text-right pr-5">Revenue</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {topProducts.length === 0 ? (
-                <TableRow><TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
-                  No sales in this period.
-                </TableCell></TableRow>
-              ) : topProducts.map((p, i) => (
-                <TableRow key={p.name + i}>
-                  <TableCell className="pl-5 font-mono text-xs text-muted-foreground">{i + 1}</TableCell>
-                  <TableCell className="font-medium">{p.name}</TableCell>
-                  <TableCell className="text-right tabular-nums">{p.qty}</TableCell>
-                  <TableCell className="pr-5 text-right font-medium tabular-nums">{fmtMoney(p.revenue)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+        </div>
+        <table className="t">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Product</th>
+              <th className="text-right">Units</th>
+              <th className="text-right">Revenue</th>
+            </tr>
+          </thead>
+          <tbody>
+            {topProducts.length === 0 ? (
+              <tr><td colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
+                No sales in this period.
+              </td></tr>
+            ) : topProducts.map((p, i) => (
+              <tr key={p.name + i}>
+                <td className="font-mono text-xs text-muted-foreground">{i + 1}</td>
+                <td className="font-medium">{p.name}</td>
+                <td className="text-right tabular-nums">{p.qty}</td>
+                <td className="text-right font-medium tabular-nums">{fmtMoney(p.revenue)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <div className="flex items-end justify-between gap-3 p-5 pb-3">
-            <div>
-              <h2 className="text-sm font-semibold tracking-tight">Top 15 customers by revenue</h2>
-              <p className="text-xs text-muted-foreground">Includes guest checkouts grouped by email.</p>
-            </div>
+      <div className="panel !mb-0">
+        <div className="mb-3 flex items-end justify-between gap-3">
+          <div>
+            <h3 className="!mb-0">Top 15 customers by revenue</h3>
+            <p className="text-xs text-muted-foreground">Includes guest checkouts grouped by email.</p>
           </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="pl-5">#</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead className="text-right">Orders</TableHead>
-                <TableHead className="text-right pr-5">Revenue</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {topCustomers.length === 0 ? (
-                <TableRow><TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
-                  No customers in this period.
-                </TableCell></TableRow>
-              ) : topCustomers.map((c, i) => (
-                <TableRow key={c.email + i}>
-                  <TableCell className="pl-5 font-mono text-xs text-muted-foreground">{i + 1}</TableCell>
-                  <TableCell>
-                    <div className="font-medium">{c.name || "(no name)"}</div>
-                    <div className="text-xs text-muted-foreground">{c.email}</div>
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">{c.orders}</TableCell>
-                  <TableCell className="pr-5 text-right font-medium tabular-nums">{fmtMoney(c.revenue)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+        </div>
+        <table className="t">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Customer</th>
+              <th className="text-right">Orders</th>
+              <th className="text-right">Revenue</th>
+            </tr>
+          </thead>
+          <tbody>
+            {topCustomers.length === 0 ? (
+              <tr><td colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
+                No customers in this period.
+              </td></tr>
+            ) : topCustomers.map((c, i) => (
+              <tr key={c.email + i}>
+                <td className="font-mono text-xs text-muted-foreground">{i + 1}</td>
+                <td>
+                  <div className="font-medium">{c.name || "(no name)"}</div>
+                  <div className="text-xs text-muted-foreground">{c.email}</div>
+                </td>
+                <td className="text-right tabular-nums">{c.orders}</td>
+                <td className="text-right font-medium tabular-nums">{fmtMoney(c.revenue)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {/* Retail vs trade footer card — answers a question accountants
           ask but isn't worth a chart on its own. */}
-      <Card>
-        <CardContent className="grid gap-4 p-5 sm:grid-cols-3">
-          <div>
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">Retail revenue</div>
-            <div className="mt-1 text-lg font-semibold tabular-nums">{fmtMoney(retailRevenue)}</div>
-          </div>
-          <div>
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">Trade revenue</div>
-            <div className="mt-1 text-lg font-semibold tabular-nums">{fmtMoney(tradeRevenue)}</div>
-          </div>
-          <div>
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">Total delivered</div>
-            <div className="mt-1 text-lg font-semibold tabular-nums">{fmtMoney(revenue)}</div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="panel !mb-0 grid gap-4 sm:grid-cols-3">
+        <div>
+          <div className="text-xs uppercase tracking-wider text-muted-foreground">Retail revenue</div>
+          <div className="mt-1 text-lg font-semibold tabular-nums">{fmtMoney(retailRevenue)}</div>
+        </div>
+        <div>
+          <div className="text-xs uppercase tracking-wider text-muted-foreground">Trade revenue</div>
+          <div className="mt-1 text-lg font-semibold tabular-nums">{fmtMoney(tradeRevenue)}</div>
+        </div>
+        <div>
+          <div className="text-xs uppercase tracking-wider text-muted-foreground">Total delivered</div>
+          <div className="mt-1 text-lg font-semibold tabular-nums">{fmtMoney(revenue)}</div>
+        </div>
+      </div>
     </div>
   );
 }

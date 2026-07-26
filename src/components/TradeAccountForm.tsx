@@ -91,7 +91,7 @@ export function TradeAccountForm({ prefill = {} }: { prefill?: Prefill }) {
     return (
       <Card className="border-emerald-500/30 bg-emerald-500/[0.04]">
         <CardContent className="flex flex-col items-start gap-4 p-8 sm:flex-row">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-300">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-700">
             <CheckCircle2 className="h-5 w-5" />
           </span>
           <div className="flex-1">
@@ -272,8 +272,8 @@ export function TradeAccountForm({ prefill = {} }: { prefill?: Prefill }) {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-ink-800/60 p-4">
-        <div className="text-[12px] text-white/55">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-soft p-4">
+        <div className="text-[12px] text-muted-foreground">
           We review every application typical turnaround 1–2 business days.
           You&apos;ll hear from us at the email above.
         </div>
@@ -311,10 +311,10 @@ function Section({
             </span>
           )}
           <div className="min-w-0 flex-1">
-            <h3 className="font-head text-[15px] font-extrabold uppercase tracking-wider text-white">
+            <h3 className="font-head text-[15px] font-extrabold uppercase tracking-wider text-ink">
               {title}
             </h3>
-            {sub && <p className="mt-0.5 text-[12px] text-white/55">{sub}</p>}
+            {sub && <p className="mt-0.5 text-[12px] text-muted-foreground">{sub}</p>}
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">{children}</div>

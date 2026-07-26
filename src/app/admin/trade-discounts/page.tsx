@@ -1,8 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
 import { TradeDiscountRow } from "@/components/admin/TradeDiscountRow";
 
 export const dynamic = "force-dynamic";
@@ -22,50 +18,53 @@ export default async function TradeDiscountsPage() {
   const map = new Map(discounts.map((d) => [d.categoryId, d.percent]));
 
   return (
-    <div className="space-y-4 p-4 lg:p-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Trade Discounts</h1>
-        <p className="text-sm text-muted-foreground">
-          Set a percentage discount per category. Trade-approved customers will see
-          the discounted price on the storefront alongside the original price.
-        </p>
+    <div className="space-y-4">
+      <div className="adm-top !mb-0">
+        <div>
+          <div className="crumb">Admin · Trade</div>
+          <h1 className="font-bold">Trade Discounts</h1>
+          <p className="text-sm text-muted-foreground">
+            Set a percentage discount per category. Trade-approved customers will see
+            the discounted price on the storefront alongside the original price.
+          </p>
+        </div>
       </div>
 
-      <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Category</TableHead>
-              <TableHead className="text-right">Products</TableHead>
-              <TableHead className="w-[200px]">Discount %</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+      <div className="table-wrap">
+        <table className="t">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th className="text-right">Products</th>
+              <th className="w-[200px]">Discount %</th>
+            </tr>
+          </thead>
+          <tbody>
             {categories.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={3} className="text-center text-sm text-muted-foreground">
+              <tr>
+                <td colSpan={3} className="text-center text-sm text-muted-foreground">
                   No categories yet.
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ) : (
               categories.map((c) => (
-                <TableRow key={c.id}>
-                  <TableCell className="font-medium">{c.name}</TableCell>
-                  <TableCell className="text-right text-sm text-muted-foreground">
+                <tr key={c.id}>
+                  <td className="font-medium">{c.name}</td>
+                  <td className="text-right text-sm text-muted-foreground">
                     {c._count.products}
-                  </TableCell>
-                  <TableCell>
+                  </td>
+                  <td>
                     <TradeDiscountRow
                       categoryId={c.id}
                       initial={map.get(c.id) ?? 0}
                     />
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               ))
             )}
-          </TableBody>
-        </Table>
-      </Card>
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

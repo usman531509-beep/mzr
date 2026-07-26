@@ -11,15 +11,11 @@ import {
 } from "@stripe/react-stripe-js";
 
 import { useCart, cartTotals, type CartItem } from "@/lib/cart-store";
-import { Badge } from "@/components/ui/badge";
 import { fmtMoney } from "@/lib/format";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -264,23 +260,21 @@ export default function CheckoutPage() {
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto max-w-3xl px-[var(--gutter)] py-6 lg:py-8">
+      <div className="container" style={{ maxWidth: 760, padding: "24px 20px 48px" }}>
         <Breadcrumbs
           className="mb-4"
-          items={[{ label: "Cart", href: "/cart" }, { label: "Checkout" }]}
+          items={[{ label: "Basket", href: "/cart" }, { label: "Checkout" }]}
         />
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center gap-3 p-16 text-center">
-            <ShoppingBag className="h-10 w-10 text-muted-foreground" />
-            <h2 className="text-lg font-semibold">Your cart is empty</h2>
-            <p className="max-w-sm text-sm text-muted-foreground">
-              Add some parts to your cart before checking out.
-            </p>
-            <Button asChild size="sm" className="mt-2">
-              <Link href="/products">Shop parts</Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="panel center" style={{ padding: "64px 24px" }}>
+          <ShoppingBag className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
+          <h2 className="mb-1 text-lg font-bold text-ink">Your basket is empty</h2>
+          <p className="muted mx-auto mb-5 max-w-sm text-sm">
+            Add some parts to your basket before checking out.
+          </p>
+          <Link href="/products" className="btn btn-red">
+            Shop parts
+          </Link>
+        </div>
       </div>
     );
   }
@@ -339,16 +333,25 @@ export default function CheckoutPage() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl px-[var(--gutter)] py-6 lg:py-8">
+    <div className="container" style={{ padding: "24px 20px 48px" }}>
       <Breadcrumbs
         className="mb-4"
-        items={[{ label: "Cart", href: "/cart" }, { label: "Checkout" }]}
+        items={[{ label: "Basket", href: "/cart" }, { label: "Checkout" }]}
       />
 
-      <h1 className="mb-6 text-2xl font-bold tracking-tight lg:text-3xl">Checkout</h1>
+      <h1 className="font-head text-[34px] uppercase leading-none tracking-[0.02em] text-ink lg:text-[42px]">
+        Checkout
+      </h1>
+      <p className="muted mt-2 text-sm">
+        {adminOnBehalf
+          ? `This order will be placed under ${forCustomer!.name || forCustomer!.email} without a card payment.`
+          : step === "shipping"
+            ? "We'll take payment securely with Stripe on the next step."
+            : "Enter your card details. Your payment is processed by Stripe we never store the card."}
+      </p>
 
       {isAdmin && (
-        <div className="mb-6">
+        <div className="mt-4">
           <AdminCustomerPicker
             selected={forCustomer}
             onSelect={pickCustomer}
@@ -357,36 +360,23 @@ export default function CheckoutPage() {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {step === "shipping" ? "Shipping details" : "Payment"}
-            </CardTitle>
-            <CardDescription>
-              {adminOnBehalf
-                ? `This order will be placed under ${forCustomer!.name || forCustomer!.email} without a card payment.`
-                : step === "shipping"
-                  ? "We'll take payment securely with Stripe on the next step."
-                  : "Enter your card details. Your payment is processed by Stripe we never store the card."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {err && (
-              <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                {err}
-              </div>
-            )}
+      <div className="split mt">
+        <div>
+          {err && (
+            <div className="mb-4 rounded-lg border border-red/30 bg-red-soft px-4 py-3 text-sm font-medium text-red-700">
+              {err}
+            </div>
+          )}
 
-            {/* Shipping form */}
-            {step === "shipping" && (
-              <form
-                id="checkout-shipping-form"
-                onSubmit={adminOnBehalf ? submitAdminOrder : continueToPayment}
-                className="space-y-4"
-              >
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {/* Contact */}
+          {/* Shipping form */}
+          {step === "shipping" && (
+            <form
+              id="checkout-shipping-form"
+              onSubmit={adminOnBehalf ? submitAdminOrder : continueToPayment}
+            >
+              <div className="panel">
+                <PanelTitle>1 · Contact details</PanelTitle>
+                <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Full name" value={form.customerName}
                          on={(v) => setForm({ ...form, customerName: v })} required />
                   <Field label="Email" type="email" value={form.customerEmail}
@@ -394,65 +384,67 @@ export default function CheckoutPage() {
                   <Field label="Phone" value={form.customerPhone}
                          on={(v) => setForm({ ...form, customerPhone: v })}
                          placeholder="07xxx xxxxxx" required />
+                </div>
+              </div>
 
-                  <div className="sm:col-span-2 flex flex-wrap items-end justify-between gap-2 -mb-1 mt-2">
-                    <span className="text-sm font-semibold uppercase tracking-wider text-foreground">
-                      Shipping address
-                    </span>
-                    {savedAddresses.length > 0 && (
-                      <Link
-                        href="/account/profile"
-                        className="text-[11px] text-muted-foreground hover:text-foreground hover:underline"
-                      >
-                        Manage saved addresses →
-                      </Link>
-                    )}
-                  </div>
-
-                  {/* Address picker card. Wrapping the Select in a bordered
-                      box with a clear heading + helper line makes it
-                      unmistakably the "change shipping destination" control
-                      — the unstyled trigger was reading as just another
-                      muted input below the contact fields. */}
+              <div className="panel">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <PanelTitle>2 · Delivery address</PanelTitle>
                   {savedAddresses.length > 0 && (
-                    <div className="sm:col-span-2 rounded-lg border border-primary/30 bg-primary/[0.04] p-3 ring-1 ring-inset ring-primary/20">
-                      <div className="mb-2">
-                        <Label className="text-sm font-semibold text-foreground">
-                          Where should we ship this?
-                        </Label>
-                        <p className="text-[11px] text-muted-foreground">
-                          Pick a saved address or use a new one for this order.
-                        </p>
-                      </div>
-                      <Select
-                        value={selectedAddressId || "new"}
-                        onValueChange={(v) => {
-                          if (v === "new") {
-                            setSelectedAddressId("");
-                            return;
-                          }
-                          const a = savedAddresses.find((x) => x.id === v);
-                          if (a) applyAddress(a);
-                        }}
-                      >
-                        <SelectTrigger
-                          className="h-11 border-primary/50 bg-background text-[15px] font-medium shadow-sm transition hover:border-primary focus:border-primary"
-                        >
-                          <SelectValue placeholder="Pick a saved address" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="new">+ Use a new address</SelectItem>
-                          {savedAddresses.map((a) => (
-                            <SelectItem key={a.id} value={a.id}>
-                              {(a.label || a.recipientName) + " — " + a.line1 + ", " + a.postcode}
-                              {a.isDefault ? "  (default)" : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <Link
+                      href="/account/profile"
+                      className="mb-2 text-[12px] font-semibold text-red hover:underline"
+                    >
+                      Manage saved addresses →
+                    </Link>
                   )}
+                </div>
 
+                {/* Address picker card. Wrapping the Select in a bordered
+                    box with a clear heading + helper line makes it
+                    unmistakably the "change shipping destination" control
+                    — the unstyled trigger was reading as just another
+                    muted input below the contact fields. */}
+                {savedAddresses.length > 0 && (
+                  <div className="mb-4 rounded-lg border border-red/30 bg-red-soft/40 p-3">
+                    <div className="mb-2">
+                      <div className="text-sm font-semibold text-ink">
+                        Where should we ship this?
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        Pick a saved address or use a new one for this order.
+                      </p>
+                    </div>
+                    <Select
+                      value={selectedAddressId || "new"}
+                      onValueChange={(v) => {
+                        if (v === "new") {
+                          setSelectedAddressId("");
+                          return;
+                        }
+                        const a = savedAddresses.find((x) => x.id === v);
+                        if (a) applyAddress(a);
+                      }}
+                    >
+                      <SelectTrigger
+                        className="h-11 border-red/50 bg-white text-[15px] font-medium shadow-sm transition hover:border-red focus:border-red"
+                      >
+                        <SelectValue placeholder="Pick a saved address" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="new">+ Use a new address</SelectItem>
+                        {savedAddresses.map((a) => (
+                          <SelectItem key={a.id} value={a.id}>
+                            {(a.label || a.recipientName) + " — " + a.line1 + ", " + a.postcode}
+                            {a.isDefault ? "  (default)" : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div className="grid gap-4 sm:grid-cols-2">
                   <Field
                     label="Address line 1" full
                     value={form.shippingAddress}
@@ -492,30 +484,36 @@ export default function CheckoutPage() {
                     on={(v) => setForm({ ...form, shippingCountry: v })}
                     required
                   />
-
-                  <div className="sm:col-span-2 space-y-1.5">
-                    <Label>Order notes (optional)</Label>
-                    <Textarea
-                      rows={2}
-                      value={form.notes}
-                      onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                    />
-                  </div>
                 </div>
-                {/* Submit button lives outside the form (below the order
-                    summary) so it sits under the totals on mobile. The
-                    `form="checkout-shipping-form"` attribute on that button
-                    links it back to this form. */}
-              </form>
-            )}
+              </div>
 
-            {/* Stripe Payment Element */}
-            {step === "payment" && clientSecret && stripePromise && (
+              <div className="panel">
+                <PanelTitle>3 · Order notes</PanelTitle>
+                <div className="field" style={{ marginBottom: 0 }}>
+                  <label>Order notes (optional)</label>
+                  <Textarea
+                    rows={2}
+                    value={form.notes}
+                    onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                  />
+                </div>
+              </div>
+              {/* Submit button lives outside the form (below the order
+                  summary) so it sits under the totals on mobile. The
+                  `form="checkout-shipping-form"` attribute on that button
+                  links it back to this form. */}
+            </form>
+          )}
+
+          {/* Stripe Payment Element */}
+          {step === "payment" && clientSecret && stripePromise && (
+            <div className="panel">
+              <PanelTitle>Payment</PanelTitle>
               <div className="space-y-4">
                 <button
                   type="button"
                   onClick={() => { setStep("shipping"); setErr(null); }}
-                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-red"
                 >
                   <ArrowLeft className="h-3 w-3" /> Edit shipping details
                 </button>
@@ -524,9 +522,9 @@ export default function CheckoutPage() {
                   options={{
                     clientSecret,
                     appearance: {
-                      theme: "night",
+                      theme: "stripe",
                       variables: {
-                        colorPrimary: "#e8151b",
+                        colorPrimary: "#e30613",
                         borderRadius: "8px",
                         fontSizeBase: "15px",
                       },
@@ -542,76 +540,98 @@ export default function CheckoutPage() {
                   />
                 </Elements>
               </div>
-            )}
+            </div>
+          )}
 
-            {step === "payment" && !stripePromise && (
-              <div className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm">
-                Stripe is not configured. Add <code className="font-mono">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> to your env and restart.
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          {step === "payment" && !stripePromise && (
+            <div className="alert">
+              Stripe is not configured. Add <code className="font-mono">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> to your env and restart.
+            </div>
+          )}
+        </div>
 
-        <Card className="h-fit lg:sticky lg:top-20">
-          <CardHeader>
-            <CardTitle>Your order</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <ul className="space-y-2">
-              {displayItems.map((i) => {
-                const preview = previewLines?.find((l) => l.productId === i.productId);
-                const discounted = !!preview && preview.percent > 0;
-                return (
-                  <li key={i.productId} className="flex justify-between gap-3 text-[13px]">
-                    <span className="min-w-0 text-muted-foreground">
-                      <span className="truncate">{i.name}</span>{" "}
-                      <span className="opacity-60">× {i.quantity}</span>
-                      {discounted && (
-                        <Badge className="ml-1.5 bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30 hover:bg-emerald-500/15">
-                          Trade −{preview!.percent}%
-                        </Badge>
-                      )}
-                    </span>
-                    <span className="text-right tabular-nums">
-                      {discounted ? (
-                        <>
-                          <span className="text-emerald-300">{fmtMoney(i.price * i.quantity)}</span>{" "}
-                          <span className="text-[11px] text-muted-foreground line-through">
-                            {fmtMoney(preview!.originalPrice * i.quantity)}
-                          </span>
-                        </>
-                      ) : (
-                        fmtMoney(i.price * i.quantity)
-                      )}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-            <Separator />
-            <Row label="Subtotal" value={fmtMoney(displayTotals.subtotal)} />
-            <Row label="Shipping" value={displayTotals.shipping === 0 ? "FREE" : fmtMoney(displayTotals.shipping)} />
-            <Row label="VAT (20%)" value={fmtMoney(displayTotals.tax)} />
-            <Separator />
-            <Row label="Total" value={fmtMoney(displayTotals.total)} bold />
-            {step === "shipping" && (
-              <Button
-                type="submit"
-                form="checkout-shipping-form"
-                disabled={submitting}
-                className="mt-2 w-full"
-                size="lg"
-              >
-                {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                {submitting
-                  ? (adminOnBehalf ? "Placing order…" : "Starting payment…")
-                  : adminOnBehalf
-                    ? `Place order — ${fmtMoney(displayTotals.total)}`
-                    : `Continue to payment — ${fmtMoney(displayTotals.total)}`}
-              </Button>
+        {/* Order summary */}
+        <div className="summary">
+          <h3
+            className="font-head"
+            style={{
+              margin: "0 0 12px",
+              fontSize: 22,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+            }}
+          >
+            Your order
+          </h3>
+          <ul className="space-y-2" style={{ listStyle: "none", margin: 0, padding: 0 }}>
+            {displayItems.map((i) => {
+              const preview = previewLines?.find((l) => l.productId === i.productId);
+              const discounted = !!preview && preview.percent > 0;
+              return (
+                <li key={i.productId} className="flex justify-between gap-3 text-[13px]">
+                  <span className="min-w-0 text-muted-foreground">
+                    <span className="truncate">{i.name}</span>{" "}
+                    <span className="opacity-60">× {i.quantity}</span>
+                    {discounted && (
+                      <span className="st ok" style={{ marginLeft: 6 }}>
+                        Trade −{preview!.percent}%
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-right tabular-nums">
+                    {discounted ? (
+                      <>
+                        <span className="font-semibold text-ok">{fmtMoney(i.price * i.quantity)}</span>{" "}
+                        <span className="text-[11px] text-muted-foreground line-through">
+                          {fmtMoney(preview!.originalPrice * i.quantity)}
+                        </span>
+                      </>
+                    ) : (
+                      fmtMoney(i.price * i.quantity)
+                    )}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="hr" style={{ margin: "12px 0" }} />
+          <div className="ln">
+            <span>Subtotal</span>
+            <span className="tabular-nums">{fmtMoney(displayTotals.subtotal)}</span>
+          </div>
+          <div className="ln">
+            <span>Shipping</span>
+            {displayTotals.shipping === 0 ? (
+              <span style={{ color: "var(--ok)", fontWeight: 700 }}>FREE</span>
+            ) : (
+              <span className="tabular-nums">{fmtMoney(displayTotals.shipping)}</span>
             )}
-          </CardContent>
-        </Card>
+          </div>
+          <div className="ln">
+            <span>VAT (20%)</span>
+            <span className="tabular-nums">{fmtMoney(displayTotals.tax)}</span>
+          </div>
+          <div className="ln total">
+            <span>Total</span>
+            <span className="tabular-nums text-red">{fmtMoney(displayTotals.total)}</span>
+          </div>
+          {step === "shipping" && (
+            <Button
+              type="submit"
+              form="checkout-shipping-form"
+              disabled={submitting}
+              className="mt-4 w-full font-extrabold uppercase tracking-wider"
+              size="lg"
+            >
+              {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+              {submitting
+                ? (adminOnBehalf ? "Placing order…" : "Starting payment…")
+                : adminOnBehalf
+                  ? `Place order — ${fmtMoney(displayTotals.total)}`
+                  : `Continue to payment — ${fmtMoney(displayTotals.total)}`}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Suppress unused-var warning while keeping the prop for future use. */}
@@ -685,7 +705,12 @@ function StripePaymentForm({
           wallets: { applePay: "never", googlePay: "never" },
         }}
       />
-      <Button type="submit" disabled={!stripe || busy} className="w-full gap-2" size="lg">
+      <Button
+        type="submit"
+        disabled={!stripe || busy}
+        className="w-full gap-2 font-extrabold uppercase tracking-wider"
+        size="lg"
+      >
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
         {busy ? "Processing payment…" : `Pay ${fmtMoney(total)}`}
       </Button>
@@ -693,6 +718,23 @@ function StripePaymentForm({
         Secured by Stripe — we never see your card details.
       </p>
     </form>
+  );
+}
+
+function PanelTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h3
+      className="font-head"
+      style={{
+        margin: "0 0 14px",
+        fontSize: 22,
+        letterSpacing: "0.04em",
+        textTransform: "uppercase",
+        lineHeight: 1,
+      }}
+    >
+      {children}
+    </h3>
   );
 }
 
@@ -709,8 +751,8 @@ function Field({
   autoComplete?: string;
 }) {
   return (
-    <div className={`${full ? "sm:col-span-2 " : ""}space-y-1.5`}>
-      <Label>{label}</Label>
+    <div className={`field${full ? " sm:col-span-2" : ""}`} style={{ marginBottom: 0 }}>
+      <label>{label}</label>
       <Input
         type={type}
         value={value}
@@ -719,14 +761,6 @@ function Field({
         placeholder={placeholder}
         autoComplete={autoComplete}
       />
-    </div>
-  );
-}
-function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
-  return (
-    <div className={`flex justify-between ${bold ? "text-base font-bold" : "text-sm"}`}>
-      <span className={bold ? "" : "text-muted-foreground"}>{label}</span>
-      <span className="tabular-nums">{value}</span>
     </div>
   );
 }

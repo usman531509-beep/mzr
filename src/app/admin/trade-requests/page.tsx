@@ -1,11 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
 import { TradeRequestActions } from "@/components/admin/TradeRequestActions";
 import { TradeRequestView } from "@/components/admin/TradeRequestView";
 import { AdminFilterBar } from "@/components/admin/AdminFilterBar";
@@ -44,12 +39,15 @@ export default async function TradeRequestsPage({ searchParams }: { searchParams
   const decided = requests.filter((r) => r.status !== "PENDING");
 
   return (
-    <div className="space-y-6 p-4 lg:p-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Trade Requests</h1>
-        <p className="text-sm text-muted-foreground">
-          Review applications from businesses requesting a trade account.
-        </p>
+    <div className="space-y-6">
+      <div className="adm-top !mb-0">
+        <div>
+          <div className="crumb">Admin · Trade</div>
+          <h1 className="font-bold">Trade Requests</h1>
+          <p className="text-sm text-muted-foreground">
+            Review applications from businesses requesting a trade account.
+          </p>
+        </div>
       </div>
 
       <AdminFilterBar
@@ -98,29 +96,27 @@ function Section({
     <div>
       <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">{title}</h2>
       {rows.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-2 p-10 text-center text-sm text-muted-foreground">
-            <Briefcase className="h-6 w-6" />
-            <p>{empty}</p>
-          </CardContent>
-        </Card>
+        <div className="panel !mb-0 flex flex-col items-center gap-2 p-10 text-center text-sm text-muted-foreground">
+          <Briefcase className="h-6 w-6" />
+          <p>{empty}</p>
+        </div>
       ) : (
-        <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Applicant</TableHead>
-                <TableHead>Company</TableHead>
-                <TableHead>Volume</TableHead>
-                <TableHead>Submitted</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+        <div className="table-wrap">
+          <table className="t">
+            <thead>
+              <tr>
+                <th>Applicant</th>
+                <th>Company</th>
+                <th>Volume</th>
+                <th>Submitted</th>
+                <th>Status</th>
+                <th className="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
               {rows.map((r) => (
-                <TableRow key={r.id} className="align-top">
-                  <TableCell>
+                <tr key={r.id} className="align-top">
+                  <td>
                     <div className="font-medium">{r.contactName}</div>
                     <div className="text-xs text-muted-foreground">{r.email}</div>
                     <div className="text-xs text-muted-foreground">{r.phone}</div>
@@ -128,13 +124,13 @@ function Section({
                         for this approved request?" inline instead of
                         making the admin go hunt in /admin/users. */}
                     {r.user && (
-                      <div className="mt-1 inline-flex items-center gap-1 text-[11px] text-emerald-300">
+                      <div className="mt-1 inline-flex items-center gap-1 text-[11px] text-emerald-700">
                         <UserCheck className="h-3 w-3" />
                         Linked to user account
                       </div>
                     )}
-                  </TableCell>
-                  <TableCell>
+                  </td>
+                  <td>
                     <div className="font-medium">{r.companyName}</div>
                     <div className="text-xs text-muted-foreground">
                       {[r.businessType, r.vatNumber && `VAT: ${r.vatNumber}`]
@@ -152,15 +148,15 @@ function Section({
                         r.country,
                       ].filter(Boolean).join(", ")}
                     </div>
-                  </TableCell>
-                  <TableCell className="text-sm">{r.monthlyVolume ?? "—"}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                  </td>
+                  <td className="text-sm">{r.monthlyVolume ?? "—"}</td>
+                  <td className="text-sm text-muted-foreground">
                     {r.createdAt.toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
+                  </td>
+                  <td>
                     <StatusBadge status={r.status} />
-                  </TableCell>
-                  <TableCell className="text-right">
+                  </td>
+                  <td className="text-right">
                     <div className="flex flex-wrap items-center justify-end gap-2">
                       <TradeRequestView
                         request={{
@@ -206,19 +202,21 @@ function Section({
                         />
                       )}
                     </div>
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               ))}
-            </TableBody>
-          </Table>
-        </Card>
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
 }
 
+// Reference .st pills per trade-requests.html: Pending=warn, Approved=ok,
+// Rejected=bad.
 function StatusBadge({ status }: { status: "PENDING" | "APPROVED" | "REJECTED" }) {
-  if (status === "APPROVED") return <Badge className="bg-green-600 hover:bg-green-600">Approved</Badge>;
-  if (status === "REJECTED") return <Badge variant="destructive">Rejected</Badge>;
-  return <Badge variant="secondary">Pending</Badge>;
+  if (status === "APPROVED") return <span className="st ok">Approved</span>;
+  if (status === "REJECTED") return <span className="st bad">Rejected</span>;
+  return <span className="st warn">Pending</span>;
 }

@@ -4,12 +4,11 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  ChevronLeft, ChevronRight, FolderPlus, Pencil, Plus, RotateCcw, Search, Trash2, X,
+  ChevronLeft, ChevronRight, FolderPlus, Image as ImageIcon, Pencil, Plus, RotateCcw, Search, Trash2, X,
 } from "lucide-react";
 
 import { confirmAction } from "@/lib/confirm-store";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -17,11 +16,13 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import type { CategoryTreeNode } from "@/lib/category-tree";
+import { ImageUpload } from "@/components/admin/ImageUpload";
 
 type EditState = {
   id: string | "__new";
   name: string;
   description: string;
+  imageUrl: string | null;
   parentId: string | null;
   sortOrder: number;
 };
@@ -101,13 +102,14 @@ export function CategoriesClient({
   }, [initial, q]);
 
   const startCreate = (parentId: string | null) => {
-    setEditing({ id: "__new", name: "", description: "", parentId, sortOrder: 0 });
+    setEditing({ id: "__new", name: "", description: "", imageUrl: null, parentId, sortOrder: 0 });
   };
   const startEdit = (node: CategoryTreeNode) => {
     setEditing({
       id: node.id,
       name: node.name,
       description: node.description ?? "",
+      imageUrl: node.imageUrl ?? null,
       parentId: node.parentId,
       sortOrder: node.sortOrder,
     });
@@ -128,6 +130,7 @@ export function CategoriesClient({
         body: JSON.stringify({
           name: editing.name,
           description: editing.description || null,
+          imageUrl: editing.imageUrl || null,
           parentId: editing.parentId,
           sortOrder: editing.sortOrder,
         }),
@@ -211,29 +214,24 @@ export function CategoriesClient({
 
   return (
     <div className="space-y-4">
-      <header>
-        <h1 className="text-2xl font-bold tracking-tight">Categories</h1>
-        <p className="text-sm text-muted-foreground">
-          Click into a category to see what&apos;s inside it. Add sub-categories
-          to nest deeper. URLs like <code className="font-mono text-[12px]">/category/brake/brake-pads</code> are built from this tree.
-        </p>
-      </header>
+      <div className="adm-top !mb-0">
+        <div>
+          <div className="crumb">Admin</div>
+          <h1 className="font-head text-3xl font-normal uppercase leading-none tracking-wide">Categories</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Click into a category to see what&apos;s inside it. Add sub-categories
+            to nest deeper. URLs like <code className="kbd">/category/brake/brake-pads</code> are built from this tree.
+          </p>
+        </div>
+      </div>
 
-      <div
-        role="tablist"
-        aria-label="Category view"
-        className="inline-flex rounded-md border border-border bg-background p-0.5"
-      >
+      <div role="tablist" aria-label="Category view" className="chips !mb-0">
         <button
           type="button"
           role="tab"
           aria-selected={view === "live"}
           onClick={() => setView("live")}
-          className={`inline-flex h-8 items-center gap-2 rounded-[5px] px-3 text-xs font-medium transition ${
-            view === "live"
-              ? "bg-primary text-primary-foreground shadow"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
+          className={`chip inline-flex items-center gap-2 ${view === "live" ? "active" : ""}`}
         >
           Live
         </button>
@@ -242,23 +240,19 @@ export function CategoriesClient({
           role="tab"
           aria-selected={view === "deleted"}
           onClick={() => setView("deleted")}
-          className={`inline-flex h-8 items-center gap-2 rounded-[5px] px-3 text-xs font-medium transition ${
-            view === "deleted"
-              ? "bg-destructive text-destructive-foreground shadow"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
+          className={`chip inline-flex items-center gap-2 ${view === "deleted" ? "active" : ""}`}
         >
           <Trash2 className="h-3 w-3" />
           Deleted
-          <span className={`rounded px-1.5 py-0.5 text-[10px] ${
-            view === "deleted" ? "bg-destructive-foreground/15" : "bg-muted text-muted-foreground"
+          <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+            view === "deleted" ? "bg-white/25" : "bg-soft text-muted-foreground"
           }`}>{deleted.length}</span>
         </button>
       </div>
 
       {view === "deleted" ? (
-        <Card>
-          <CardContent className="p-0">
+        <div className="table-wrap">
+          <div>
             {deleted.length === 0 ? (
               <div className="flex flex-col items-center gap-2 p-10 text-center text-sm text-muted-foreground">
                 <Trash2 className="h-7 w-7" />
@@ -307,17 +301,18 @@ export function CategoriesClient({
                 ))}
               </ul>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ) : (
       <>
-      <div className="relative max-w-sm">
+      <div className="toolbar !mb-0">
+      <div className="relative min-w-[220px] max-w-sm flex-1">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search categories…"
-          className="h-9 pl-8 pr-8"
+          className="h-9 !pl-8 !pr-8"
         />
         {q && (
           <button type="button" onClick={() => setQ("")}
@@ -326,10 +321,11 @@ export function CategoriesClient({
           ><X className="h-3 w-3" /></button>
         )}
       </div>
+      </div>
 
       {searchHits ? (
-        <Card>
-          <CardContent className="p-0">
+        <div className="table-wrap">
+          <div>
             {searchHits.length === 0 ? (
               <div className="p-6 text-center text-sm text-muted-foreground">
                 No categories match &quot;{q}&quot;.
@@ -352,8 +348,8 @@ export function CategoriesClient({
                 ))}
               </ul>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ) : (
         <>
           {/* Breadcrumb / level header. Always shows what level you're looking
@@ -420,15 +416,19 @@ export function CategoriesClient({
               )}
             </div>
             {canAddChild && (
-              <Button size="sm" onClick={() => startCreate(currentId)}>
+              <button
+                type="button"
+                className="btn-red !px-3.5 !py-2 !text-[11px]"
+                onClick={() => startCreate(currentId)}
+              >
                 <Plus className="h-3.5 w-3.5" />
                 {currentId ? "Add sub-category" : "New top-level"}
-              </Button>
+              </button>
             )}
           </div>
 
-          <Card>
-            <CardContent className="p-0">
+          <div className="table-wrap">
+            <div>
               {visible.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 p-10 text-center text-sm text-muted-foreground">
                   <FolderPlus className="h-7 w-7" />
@@ -449,8 +449,8 @@ export function CategoriesClient({
                   ))}
                 </ul>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </>
       )}
       </>
@@ -489,6 +489,13 @@ export function CategoriesClient({
                   onChange={(e) => setEditing({ ...editing, description: e.target.value })}
                 />
               </div>
+              <ImageUpload
+                label="Image (optional)"
+                hint="Shown on the home page category grid. Falls back to an icon if left empty."
+                fit="contain"
+                value={editing.imageUrl}
+                onChange={(url) => setEditing((cur) => (cur ? { ...cur, imageUrl: url } : cur))}
+              />
               <DialogFooter>
                 <Button type="button" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button>
                 <Button type="submit" disabled={busy}>
@@ -519,6 +526,18 @@ function RowItem({
         onClick={onOpen}
         className="flex flex-1 items-center gap-2 text-left text-sm"
       >
+        {node.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={node.imageUrl}
+            alt=""
+            className="h-8 w-8 shrink-0 rounded border border-border bg-white object-contain p-0.5"
+          />
+        ) : (
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded border border-dashed border-border text-muted-foreground">
+            <ImageIcon className="h-3.5 w-3.5" />
+          </span>
+        )}
         <span className="truncate">{node.name}</span>
         {(node.productCount > 0 || hasChildren) && (
           <span className="shrink-0 text-[11px] text-muted-foreground">

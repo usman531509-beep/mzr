@@ -12,13 +12,9 @@ import {
 import { fmtMoney } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
 import { StockReceiptDialog, type ReceiptProduct } from "@/components/admin/StockReceiptDialog";
 import {
   StockReceiptEditDialog, type EditableLayer,
@@ -44,9 +40,10 @@ type LayerRow = {
   };
 };
 
+// Reference-theme .st badge modifier per layer source.
 const SOURCE_META: Record<LayerSource, { label: string; icon: typeof Boxes; className: string }> = {
-  MANUAL_ADJUSTMENT: { label: "Stock received",    icon: Wrench, className: "bg-emerald-500/15 text-emerald-300 ring-emerald-500/30" },
-  INITIAL:           { label: "Initial / backfill", icon: Layers, className: "bg-muted text-muted-foreground ring-border" },
+  MANUAL_ADJUSTMENT: { label: "Stock received",    icon: Wrench, className: "ok" },
+  INITIAL:           { label: "Initial / backfill", icon: Layers, className: "muted" },
 };
 
 export function StockReceivedClient({
@@ -110,14 +107,14 @@ export function StockReceivedClient({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="toolbar !mb-0">
         <div className="relative min-w-[240px] flex-1 max-w-md">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Product, SKU, notes…"
-            className="h-9 pl-8 pr-8"
+            className="h-9 !pl-8 !pr-8"
           />
           {q && (
             <button
@@ -142,62 +139,62 @@ export function StockReceivedClient({
           <div className="text-xs text-muted-foreground">
             {filtered.length} of {rows.length} batch{rows.length === 1 ? "" : "es"}
           </div>
-          <Button onClick={() => setDialogOpen(true)}>
+          <button type="button" className="btn-red !px-3.5 !py-2 !text-[11px]" onClick={() => setDialogOpen(true)}>
             <Plus className="h-3.5 w-3.5" /> Add stock
-          </Button>
+          </button>
         </div>
       </div>
 
-      <div className="rounded-md border border-border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Product</TableHead>
-              <TableHead>Source</TableHead>
-              <TableHead>Received</TableHead>
-              <TableHead className="text-right">Unit cost</TableHead>
-              <TableHead className="text-right">Retail</TableHead>
-              <TableHead className="text-right">Received</TableHead>
-              <TableHead className="text-right">Remaining</TableHead>
-              <TableHead className="text-right">Value left</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+      <div className="table-wrap">
+        <table className="t">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Source</th>
+              <th>Received</th>
+              <th className="!text-right">Unit cost</th>
+              <th className="!text-right">Retail</th>
+              <th className="!text-right">Received</th>
+              <th className="!text-right">Remaining</th>
+              <th className="!text-right">Value left</th>
+              <th className="!text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
             {filtered.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={9} className="p-10 text-center text-sm text-muted-foreground">
+              <tr>
+                <td colSpan={9} className="!py-10 !text-center text-muted-foreground">
                   <Boxes className="mx-auto mb-2 h-6 w-6" />
                   {rows.length === 0
                     ? "No stock received yet — click \"Add stock\" to record a batch."
                     : "No batches match these filters."}
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ) : filtered.map((r) => {
               const meta = SOURCE_META[r.source];
               const Icon = meta.icon;
               const consumed = r.qtyReceived - r.qtyRemaining;
               const consumedPct = r.qtyReceived > 0 ? Math.min(100, Math.round((consumed / r.qtyReceived) * 100)) : 0;
               return (
-                <TableRow key={r.id} className="align-top">
-                  <TableCell>
+                <tr key={r.id} className="align-top">
+                  <td>
                     <div className="flex items-start gap-3">
                       {r.product.image ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={r.product.image}
                           alt=""
-                          className="h-10 w-10 shrink-0 rounded border border-border object-cover"
+                          className="h-10 w-10 shrink-0 rounded border border-line bg-white object-contain"
                         />
                       ) : (
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-border bg-muted/30">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-line bg-white">
                           <Package className="h-4 w-4 text-muted-foreground" />
                         </div>
                       )}
                       <div className="min-w-0">
                         <Link
                           href={`/admin/stock?q=${encodeURIComponent(r.product.name)}`}
-                          className="line-clamp-2 text-sm font-medium hover:underline"
+                          className="line-clamp-2 font-semibold hover:underline"
                         >
                           {r.product.name}
                         </Link>
@@ -206,55 +203,55 @@ export function StockReceivedClient({
                         )}
                       </div>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={`gap-1 ring-1 ring-inset ${meta.className} hover:${meta.className}`}>
+                  </td>
+                  <td>
+                    <span className={`st ${meta.className} inline-flex items-center gap-1`}>
                       <Icon className="h-3 w-3" />
                       {meta.label}
-                    </Badge>
+                    </span>
                     {r.notes && (
                       <div className="mt-1 line-clamp-2 text-[11px] text-muted-foreground italic">
                         “{r.notes}”
                       </div>
                     )}
-                  </TableCell>
-                  <TableCell className="text-sm">
+                  </td>
+                  <td>
                     <div>{new Date(r.receivedAt).toLocaleDateString("en-GB")}</div>
                     <div className="text-[11px] text-muted-foreground">
                       {new Date(r.receivedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
                     </div>
-                  </TableCell>
-                  <TableCell className="text-right font-mono tabular-nums">
+                  </td>
+                  <td className="!text-right font-mono tabular-nums">
                     {fmtMoney(r.unitCost)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono tabular-nums">
+                  </td>
+                  <td className="!text-right font-mono tabular-nums">
                     {r.unitRetail == null ? <span className="text-muted-foreground">—</span> : fmtMoney(r.unitRetail)}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
+                  </td>
+                  <td className="!text-right tabular-nums">
                     {r.qtyReceived}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="tabular-nums font-medium">
+                  </td>
+                  <td className="!text-right">
+                    <div className="tabular-nums font-semibold">
                       {r.qtyRemaining}
-                      <span className="ml-1 text-[10px] text-muted-foreground">/ {r.qtyReceived}</span>
+                      <span className="ml-1 text-[10px] font-normal text-muted-foreground">/ {r.qtyReceived}</span>
                     </div>
-                    <div className="mt-1 ml-auto h-1 w-20 overflow-hidden rounded-full bg-muted">
+                    <div className="mt-1 ml-auto h-1 w-20 overflow-hidden rounded-full bg-soft">
                       <div
                         className={`h-full ${
                           r.qtyRemaining === 0
-                            ? "bg-rose-500/60"
+                            ? "bg-red"
                             : consumedPct > 70
-                              ? "bg-amber-500/70"
-                              : "bg-emerald-500/70"
+                              ? "bg-[#b8860b]"
+                              : "bg-[#0a8a3a]"
                         }`}
                         style={{ width: `${consumedPct}%` }}
                       />
                     </div>
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums font-medium">
+                  </td>
+                  <td className="!text-right tabular-nums font-semibold">
                     {fmtMoney(r.qtyRemaining * r.unitCost)}
-                  </TableCell>
-                  <TableCell className="text-right">
+                  </td>
+                  <td className="!text-right">
                     <div className="flex justify-end gap-1">
                       <Button
                         variant="ghost" size="icon" className="h-8 w-8"
@@ -286,12 +283,12 @@ export function StockReceivedClient({
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               );
             })}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
 
       <StockReceiptDialog

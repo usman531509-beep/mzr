@@ -20,7 +20,7 @@ export function PrintButton() {
     <button
       type="button"
       onClick={() => window.print()}
-      className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700"
+      className="inline-flex items-center gap-1.5 rounded-md bg-red px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-red-600"
     >
       <Printer className="h-3.5 w-3.5" />
       Print

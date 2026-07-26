@@ -1,35 +1,41 @@
+import Link from "next/link";
 import { getActiveOffers } from "@/lib/offers-cache";
+import { SITE_PHONE, SITE_PHONE_TEL } from "@/lib/site";
 
-// Async server component. Renders the storefront promotional bar — but only
-// if at least one Offer is active in the database. Returning null hides the
-// bar entirely (no markup), so admins can turn it off site-wide simply by
-// deactivating every offer in /admin/offers.
+// Async server component. Renders the top utility strip from the reference
+// design (.h-strip): active offers on the left, quick links on the right.
+// Offers still come from the database — deactivating every offer in
+// /admin/offers hides the message but keeps the strip's quick links.
 export async function Topbar() {
   const offers = await getActiveOffers();
-  if (offers.length === 0) return null;
-
-  // First offer doubles as the mobile message — keeps the bar uncluttered on
-  // small screens; everything is shown on md+.
-  const mobileOffer = offers[0];
 
   return (
-    <div className="relative h-9 overflow-hidden bg-gradient-to-r from-red-600 via-red to-red-600">
-      <div className="pointer-events-none absolute inset-0 [background:repeating-linear-gradient(90deg,rgba(255,255,255,0.04)_0,rgba(255,255,255,0.04)_1px,transparent_1px,transparent_60px)]" />
-      <div className="relative mx-auto flex h-full w-full max-w-site items-center justify-between gap-4 px-[var(--gutter)]">
-        <div className="hidden md:flex items-center gap-5 font-mono text-[13px] font-semibold tracking-wide text-white/90">
-          {offers.map((o) => (
-            <span key={o.id}>
-              {o.icon ? <span className="mr-1">{o.icon}</span> : null}
-              {o.text}
+    <div className="h-strip">
+      <div className="h-strip-in">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-4">
+          {offers.length > 0 ? (
+            offers.map((o, i) => (
+              <span key={o.id} className={i > 0 ? "hidden md:inline" : undefined}>
+                <span className="red-dot" />
+                {o.icon ? <span className="mr-1">{o.icon}</span> : null}
+                {o.text}
+              </span>
+            ))
+          ) : (
+            <span>
+              <span className="red-dot" />
+              Motorbike &amp; moped parts specialist · Trade customers save up to 20%
             </span>
-          ))}
+          )}
         </div>
-        <div className="md:hidden font-mono text-[12.5px] font-semibold tracking-wide text-white/90">
-          {mobileOffer.icon ? <span className="mr-1">{mobileOffer.icon}</span> : null}
-          {mobileOffer.text}
-        </div>
-        <div className="flex items-center gap-4 font-mono text-[12.5px] font-semibold uppercase tracking-wider text-white/85">
-          <a href="#" className="hover:text-white transition">Help</a>
+        <div className="hidden items-center gap-2 md:flex">
+          <Link href="/trade-account" className="!text-red font-semibold hover:underline">
+            Apply for trade pricing →
+          </Link>
+          <span aria-hidden>&nbsp;|&nbsp;</span>
+          <Link href="/track" className="!text-muted-foreground hover:underline">Track order</Link>
+          <span aria-hidden>&nbsp;|&nbsp;</span>
+          <a href={`tel:${SITE_PHONE_TEL}`} className="!text-muted-foreground hover:underline">📞 {SITE_PHONE}</a>
         </div>
       </div>
     </div>

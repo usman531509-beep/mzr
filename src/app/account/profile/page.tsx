@@ -2,7 +2,6 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { ProfileForm } from "@/app/account/profile/form";
 import { AddressesClient } from "@/components/account/AddressesClient";
-import { Separator } from "@/components/ui/separator";
 
 // Per-request render — pulls the current user's stored profile fields.
 export const dynamic = "force-dynamic";
@@ -27,15 +26,17 @@ export default async function ProfilePage() {
   if (!user) return null;
 
   return (
-    <div className="space-y-8">
+    <div>
       <ProfileForm initial={user} />
 
-      <Separator />
+      <div className="hr" style={{ margin: "28px 0" }} />
 
-      <section className="space-y-4">
-        <header>
-          <h2 className="text-lg font-semibold tracking-tight">Saved addresses</h2>
-          <p className="text-sm text-muted-foreground">
+      <section>
+        <header style={{ marginBottom: 16 }}>
+          <h2 className="font-head text-2xl uppercase leading-none tracking-[0.02em]" style={{ margin: 0 }}>
+            Saved addresses
+          </h2>
+          <p className="muted" style={{ margin: "6px 0 0", fontSize: 14 }}>
             Save the places you ship to so you don&apos;t have to retype them at
             checkout. Pick a default — that&apos;s the one we pre-select.
           </p>

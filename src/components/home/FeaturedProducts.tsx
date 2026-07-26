@@ -1,36 +1,28 @@
 import Link from "next/link";
-import { Star } from "lucide-react";
 import { ProductCard, type ProductCardData } from "@/components/ProductCard";
 
 export function FeaturedProducts({ products }: { products: ProductCardData[] }) {
   if (products.length === 0) return null;
   return (
-    <section className="mx-auto max-w-site px-[var(--gutter)] py-16">
-      <div className="mb-9 flex flex-wrap items-end justify-between gap-5">
-        <div>
-          <div className="eyebrow mb-2 inline-flex items-center gap-1.5">
-            <Star className="h-3 w-3" /> Hand-picked
+    <section className="h-section alt">
+      <div className="h-container">
+        <div className="h-sec-head">
+          <div>
+            <div className="label">Bestsellers This Week</div>
+            <h2>Hand-picked by our workshop.</h2>
+            <p className="sub">
+              Workshop favourites — the parts we recommend most often when
+              riders walk in with a problem to solve.
+            </p>
           </div>
-          <h2 className="section-h2">
-            Featured <em>parts</em>
-          </h2>
-          <p className="mt-1 max-w-md text-[13px] text-white/55">
-            Workshop favourites — the parts we recommend most often when riders
-            walk in with a problem to solve.
-          </p>
+          <Link href="/products" className="h-link">All products →</Link>
         </div>
-        <Link
-          href="/products"
-          className="hidden sm:inline-flex items-center gap-1.5 whitespace-nowrap border-b border-red/40 pb-0.5 font-head text-[13px] font-bold uppercase tracking-wider text-red transition hover:opacity-70"
-        >
-          See all →
-        </Link>
-      </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-        {products.map((p) => (
-          <ProductCard key={p.id} p={p} />
-        ))}
+        <div className="h-pgrid">
+          {products.map((p) => (
+            <ProductCard key={p.id} p={p} />
+          ))}
+        </div>
       </div>
     </section>
   );

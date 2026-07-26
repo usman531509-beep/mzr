@@ -37,19 +37,19 @@ export function CartSheet() {
     <Sheet open={open} onOpenChange={(v) => !v && close()}>
       <SheetContent
         side="right"
-        className="flex w-full flex-col gap-0 p-0 sm:max-w-md"
+        className="flex w-full flex-col gap-0 border-line bg-white p-0 sm:max-w-md"
       >
-        <SheetHeader className="border-b border-border px-5 py-4">
-          <SheetTitle className="flex items-center gap-2 text-lg">
-            <ShoppingBag className="h-4 w-4 text-primary" />
-            Your cart
+        <SheetHeader className="border-b border-line px-5 py-4">
+          <SheetTitle className="flex items-center gap-2 font-head text-xl uppercase tracking-[0.04em] text-ink">
+            <ShoppingBag className="h-4 w-4 text-red" />
+            Your basket
             {count > 0 && (
-              <span className="rounded-full bg-primary px-2 py-0.5 font-mono text-[11px] font-bold text-primary-foreground">
+              <span className="rounded-full bg-red px-2 py-0.5 font-mono text-[11px] font-bold text-white">
                 {count}
               </span>
             )}
           </SheetTitle>
-          <SheetDescription className="text-[12px]">
+          <SheetDescription className="text-[12px] text-muted-foreground">
             Review your parts before checkout.
           </SheetDescription>
         </SheetHeader>
@@ -58,11 +58,11 @@ export function CartSheet() {
         {items.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
             <ShoppingBag className="h-10 w-10 text-muted-foreground" />
-            <h3 className="text-base font-semibold">Your cart is empty</h3>
+            <h3 className="text-base font-bold text-ink">Your basket is empty</h3>
             <p className="max-w-xs text-sm text-muted-foreground">
               Browse parts and tap "Add to cart" to start filling it.
             </p>
-            <Button asChild size="sm" className="mt-2" onClick={close}>
+            <Button asChild size="sm" className="mt-2 font-bold uppercase tracking-wider" onClick={close}>
               <Link href="/products">Shop parts</Link>
             </Button>
           </div>
@@ -72,23 +72,23 @@ export function CartSheet() {
               {items.map((i) => (
                 <li
                   key={i.productId}
-                  className="flex gap-3 rounded-lg border border-border bg-card p-3"
+                  className="flex gap-3 rounded-lg border border-line bg-white p-3 shadow-sm"
                 >
                   <Link
                     href={`/products/${i.slug}`}
                     onClick={close}
-                    className="h-16 w-16 shrink-0 overflow-hidden rounded border border-border bg-secondary"
+                    className="h-16 w-16 shrink-0 overflow-hidden rounded-md border border-line bg-white"
                   >
                     {i.image ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
-                      <img src={i.image} alt="" className="h-full w-full object-cover" />
+                      <img src={i.image} alt="" className="h-full w-full object-contain p-0.5" />
                     ) : null}
                   </Link>
                   <div className="flex min-w-0 flex-1 flex-col">
                     <Link
                       href={`/products/${i.slug}`}
                       onClick={close}
-                      className="line-clamp-2 text-[13.5px] font-semibold leading-tight hover:underline"
+                      className="line-clamp-2 text-[13.5px] font-bold leading-tight text-ink hover:text-red"
                     >
                       {i.name}
                     </Link>
@@ -96,24 +96,24 @@ export function CartSheet() {
                       {fmtMoney(i.price)} each
                     </div>
                     <div className="mt-auto flex items-center gap-2 pt-1.5">
-                      <div className="inline-flex h-7 items-center rounded-md border border-border bg-background">
+                      <div className="inline-flex h-7 items-center overflow-hidden rounded-lg border border-line bg-white">
                         <button
                           type="button"
                           onClick={() => setQty(i.productId, i.quantity - 1)}
                           disabled={i.quantity <= 1}
-                          className="flex h-full w-7 items-center justify-center text-muted-foreground transition hover:text-foreground disabled:opacity-40"
+                          className="flex h-full w-7 items-center justify-center text-ink/60 transition hover:bg-soft hover:text-red disabled:opacity-40"
                           aria-label="Decrease"
                         >
                           <Minus className="h-3 w-3" />
                         </button>
-                        <span className="min-w-[1.5rem] text-center text-[12px] font-semibold tabular-nums">
+                        <span className="min-w-[1.5rem] border-x border-line text-center text-[12px] font-semibold tabular-nums text-ink">
                           {i.quantity}
                         </span>
                         <button
                           type="button"
                           onClick={() => setQty(i.productId, i.quantity + 1)}
                           disabled={i.quantity >= i.stock}
-                          className="flex h-full w-7 items-center justify-center text-muted-foreground transition hover:text-foreground disabled:opacity-40"
+                          className="flex h-full w-7 items-center justify-center text-ink/60 transition hover:bg-soft hover:text-red disabled:opacity-40"
                           aria-label="Increase"
                         >
                           <Plus className="h-3 w-3" />
@@ -122,14 +122,14 @@ export function CartSheet() {
                       <button
                         type="button"
                         onClick={() => remove(i.productId)}
-                        className="ml-auto inline-flex items-center gap-1 text-[11.5px] text-muted-foreground transition hover:text-destructive"
+                        className="ml-auto inline-flex items-center gap-1 text-[11.5px] text-muted-foreground transition hover:text-red"
                       >
                         <Trash2 className="h-3 w-3" /> Remove
                       </button>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-[15px] font-bold tabular-nums">
+                    <div className="text-[15px] font-bold tabular-nums text-ink">
                       {fmtMoney(i.price * i.quantity)}
                     </div>
                   </div>
@@ -141,7 +141,7 @@ export function CartSheet() {
 
         {/* Footer */}
         {items.length > 0 && (
-          <div className="border-t border-border bg-card px-5 py-4">
+          <div className="border-t border-line bg-soft px-5 py-4">
             <div className="space-y-1.5 text-sm">
               <Row label="Subtotal" value={fmtMoney(totals.subtotal)} />
               <Row
@@ -150,15 +150,27 @@ export function CartSheet() {
               />
               <Row label="VAT (20%)" value={fmtMoney(totals.tax)} />
             </div>
-            <Separator className="my-3" />
-            <Row label="Total" value={fmtMoney(totals.total)} bold />
+            <Separator className="my-3 bg-line" />
+            <div className="flex justify-between text-base font-extrabold">
+              <span className="text-ink">Total</span>
+              <span className="tabular-nums text-red">{fmtMoney(totals.total)}</span>
+            </div>
 
             <div className="mt-4 space-y-2">
-              <Button onClick={checkout} className="w-full" size="lg">
+              <Button
+                onClick={checkout}
+                className="w-full font-extrabold uppercase tracking-wider"
+                size="lg"
+              >
                 Checkout <ArrowRight className="h-4 w-4" />
               </Button>
-              <Button asChild variant="outline" className="w-full" onClick={close}>
-                <Link href="/cart">View full cart</Link>
+              <Button
+                asChild
+                variant="outline"
+                className="w-full border-line bg-white text-ink hover:border-ink"
+                onClick={close}
+              >
+                <Link href="/cart">View full basket</Link>
               </Button>
             </div>
           </div>
@@ -171,8 +183,8 @@ export function CartSheet() {
 function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (
     <div className={`flex justify-between ${bold ? "text-base font-bold" : "text-sm"}`}>
-      <span className={bold ? "" : "text-muted-foreground"}>{label}</span>
-      <span className="tabular-nums">{value}</span>
+      <span className={bold ? "text-ink" : "text-muted-foreground"}>{label}</span>
+      <span className="tabular-nums text-ink">{value}</span>
     </div>
   );
 }

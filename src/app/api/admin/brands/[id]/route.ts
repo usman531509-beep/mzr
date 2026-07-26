@@ -10,7 +10,12 @@ import { NAV_CACHE_TAG } from "@/lib/nav-cache";
 
 const schema = z.object({
   name: z.string().min(1).optional(),
-  logoUrl: z.string().url().nullable().optional(),
+  // Absolute URL (prod storage) or root-relative /uploads/… (dev fallback).
+  logoUrl: z
+    .string()
+    .refine((v) => /^(https?:\/\/|\/)/.test(v), "Must be a URL or path")
+    .nullable()
+    .optional(),
 });
 
 export async function PATCH(

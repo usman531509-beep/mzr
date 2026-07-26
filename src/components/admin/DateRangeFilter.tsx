@@ -4,8 +4,6 @@ import { useState } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 
 const PRESETS = [
   { value: "today",  label: "Today"      },
@@ -46,47 +44,59 @@ export function DateRangeFilter() {
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card p-2">
-      <div className="flex items-center gap-1.5 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+    // Reference toolbar + `.chip` row: white panel, pill presets (active =
+    // solid red), bordered date inputs and a red primary Apply button.
+    <div className="flex flex-wrap items-center gap-2 rounded-[10px] border border-line bg-white p-3">
+      <div className="flex items-center gap-1.5 px-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
         <Calendar className="h-3.5 w-3.5" />
         Range
       </div>
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap gap-1.5">
         {PRESETS.map((p) => (
           <button
             key={p.value}
             type="button"
             onClick={() => setRange(p.value)}
             className={cn(
-              "rounded-md px-3 py-1.5 text-xs font-medium transition",
+              "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
               range === p.value
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                ? "border-red bg-red text-white"
+                : "border-line bg-white text-muted-foreground hover:border-red hover:text-red",
             )}
           >
             {p.label}
           </button>
         ))}
       </div>
+      {/* Custom range: styled native date inputs grouped in a single bordered
+          pill, then a red Apply. Native inputs are used directly (not <Input>)
+          so we can size them to content and tint the calendar picker icon. */}
       <div className="ml-auto flex flex-wrap items-center gap-2">
-        <Input
-          type="date"
-          value={from}
-          onChange={(e) => setFrom(e.target.value)}
-          className="h-8 w-[150px]"
-          aria-label="From date"
-        />
-        <span className="text-xs text-muted-foreground">to</span>
-        <Input
-          type="date"
-          value={to}
-          onChange={(e) => setTo(e.target.value)}
-          className="h-8 w-[150px]"
-          aria-label="To date"
-        />
-        <Button size="sm" variant="outline" disabled={!from || !to} onClick={applyCustom}>
+        <div className="flex items-center gap-1.5 rounded-lg border border-line bg-white px-2 py-1 focus-within:border-red">
+          <input
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            aria-label="From date"
+            className="h-7 bg-transparent px-1 text-sm text-ink outline-none [color-scheme:light] [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-55 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
+          />
+          <span className="text-xs font-medium text-muted-foreground">to</span>
+          <input
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            aria-label="To date"
+            className="h-7 bg-transparent px-1 text-sm text-ink outline-none [color-scheme:light] [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-55 [&::-webkit-calendar-picker-indicator]:hover:opacity-100"
+          />
+        </div>
+        <button
+          type="button"
+          disabled={!from || !to}
+          onClick={applyCustom}
+          className="h-9 rounded-lg bg-red px-4 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+        >
           Apply
-        </Button>
+        </button>
       </div>
     </div>
   );

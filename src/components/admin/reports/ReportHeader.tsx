@@ -76,9 +76,10 @@ export function ReportHeader({
   };
 
   return (
-    <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-4">
+    <header className="adm-top !mb-0 border-b border-line pb-4">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
+        <div className="crumb">Admin · Reports</div>
+        <h1 className="font-bold">{title}</h1>
         {subtitle && (
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{subtitle}</p>
         )}
@@ -102,7 +103,7 @@ export function ReportHeader({
             value={currentFrom}
             max={currentTo || undefined}
             onChange={(e) => setCustomDate("from", e.target.value)}
-            className="h-9 rounded-md border border-input bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            className="h-9 rounded-md border border-line bg-white px-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ring"
           />
           <span className="text-xs text-muted-foreground">to</span>
           <input
@@ -112,7 +113,7 @@ export function ReportHeader({
             min={currentFrom || undefined}
             max={isoDate(new Date())}
             onChange={(e) => setCustomDate("to", e.target.value)}
-            className="h-9 rounded-md border border-input bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            className="h-9 rounded-md border border-line bg-white px-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
         <Button asChild variant="outline" size="sm">

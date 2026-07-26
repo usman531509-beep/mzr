@@ -8,8 +8,6 @@ import { Breadcrumbs, type Crumb } from "@/components/Breadcrumbs";
 import { getTradeContext, tradePrice } from "@/lib/trade-pricing";
 import { getNavData } from "@/lib/nav-cache";
 import { getAncestors, countMatchingProductsBySubtree } from "@/lib/category-tree";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import type { Prisma } from "@prisma/client";
 
 // Always render fresh — searchParams make this route dynamic, and we want
@@ -206,77 +204,62 @@ export default async function ProductsPage({
           })()}
         />
 
-        <div className="flex gap-6">
+        <div className="mb-4">
+          <h1 className="font-head text-[34px] leading-[0.95] tracking-[0.02em] text-ink lg:text-[46px]">
+            {heading}
+          </h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            {activeCategoryNode?.description
+              ? `${activeCategoryNode.description} · `
+              : null}
+            <span className="font-semibold text-ink">{products.length}</span>{" "}
+            {products.length === 1 ? "result" : "results"}
+          </p>
+        </div>
+
+        {subcategoryChips.length > 0 && (
+          <div className="chips">
+            {subcategoryChips.map((c) => (
+              <Link key={c.id} href={linkForCategory(c.path)} className="chip">
+                {c.name} <span className="opacity-70">({c.count})</span>
+              </Link>
+            ))}
+          </div>
+        )}
+
+        <CompactFilters
+          brands={brands}
+          productBrands={productBrands}
+          models={allModels}
+          categories={allCategories}
+        />
+
+        <div className="listing mt-4">
           <CategorySidebar tree={nav.tree} selectedPath={activeCategoryNode?.path ?? null} />
 
-          <div className="min-w-0 flex-1">
-            <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-              <div className="min-w-0">
-                <h1 className="text-2xl font-bold tracking-tight lg:text-3xl">{heading}</h1>
-                {activeCategoryNode?.description && (
-                  <p className="mt-1 text-sm text-muted-foreground">{activeCategoryNode.description}</p>
-                )}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                <span className="font-semibold text-foreground">{products.length}</span>{" "}
-                {products.length === 1 ? "result" : "results"}
-              </div>
-            </div>
-
-            <div className="mb-5 border-y border-border py-3">
-              <CompactFilters
-                brands={brands}
-                productBrands={productBrands}
-                models={allModels}
-                categories={allCategories}
-              />
-            </div>
-
-            {subcategoryChips.length > 0 && (
-              <div className="mb-5">
-                <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Narrow by category
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {subcategoryChips.map((c) => (
-                    <Link
-                      key={c.id}
-                      href={linkForCategory(c.path)}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3.5 py-1.5 text-sm font-medium text-foreground/85 transition hover:border-primary/40 hover:bg-accent hover:text-foreground"
-                    >
-                      {c.name}
-                      <span className="text-[11px] text-muted-foreground">{c.count}</span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-
+          <div className="min-w-0">
             {products.length === 0 ? (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center gap-3 p-16 text-center">
-                  <PackageX className="h-10 w-10 text-muted-foreground" />
-                  <h3 className="text-lg font-semibold">
-                    {modelId || brandSlug
-                      ? "No products available for this selection"
-                      : "No parts match these filters"}
-                  </h3>
-                  <p className="max-w-sm text-sm text-muted-foreground">
-                    Try a different brand or model, or browse all parts.
-                  </p>
-                  <Button asChild variant="outline" size="sm" className="mt-2">
-                    <Link
-                      href={activeCategoryNode
-                        ? `/products?category=${activeCategoryNode.path}`
-                        : "/products"}
-                    >
-                      {activeCategoryNode ? "Reset filters in this category" : "Clear all filters"}
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
+              <div className="rounded-[14px] border border-line bg-white p-14 text-center">
+                <PackageX className="mx-auto h-10 w-10 text-muted-foreground" />
+                <h3 className="mt-4 font-head text-2xl tracking-[0.03em] text-ink">
+                  {modelId || brandSlug
+                    ? "No products available for this selection"
+                    : "No parts match these filters"}
+                </h3>
+                <p className="mx-auto mt-1.5 max-w-sm text-sm text-muted-foreground">
+                  Try a different brand or model, or browse all parts.
+                </p>
+                <Link
+                  href={activeCategoryNode
+                    ? `/products?category=${activeCategoryNode.path}`
+                    : "/products"}
+                  className="mt-5 inline-flex items-center rounded-[10px] border border-line bg-white px-4 py-2.5 text-[13px] font-bold text-ink transition hover:border-red hover:text-red"
+                >
+                  {activeCategoryNode ? "Reset filters in this category" : "Clear all filters"}
+                </Link>
+              </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-2 xl:grid-cols-3">
+              <div className="grid g-4">
                 {products.map((p) => {
                   const tp = tradePrice(Number(p.price), p.categoryId, trade);
                   return (

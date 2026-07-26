@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
 import { fmtMoney } from "@/lib/format";
-import { Card, CardContent } from "@/components/ui/card";
 import { Pagination } from "@/components/Pagination";
 import { parsePagination } from "@/lib/pagination";
 import { StatCard } from "@/components/admin/StatCard";
@@ -63,13 +62,16 @@ export default async function PaymentsPage({ searchParams }: { searchParams: SP 
   ) as Record<string, { count: number; sum: number }>;
 
   return (
-    <div className="space-y-4 p-4 lg:p-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Payments</h1>
-        <p className="text-sm text-muted-foreground">
-          Card transactions processed by Stripe across every customer order.
-          Click a row to see the order and Stripe receipt.
-        </p>
+    <div className="space-y-4">
+      <div className="adm-top !mb-0">
+        <div>
+          <div className="crumb">Admin · Sales</div>
+          <h1 className="font-bold">Payments</h1>
+          <p className="text-sm text-muted-foreground">
+            Card transactions processed by Stripe across every customer order.
+            Click a row to see the order and Stripe receipt.
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -102,8 +104,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: SP 
         />
       </div>
 
-      <Card>
-        <CardContent className="p-4 lg:p-5">
+      <div className="panel !mb-0">
           <PaymentsClient
             rows={payments.map((p) => ({
               id: p.id,
@@ -128,9 +129,8 @@ export default async function PaymentsPage({ searchParams }: { searchParams: SP 
                 : null,
             }))}
           />
-          <Pagination total={total} pageSize={pageSize} currentPage={page} />
-        </CardContent>
-      </Card>
+          <Pagination total={total} pageSize={pageSize} currentPage={page} className="mt-3" />
+      </div>
     </div>
   );
 }

@@ -52,7 +52,7 @@ export function PayClient({
 
   if (paid) {
     return (
-      <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-300">
+      <div className="rounded-lg border border-ok/30 bg-[#e6f7ec] p-4 text-sm font-medium text-ok">
         Payment received — refreshing…
       </div>
     );
@@ -60,7 +60,7 @@ export function PayClient({
 
   if (error) {
     return (
-      <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+      <div className="rounded-lg border border-red/30 bg-red-soft p-4 text-sm font-medium text-red-700">
         {error}
       </div>
     );
@@ -68,7 +68,7 @@ export function PayClient({
 
   if (!stripePromise) {
     return (
-      <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+      <div className="rounded-lg border border-red/30 bg-red-soft p-4 text-sm font-medium text-red-700">
         Stripe is not configured. Set <code>NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code>.
       </div>
     );
@@ -88,9 +88,9 @@ export function PayClient({
       options={{
         clientSecret,
         appearance: {
-          theme: "night",
+          theme: "stripe",
           variables: {
-            colorPrimary: "#e8151b",
+            colorPrimary: "#e30613",
             borderRadius: "8px",
             fontSizeBase: "15px",
           },
@@ -163,12 +163,17 @@ function PayForm({
       />
 
       {error && (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <div className="rounded-lg border border-red/30 bg-red-soft px-3 py-2 text-sm font-medium text-red-700">
           {error}
         </div>
       )}
 
-      <Button type="submit" disabled={!stripe || busy} className="w-full gap-2" size="lg">
+      <Button
+        type="submit"
+        disabled={!stripe || busy}
+        className="w-full gap-2 font-extrabold uppercase tracking-wider"
+        size="lg"
+      >
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-3.5 w-3.5" />}
         {busy ? "Processing…" : `Pay ${fmtMoney(total)}`}
       </Button>

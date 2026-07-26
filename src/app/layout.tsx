@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { Barlow, Barlow_Condensed, Rajdhani } from "next/font/google";
+import { Inter, Bebas_Neue } from "next/font/google";
 import "./globals.css";
+import "./theme.css";
 import { SessionProvider } from "next-auth/react";
 import { auth } from "@/auth";
 import { getNavData } from "@/lib/nav-cache";
@@ -15,19 +16,22 @@ import { CartScope } from "@/components/CartScope";
 import { WishlistScope } from "@/components/WishlistScope";
 import { ForcePasswordChange } from "@/components/ForcePasswordChange";
 
-const body = Barlow({
+// Reference design fonts: Inter for body/UI text, Bebas Neue for the big
+// condensed display headings. --font-mono-ui also maps to Inter (the
+// reference has no separate mono face; tables rely on tabular-nums).
+const body = Inter({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700", "800", "900"],
   variable: "--font-body",
   display: "swap",
 });
-const head = Barlow_Condensed({
+const head = Bebas_Neue({
   subsets: ["latin"],
-  weight: ["400", "600", "700", "800", "900"],
+  weight: "400",
   variable: "--font-head",
   display: "swap",
 });
-const monoUi = Rajdhani({
+const monoUi = Inter({
   subsets: ["latin"],
   weight: ["500", "600", "700"],
   variable: "--font-mono-ui",
@@ -44,8 +48,9 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const [session, nav] = await Promise.all([auth(), getNavData()]);
   const { brands, productBrands, models, tree } = nav;
-  const navBrands = brands.map((b: { name: string; slug: string }) => ({ name: b.name, slug: b.slug }));
+  const navBrands = brands.map((b: { id: string; name: string; slug: string }) => ({ id: b.id, name: b.name, slug: b.slug }));
   const navProductBrands = productBrands.map((b: { name: string; slug: string }) => ({ name: b.name, slug: b.slug }));
+  const navModels = models.map((m: { id: string; name: string; brandId: string }) => ({ id: m.id, name: m.name, brandId: m.brandId }));
 
   return (
     <html lang="en" className={`${body.variable} ${head.variable} ${monoUi.variable}`}>
@@ -60,7 +65,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           {/* Storefront chrome — hidden on /pay/<token> via SiteChrome. */}
           <SiteChrome>
             <Topbar />
-            <Header tree={tree} brands={navBrands} productBrands={navProductBrands} />
+            <Header tree={tree} brands={navBrands} productBrands={navProductBrands} models={navModels} />
           </SiteChrome>
           <main className="flex-1">{children}</main>
           <SiteChrome hideOnPortals>

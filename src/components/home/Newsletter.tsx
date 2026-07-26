@@ -23,15 +23,17 @@ export function Newsletter() {
   };
 
   return (
-    <section className="border-y border-white/10 bg-[radial-gradient(ellipse_at_top,rgba(232,21,27,0.08),transparent_55%)]">
-      <div className="mx-auto max-w-site px-[var(--gutter)] py-14">
-        <div className="grid items-center gap-6 md:grid-cols-[1.2fr_1fr]">
+    <section className="border-t border-line bg-soft">
+      <div className="h-container">
+        <div className="grid items-center gap-6 py-14 md:grid-cols-[1.2fr_1fr]">
           <div>
-            <div className="eyebrow mb-2">Stay in the loop</div>
-            <h2 className="font-head text-2xl font-extrabold uppercase leading-tight text-white sm:text-3xl">
-              New drops, <em className="not-italic text-red">first dibs</em>
+            <div className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.2em] text-red">
+              Stay in the loop
+            </div>
+            <h2 className="font-head text-3xl uppercase leading-tight tracking-wide text-ink sm:text-4xl">
+              New drops, first dibs
             </h2>
-            <p className="mt-2 max-w-md text-sm leading-relaxed text-white/60">
+            <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
               Restock alerts on hard-to-find parts, member-only deals, and the
               odd build feature from the workshop. No spam about two emails
               a month.
@@ -39,7 +41,7 @@ export function Newsletter() {
           </div>
 
           {done ? (
-            <div className="flex items-center gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-5 py-4 text-sm text-emerald-300">
+            <div className="flex items-center gap-3 rounded-xl border border-ok/30 bg-ok/10 px-5 py-4 text-sm font-semibold text-ok">
               <CheckCircle2 className="h-5 w-5 shrink-0" />
               You&apos;re on the list — check your inbox to confirm.
             </div>
@@ -50,12 +52,12 @@ export function Newsletter() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="h-11 flex-1 rounded-md border border-white/15 bg-ink-800 px-3.5 text-[15px] text-white outline-none placeholder:text-white/35 focus:border-red/50"
+                className="h-12 flex-1 rounded-xl border border-line bg-white px-4 text-[15px] text-ink outline-none transition placeholder:text-muted-foreground/60 focus:border-red focus:ring-4 focus:ring-red/10"
                 required
               />
               <button
                 type="submit"
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-red px-5 font-head text-[13px] font-bold uppercase tracking-wider text-white transition hover:bg-red-dark"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-red px-6 text-[13px] font-extrabold uppercase tracking-wider text-white shadow-[0_10px_24px_-10px_rgba(227,6,19,0.55)] transition hover:bg-red-600"
               >
                 <Send className="h-3.5 w-3.5" /> Subscribe
               </button>
