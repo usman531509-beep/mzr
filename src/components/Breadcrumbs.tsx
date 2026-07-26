@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type Crumb = { label: string; href?: string };
@@ -32,9 +33,10 @@ export function Breadcrumbs({
         const isLast = i === items.length - 1;
         return (
           <Fragment key={`${it.label}-${i}`}>
-            <span aria-hidden="true" className="opacity-60">
-              ·
-            </span>
+            <ChevronRight
+              aria-hidden="true"
+              className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50"
+            />
             {it.href && !isLast ? (
               <Link
                 href={it.href}

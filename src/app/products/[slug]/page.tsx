@@ -1,11 +1,11 @@
 import { cache } from "react";
 import { notFound } from "next/navigation";
-import { Truck, ShieldCheck, RotateCcw } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
 import { fmtMoney } from "@/lib/format";
 import { AddToCartButton } from "@/components/AddToCartButton";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { ProductTabs } from "@/components/ProductTabs";
 import { ProductImageGallery } from "@/components/ProductImageGallery";
 import { WishlistButton } from "@/components/WishlistButton";
 import { getTradeContext, tradePrice } from "@/lib/trade-pricing";
@@ -230,41 +230,17 @@ export default async function ProductPage({
           </div>
         </div>
 
-        {/* Tabs — CSS-only anchors (server component: sections are stacked
-            below, no client tab state). */}
-        <div className="tabs">
-          <a className="on" href="#description">Description</a>
-          {p.compatibilities.length > 0 && <a href="#fitment">Fitment</a>}
-          <a href="#delivery">Delivery &amp; returns</a>
-        </div>
-
-        <div
-          id="description"
-          style={{ padding: "18px 0", maxWidth: 780, color: "#333", fontSize: 15 }}
-        >
-          <p style={{ margin: 0, lineHeight: 1.7 }}>{p.description}</p>
-        </div>
-
-        <div className="hr" style={{ maxWidth: 780 }} />
-
-        {/* Delivery / trust strip */}
-        <div id="delivery" className="grid g-3" style={{ maxWidth: 780 }}>
-          <TrustItem icon={Truck} label="Free shipping over £200" />
-          <TrustItem icon={RotateCcw} label="30-day returns" />
-          <TrustItem icon={ShieldCheck} label="Genuine parts" />
-        </div>
+        {/* Working tabbed panel — Description / Fitment / Delivery & returns. */}
+        <ProductTabs
+          description={p.description}
+          fitments={p.compatibilities.map((c) => ({
+            id: c.id,
+            make: c.bikeModel.brand.name,
+            model: c.bikeModel.name,
+            years: c.yearFrom === c.yearTo ? `${c.yearFrom}` : `${c.yearFrom}–${c.yearTo}`,
+          }))}
+        />
       </div>
-    </div>
-  );
-}
-
-function TrustItem({
-  icon: Icon, label,
-}: { icon: React.ComponentType<{ className?: string }>; label: string }) {
-  return (
-    <div className="flex items-center rounded-lg border border-line bg-soft px-3 py-2.5">
-      <Icon className="h-4 w-4 shrink-0 text-red" />
-      <span className="text-xs font-medium">{label}</span>
     </div>
   );
 }
