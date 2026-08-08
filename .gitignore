@@ -16,3 +16,6 @@ public/uploads/*
 wimbledon-motorbikes*.html
 .vercel
 engine-aid-hub-main/
+
+# Headless-Chrome profile left over from CDP testing — never commit
+chrome-nav/

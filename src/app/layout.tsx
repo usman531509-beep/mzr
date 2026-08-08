@@ -71,7 +71,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <SiteChrome hideOnPortals>
             <Footer tree={tree} />
           </SiteChrome>
-          <SiteChrome>
+          <SiteChrome slot="bottom">
             <GlobalOverlays brands={brands} productBrands={productBrands} models={models} tree={tree} />
             <MobileBottomBar />
           </SiteChrome>

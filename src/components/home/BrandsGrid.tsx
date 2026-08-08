@@ -19,7 +19,6 @@ export function BrandsGrid({ brands }: { brands: BrandTile[] }) {
       <div className="h-container">
         <div className="h-sec-head">
           <div>
-            <div className="label">Shop By Bike</div>
             <h2>Your bike. Your parts.</h2>
             <p className="sub">
               Pick a manufacturer to filter the catalogue to verified fitments.
@@ -36,7 +35,7 @@ export function BrandsGrid({ brands }: { brands: BrandTile[] }) {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={b.logoUrl} alt={b.name} />
                 ) : (
-                  <span className="font-head text-3xl text-red">
+                  <span className="font-head text-6xl text-red">
                     {b.name.charAt(0).toUpperCase()}
                   </span>
                 )}

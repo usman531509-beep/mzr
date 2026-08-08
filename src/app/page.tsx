@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { Reveal } from "@/components/Reveal";
 import { Hero } from "@/components/home/Hero";
 import { TrustStrip } from "@/components/home/TrustStrip";
 import { CategoriesGrid } from "@/components/home/CategoriesGrid";
@@ -177,22 +178,23 @@ export default async function HomePage() {
       ) : (
         <>
           {/* Trust badges sit immediately under the Hero so the first
-              scroll surfaces the "safe to buy" cues. */}
-          <TrustStrip />
+              scroll surfaces the "safe to buy" cues. Each section fades/slides
+              in on scroll (see Reveal — lightweight, GPU-only). */}
+          <Reveal><TrustStrip /></Reveal>
 
-          {topCategories.length > 0 && <CategoriesGrid categories={topCategories} />}
+          {topCategories.length > 0 && <Reveal><CategoriesGrid categories={topCategories} /></Reveal>}
 
-          {topBrands.length > 0 && <BrandsGrid brands={topBrands} />}
+          {topBrands.length > 0 && <Reveal><BrandsGrid brands={topBrands} /></Reveal>}
 
-          <InDemandBanner products={demandingPicks} />
+          <Reveal><InDemandBanner products={demandingPicks} /></Reveal>
 
-          {newArrivals.length > 0 && <NewArrivals products={newArrivals} />}
+          {newArrivals.length > 0 && <Reveal><NewArrivals products={newArrivals} /></Reveal>}
 
-          {featured.length > 0 && <FeaturedProducts products={featured} />}
+          {featured.length > 0 && <Reveal><FeaturedProducts products={featured} /></Reveal>}
 
-          <FinderCTA />
+          <Reveal><FinderCTA /></Reveal>
 
-          <Newsletter />
+          <Reveal><Newsletter /></Reveal>
         </>
       )}
     </>

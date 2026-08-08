@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 
 type Brand = { id: string; name: string; slug: string };
 type Model = { id: string; name: string; brandId: string; yearStart: number; yearEnd: number };
@@ -12,6 +13,19 @@ export function Hero({ brands, models }: { brands: Brand[]; models: Model[] }) {
   const [brandSlug, setBrandSlug] = useState("");
   const [modelId, setModelId] = useState("");
   const [year, setYear] = useState("");
+
+  // Rotating emphasis word in the hero headline (framer-motion slide-up).
+  const rotating = useMemo(
+    () => [
+      "First time.",
+      "In stock.",
+      "Guaranteed to fit.",
+      "Trade rates.",
+      "No hassle.",
+    ],
+    [],
+  );
+  const [titleNumber, setTitleNumber] = useState(0);
 
   const brandId = useMemo(() => brands.find((b) => b.slug === brandSlug)?.id, [brandSlug, brands]);
   const filteredModels = useMemo(
@@ -32,6 +46,14 @@ export function Hero({ brands, models }: { brands: Brand[]; models: Model[] }) {
   useEffect(() => { setModelId(""); setYear(""); }, [brandSlug]);
   useEffect(() => { setYear(""); }, [modelId]);
 
+  useEffect(() => {
+    const t = setTimeout(
+      () => setTitleNumber((n) => (n === rotating.length - 1 ? 0 : n + 1)),
+      2200,
+    );
+    return () => clearTimeout(t);
+  }, [titleNumber, rotating]);
+
   const find = (e: React.FormEvent) => {
     e.preventDefault();
     const p = new URLSearchParams();
@@ -46,11 +68,28 @@ export function Hero({ brands, models }: { brands: Brand[]; models: Model[] }) {
       <div className="h-hero-in">
         {/* LEFT — headline, lead copy, actions and stats */}
         <div>
-          <span className="h-eyebrow">Motorbike &amp; Moped Parts Specialist</span>
           <h1>
             The right part
             <br />
-            for your ride. <em>First time.</em>
+            for your ride.
+            <span className="h-rotate" aria-hidden="true">
+              {rotating.map((word, i) => (
+                <motion.em
+                  key={word}
+                  className="h-rotate-word"
+                  initial={{ opacity: 0, y: "-120%" }}
+                  transition={{ type: "spring", stiffness: 50, damping: 12 }}
+                  animate={
+                    titleNumber === i
+                      ? { y: "0%", opacity: 1 }
+                      : { y: titleNumber > i ? "-140%" : "140%", opacity: 0 }
+                  }
+                >
+                  {word}
+                </motion.em>
+              ))}
+            </span>
+            <span className="sr-only">First time.</span>
           </h1>
           <p className="lead">
             Search thousands of scooter, moped and motorcycle parts by bike,
@@ -66,19 +105,13 @@ export function Hero({ brands, models }: { brands: Brand[]; models: Model[] }) {
             </a>
             <a href="/trade-account" className="btn-ghost">Trade Account</a>
           </div>
-          <div className="h-stats">
-            <div className="h-stat"><b>1000s</b><span>Parts in stock</span></div>
-            <div className="h-stat"><b>24H</b><span>Dispatch</span></div>
-            <div className="h-stat"><b>100%</b><span>Fitment guarantee</span></div>
-          </div>
         </div>
 
         {/* RIGHT — redesigned parts finder card (same logic, new skin) */}
         <div className="h-finder" id="hero-finder">
           <div className="h-finder-head">
-            <div className="h-finder-badge">Fitment Guaranteed</div>
             <h3>Motorbike Parts Finder</h3>
-            <p className="sub">Three quick steps — we&apos;ll show only parts that fit your ride.</p>
+            <p className="sub">Three quick steps we&apos;ll show only parts that fit your ride.</p>
           </div>
           <div className="h-finder-body">
             {hasCatalog ? (

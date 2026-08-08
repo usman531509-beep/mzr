@@ -55,17 +55,16 @@ export function CategoriesGrid({
       <div className="h-container">
         <div className="h-sec-head">
           <div>
-            <div className="label">Shop By Category</div>
-            <h2>Built for every bay.</h2>
+            <h2>Shop by category.</h2>
             <p className="sub">
-              From service essentials to performance upgrades — the core
-              systems your bike depends on.
+              From brakes and tyres to exhausts and engine internals, find
+              exactly what your bike needs, sorted by system.
             </p>
           </div>
           <Link href="/products" className="h-link">View all parts →</Link>
         </div>
 
-        <div className="grid grid-cols-2 gap-[18px] sm:grid-cols-3 lg:grid-cols-4">
+        <div className="h-cat-grid2">
           {ordered.map((c) => (
             <CategoryTile key={c.id} c={c} />
           ))}
@@ -79,18 +78,30 @@ function CategoryTile({ c }: { c: CategoryWithImage }) {
   const Icon = pickIcon(c.slug, c.name);
   const count = `${c.productCount} part${c.productCount === 1 ? "" : "s"}`;
   return (
-    <Link href={`/products?category=${c.path}`} className="h-cat !h-[240px]">
-      {c.imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={c.imageUrl} alt="" />
-      ) : (
-        <div className="flex h-[65%] w-full items-center justify-center bg-white">
-          <Icon className="h-12 w-12 text-red" strokeWidth={1.2} />
-        </div>
-      )}
+    <Link href={`/products?category=${c.path}`} className="h-cat">
+      <span className="h-cat-count">{count}</span>
+      <div className="h-cat-media">
+        {c.imageUrl ? (
+          <div
+            className="h-cat-photo"
+            style={{ backgroundImage: `url("${c.imageUrl}")` }}
+            role="img"
+            aria-label={c.name}
+          />
+        ) : (
+          <span className="h-cat-ico">
+            <Icon strokeWidth={1.4} />
+          </span>
+        )}
+      </div>
       <div className="h-cat-body">
-        <div className="h-cat-eyebrow">{count}</div>
         <h3>{c.name}</h3>
+        <span className="h-cat-go" aria-hidden="true">
+          Shop
+          <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </span>
       </div>
     </Link>
   );

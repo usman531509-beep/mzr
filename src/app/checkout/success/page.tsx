@@ -125,7 +125,7 @@ export default async function SuccessPage({
               href={latestPayment.receiptUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-red hover:underline"
+              className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-red"
             >
               View Stripe receipt <ExternalLink className="h-3 w-3" />
             </a>

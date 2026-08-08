@@ -13,11 +13,14 @@
   --r:10px;
 }
 *{box-sizing:border-box}
-html{overflow-x:hidden;-webkit-text-size-adjust:100%}
+/* overflow-x:clip (not hidden) — clips sideways overflow WITHOUT creating a
+   scroll container, so position:sticky descendants (floating navbar, product
+   filter sidebar) can pin to the viewport. */
+html{overflow-x:clip;-webkit-text-size-adjust:100%}
 html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--font-body),system-ui,sans-serif;line-height:1.45}
-body{overflow-x:hidden}
+body{overflow-x:clip}
 a{color:var(--red);text-decoration:none}
-a:hover{text-decoration:underline}
+a:hover{text-decoration:none}
 img{max-width:100%;display:block}
 .container{width:100%;max-width:1320px;margin:0 auto;padding:0 20px}
 
@@ -143,9 +146,143 @@ section.block.alt{background:var(--soft)}
 .foot-bottom{border-top:1px solid #2a2d33;margin-top:36px;padding-top:18px;display:flex;justify-content:space-between;font-size:12px;color:#9aa0aa;flex-wrap:wrap;gap:10px}
 
 /* Auth */
-.auth{max-width:440px;margin:60px auto;background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:32px}
-.auth h1{margin:0 0 6px;font-size:24px}
-.auth p.sub{margin-bottom:22px}
+/* ---------- AUTH / UTILITY PAGES (login · track · trade) ----------
+   Full-bleed hero gradient (same as .h-hero) behind a centred premium card so
+   these pages feel part of the storefront. On desktop the gradient pulls up
+   behind the transparent header, exactly like the hero. */
+.h-authbg{position:relative;overflow:hidden;background:linear-gradient(135deg,#fff5f5 0%,#ffe9ec 55%,#ffd9de 100%);padding:56px 20px 90px;min-height:72vh}
+.h-authbg::before{content:"";position:absolute;inset:0;pointer-events:none;background:
+  radial-gradient(900px 500px at 85% 12%, rgba(227,6,19,.16), transparent 60%),
+  radial-gradient(700px 400px at 8% 92%, rgba(227,6,19,.06), transparent 60%)}
+.h-authbg::after{content:"";position:absolute;inset:0;pointer-events:none;background-image:
+  linear-gradient(rgba(11,13,18,.05) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(11,13,18,.05) 1px,transparent 1px);
+  background-size:46px 46px;mask-image:radial-gradient(ellipse at center,#000 25%,transparent 78%)}
+@media (min-width:1024px){
+  .h-authbg{margin-top:calc(-1 * var(--chrome-h));padding-top:calc(var(--chrome-h) + 36px)}
+}
+.h-authbg > *{position:relative;z-index:1}
+.h-authbg .auth{margin:0 auto}
+@media (max-width:768px){.h-authbg{padding:32px 16px 60px}}
+
+/* Content pages (e.g. /products) — hero pink backdrop instead of flat white.
+   On desktop the gradient pulls up behind the transparent header like the hero;
+   white cards (filters, product tiles) sit on top and pop. */
+.h-pagebg{position:relative;background:linear-gradient(135deg,#fff5f5 0%,#ffe9ec 55%,#ffd9de 100%);min-height:100vh}
+.h-pagebg::before{content:"";position:absolute;top:0;left:0;right:0;height:600px;background:radial-gradient(820px 380px at 82% 10%,rgba(227,6,19,.12),transparent 62%);pointer-events:none;z-index:0}
+.h-pagebg > *{position:relative;z-index:1}
+@media (min-width:1024px){.h-pagebg{margin-top:calc(-1 * var(--chrome-h));padding-top:var(--chrome-h)}}
+
+.auth{position:relative;z-index:1;max-width:460px;margin:60px auto;background:linear-gradient(180deg,#ffffff,#fffafb);border:1px solid rgba(227,6,19,.12);border-radius:22px;padding:34px 32px;box-shadow:0 40px 90px -34px rgba(227,6,19,.4),0 12px 30px -16px rgba(11,13,18,.14)}
+.auth-badge{display:grid;place-items:center;width:56px;height:56px;margin:0 auto 16px;border-radius:17px;background:linear-gradient(135deg,#ff2a3a,var(--red));color:#fff;box-shadow:0 16px 32px -12px rgba(227,6,19,.6)}
+.auth-badge svg{width:25px;height:25px}
+.auth h1{font-family:var(--font-head),sans-serif;margin:0 0 8px;font-size:30px;letter-spacing:.02em;line-height:1.02;color:var(--ink);text-align:center}
+.auth p.sub{margin:0 0 24px;color:var(--muted);font-size:14px;line-height:1.5;text-align:center}
+
+/* ---------- SPLIT-SCREEN AUTH (login / register / track) ----------
+   Full-viewport two-column layout (AuthShell). No storefront chrome. */
+.h-auth2{min-height:100vh;min-height:100dvh;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);background:#fff}
+/* LEFT — brand / selling points on a soft red wash. */
+.h-auth2-brand{position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;gap:clamp(24px,3vw,34px);padding:clamp(36px,4.5vw,60px);background:linear-gradient(160deg,#fff5f5 0%,#ffeaec 55%,#ffe0e3 100%);border-right:1px solid #f1d6da}
+.h-auth2-brand::after{content:"";position:absolute;inset:0;pointer-events:none;background:
+  radial-gradient(620px 420px at 82% 8%,rgba(227,6,19,.13),transparent 60%),
+  radial-gradient(500px 360px at 6% 96%,rgba(227,6,19,.06),transparent 60%)}
+.h-auth2-brand > *{position:relative;z-index:1}
+.h-auth2-logo img{height:clamp(96px,9vw,140px);width:auto;filter:drop-shadow(0 6px 14px rgba(11,13,18,.12))}
+.h-auth2-brand-mid{display:flex;flex-direction:column;gap:16px}
+.h-auth2-brand-mid h2{font-family:var(--font-head),sans-serif;font-size:clamp(30px,3vw,44px);line-height:1.03;letter-spacing:.01em;color:var(--ink);margin:0}
+.h-auth2-brand-mid h2 em{font-style:normal;background:linear-gradient(180deg,#ff2a3a,#99000b);-webkit-background-clip:text;background-clip:text;color:transparent}
+.h-auth2-brand-mid p.desc{font-size:15.5px;line-height:1.6;color:#5c5f68;max-width:470px;margin:0 0 6px}
+.h-auth2-feat{display:flex;align-items:flex-start;gap:14px;background:rgba(255,255,255,.72);backdrop-filter:blur(6px);border:1px solid rgba(227,6,19,.1);border-radius:16px;padding:16px 18px}
+.h-auth2-feat .ico{display:grid;place-items:center;flex-shrink:0;width:44px;height:44px;border-radius:13px;background:#fff;color:var(--red);border:1px solid rgba(227,6,19,.14);box-shadow:0 6px 14px -8px rgba(227,6,19,.4)}
+.h-auth2-feat .ico svg{width:20px;height:20px}
+.h-auth2-feat b{display:block;font-size:15px;font-weight:800;color:var(--ink);margin-bottom:2px}
+.h-auth2-feat > div span{font-size:13px;line-height:1.5;color:#6b7280}
+.h-auth2-proof{display:flex;align-items:center;gap:12px}
+.h-auth2-stars{color:#f5a623;font-size:16px;letter-spacing:2px}
+.h-auth2-proof p{margin:0;font-size:13px;color:#5c5f68}
+.h-auth2-proof b{color:var(--ink)}
+/* RIGHT — form column. */
+.h-auth2-form{display:flex;align-items:center;justify-content:center;min-width:0;padding:clamp(36px,4vw,56px) clamp(24px,3.5vw,44px);background:#fff}
+.h-auth2-form-in{width:100%;min-width:0;max-width:424px}
+.h-auth2-form-in h1{font-family:var(--font-head),sans-serif;font-size:34px;letter-spacing:.01em;line-height:1.05;margin:0 0 6px;color:var(--ink)}
+.h-auth2-form-in .sub{font-size:14.5px;color:#6b7280;margin:0 0 26px}
+
+/* Icon inputs shared by the split-auth forms. */
+.h-field{margin-bottom:16px}
+.h-field-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+.h-field-label{display:block;font-size:13px;font-weight:700;color:var(--ink);margin-bottom:7px}
+.h-field-row .h-field-label{margin-bottom:0}
+.h-inp{position:relative;display:flex;align-items:center}
+.h-inp > svg.lead{position:absolute;left:15px;width:17px;height:17px;color:#9aa0aa;pointer-events:none}
+.h-inp input{width:100%;height:52px;border:1px solid #e6e8ee;background:#f7f8fa;border-radius:12px;padding:0 46px;font-size:14.5px;font-family:inherit;color:var(--ink);transition:.18s}
+.h-inp input::placeholder{color:#9aa0aa}
+.h-inp input:focus{outline:none;border-color:var(--red);background:#fff;box-shadow:0 0 0 4px rgba(227,6,19,.1)}
+.h-inp .eye{position:absolute;right:12px;display:grid;place-items:center;width:32px;height:32px;color:#9aa0aa;background:none;border:0;cursor:pointer;border-radius:8px}
+.h-inp .eye:hover{color:var(--red)}
+/* Red brand primary button (reference used dark; MZR stays on-brand red). */
+.h-auth-btn{width:100%;height:52px;display:flex;align-items:center;justify-content:center;gap:10px;background:linear-gradient(135deg,#ff2a3a,var(--red) 55%,#b8050f);color:#fff;border:0;border-radius:12px;font-weight:800;font-size:15px;letter-spacing:.02em;cursor:pointer;transition:.2s;margin-top:6px;box-shadow:0 14px 28px -12px rgba(227,6,19,.55)}
+.h-auth-btn:hover{transform:translateY(-1px);box-shadow:0 20px 34px -12px rgba(227,6,19,.7)}
+.h-auth-btn:disabled{opacity:.6;cursor:not-allowed;transform:none;box-shadow:none}
+.h-auth-alt{margin-top:22px;text-align:center;font-size:13.5px;color:#6b7280}
+.h-auth-alt a{color:var(--red);font-weight:700}
+.h-auth-alt a:hover{color:#99000b}
+.h-auth-forgot{font-size:13px;color:var(--red);font-weight:600}
+.h-auth-forgot:hover{color:#99000b}
+
+/* Below 1024px: single column, brand hidden, form fills the viewport above the
+   mobile bottom bar (which is 64px tall and shown on these pages). */
+@media (max-width:1024px){
+  .h-auth2{grid-template-columns:minmax(0,1fr);min-height:calc(100dvh - 64px)}
+  .h-auth2-brand{display:none}
+  .h-auth2-form{min-height:calc(100dvh - 64px)}
+}
+@media (max-width:480px){
+  .h-auth2-form{padding:32px 16px}
+  .h-auth2-form-in h1{font-size:27px}
+  .h-auth2-form-in .sub{font-size:13.5px;margin-bottom:22px}
+  .h-inp input{height:48px}
+  .h-auth-btn{height:48px}
+}
+
+/* ---------- TRADE ACCOUNT WIZARD (stepper form) ---------- */
+.h-wizard{background:linear-gradient(180deg,#ffffff,#fffafb);border:1px solid rgba(227,6,19,.12);border-radius:22px;box-shadow:0 40px 90px -34px rgba(227,6,19,.32),0 12px 30px -16px rgba(11,13,18,.12);overflow:hidden}
+.h-wizard-steps{display:grid;grid-template-columns:repeat(4,1fr);position:relative;padding:26px 28px 22px;background:linear-gradient(180deg,rgba(227,6,19,.05),transparent);border-bottom:1px solid rgba(227,6,19,.08)}
+.h-wizard-steps::before{content:"";position:absolute;top:45px;left:16%;right:16%;height:3px;border-radius:3px;background:#f0e0e2}
+.h-wizard-step{display:flex;flex-direction:column;align-items:center;gap:9px;position:relative;z-index:1;text-align:center}
+.h-wizard-step .dot{width:38px;height:38px;border-radius:50%;background:#fff;border:2px solid #e7d6d8;color:#c6b0b3;display:grid;place-items:center;font-weight:900;font-size:15px;transition:.25s}
+.h-wizard-step .dot svg{width:17px;height:17px}
+.h-wizard-step.active .dot,.h-wizard-step.done .dot{background:linear-gradient(135deg,#ff2a3a,var(--red));border-color:var(--red);color:#fff;box-shadow:0 6px 16px rgba(227,6,19,.38)}
+.h-wizard-step .lbl{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;color:#a7a2a3;transition:.2s;line-height:1.2}
+.h-wizard-step.active .lbl,.h-wizard-step.done .lbl{color:var(--ink)}
+.h-wizard-body{padding:26px 28px 6px}
+.h-wizard-body h3{font-family:var(--font-head),sans-serif;font-size:21px;letter-spacing:.02em;margin:0 0 4px;color:var(--ink)}
+.h-wizard-body .step-sub{font-size:13px;color:var(--muted);margin:0 0 20px;line-height:1.5}
+.h-wizard-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 28px 26px;border-top:1px solid #f1e6e8;margin-top:22px}
+.h-wizard-foot .spacer{flex:1}
+@media (max-width:560px){
+  .h-wizard-step .lbl{display:none}
+}
+@media (max-width:480px){
+  .h-wizard-steps{padding:20px 12px 16px}
+  .h-wizard-steps::before{top:37px}
+  .h-wizard-step .dot{width:34px;height:34px;font-size:14px}
+  .h-wizard-step .dot svg{width:15px;height:15px}
+  .h-wizard-body{padding:20px 18px 4px}
+  .h-wizard-body h3{font-size:19px}
+  .h-wizard-foot{padding:16px 18px 20px}
+}
+/* Trade page two-column: benefits aside (left) + wizard (right). */
+.h-trade-layout{display:grid;grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr);gap:36px;align-items:start}
+.h-trade-aside{display:flex;flex-direction:column;gap:16px}
+.h-trade-aside .panel{margin:0}
+.h-trade-aside .alert{margin:0}
+@media (max-width:1024px){
+  /* Stack: wizard first (stepper visible), perks below. */
+  .h-trade-layout{grid-template-columns:1fr;gap:22px;max-width:640px;margin:0 auto}
+  .h-trade-aside{order:2}
+  .h-trade-main{order:1}
+}
 .field{margin-bottom:14px}
 .field label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
 .field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;font-family:inherit}
@@ -318,7 +455,7 @@ table.t tr:hover td{background:#fafbfc}
   .sidebar-filters,.summary{position:relative;top:auto;border-radius:6px}
   .table-wrap{overflow-x:auto;border-radius:6px}
   table.t{min-width:680px}
-  .auth{margin:24px 12px;padding:20px;border-radius:6px}
+  .auth{margin:0 auto;padding:24px 20px;border-radius:18px}
   .panel{padding:14px;border-radius:6px;overflow-x:auto}
   .stats{grid-template-columns:1fr}
   .pdp-gallery{font-size:74px}
@@ -383,8 +520,12 @@ a{color:inherit;text-decoration:none}
 .h-container{max-width:1320px;margin:0 auto;padding:0 22px}
 
 /* ---------- TOP STRIP ---------- */
-.h-strip{background:#fff;color:#6b7280;border-bottom:1px solid var(--line);font-size:12.5px;letter-spacing:.02em}
-.h-strip-in{display:flex;justify-content:space-between;align-items:center;padding:9px 22px;max-width:1320px;margin:0 auto;gap:16px;flex-wrap:wrap}
+.h-strip{position:relative;z-index:50;background:transparent;color:#6b7280;font-size:12.5px;letter-spacing:.02em}
+@media (min-width:1024px){
+  /* On desktop the strip floats over the hero gradient — subtle divider only. */
+  .h-strip-in{border-bottom:1px solid rgba(11,13,18,.06)}
+}
+.h-strip-in{display:flex;justify-content:space-between;align-items:center;padding:6px 22px;max-width:1600px;margin:0 auto;gap:16px;flex-wrap:wrap}
 .h-strip a{color:#fff;font-weight:600}
 .h-strip .red-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin-right:8px;box-shadow:0 0 10px var(--red)}
 
@@ -406,21 +547,67 @@ a{color:inherit;text-decoration:none}
 .h-phone-mobile{display:none}
 .h-actions{display:flex;align-items:center;gap:6px}
 .h-act{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 12px;border-radius:10px;font-size:11px;font-weight:600;color:var(--ink-2);transition:.15s;position:relative}
-.h-act:hover{background:#f3f4f8;color:var(--red)}
+.h-act:hover{background:#fff0f1;color:var(--red)}
 .h-act svg{width:22px;height:22px;stroke-width:1.7}
 .h-act .h-badge{position:absolute;top:4px;right:6px;background:var(--red);color:#fff;font-size:10px;font-weight:800;width:18px;height:18px;border-radius:50%;display:grid;place-items:center}
 
 /* ---------- NAV ---------- */
-.h-nav{background:var(--red);color:#fff;position:sticky;top:104px;z-index:49}
-.h-nav-in{display:flex;align-items:center;gap:4px;max-width:1320px;margin:0 auto;padding:0 22px}
-.h-nav a, .h-nav .h-mega-trigger{padding:16px 18px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;display:flex;align-items:center;gap:6px;color:#fff;cursor:pointer;transition:.15s}
-.h-nav a:hover,.h-nav .h-mega:hover .h-mega-trigger{color:#fff;background:var(--red-2,#b8050f)}
-.h-nav .h-cta{margin-left:auto;background:#fff;color:var(--red) !important}
-.h-nav .h-cta:hover{background:#0b0d12;color:#fff !important}
+/* ---------- DESKTOP HEADER (transparent, floats over the hero) ----------
+   Row 1 (.h-float-main): big logo · full search input · account actions.
+   Row 2 (.h-navwrap > .h-navpill): sticky glassy nav bar with mega menus.
+   Both rows are transparent so the hero gradient shows through (see the
+   hero pull-up in the HERO block). */
+/* display:contents so the two rows become body-level children — that lets the
+   sticky nav (.h-navwrap) pin across the whole page instead of only within a
+   short header wrapper. Hidden on mobile (the .h-header block is used there). */
+.h-float{display:none}
+@media (min-width:1024px){.h-float{display:contents}}
+/* z-index above the nav bar so the search autocomplete dropdown overlays it. */
+/* All three header rows share a 1364px box with 22px gutters → a 1320px
+   content area. Logo/login, top-strip text and the nav bar all align to the
+   same left/right edges, and the nav bar keeps its full (wider) width. */
+.h-float-main{position:relative;z-index:60;display:flex;align-items:center;gap:26px;width:100%;max-width:1600px;margin:0 auto;padding:4px 22px 10px}
+.h-float-logo{flex-shrink:0;display:block;filter:drop-shadow(0 8px 18px rgba(11,13,18,.16))}
+/* Full search — the grey pill input (NavSearch/.h-search) stretches to fill. */
+.h-float-search{flex:1;min-width:0;max-width:820px}
+.h-float-search .h-search{height:54px;border-radius:14px;box-shadow:0 10px 30px -14px rgba(11,13,18,.2)}
+.h-float-search .h-search input{font-size:15px}
+.h-float-actions{display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:auto}
+
+/* Sticky nav bar — same 1320 container as the logo/search row so the pill's
+   left/right edges line up exactly with the logo and the login button. */
+.h-navwrap{position:relative;z-index:50;width:100%;max-width:1600px;margin:0 auto;padding:0 22px 4px}
+.h-navpill{position:relative;display:flex;align-items:center;gap:14px;background:rgba(255,255,255,.92);backdrop-filter:blur(14px);border:1px solid rgba(11,13,18,.06);border-radius:16px;padding:5px 10px;box-shadow:0 20px 46px -22px rgba(11,13,18,.34)}
+.h-pill-nav{display:flex;align-items:center;gap:2px;min-width:0}
+.h-pill-nav a,.h-pill-nav .h-mega-trigger{display:flex;align-items:center;gap:6px;padding:12px 16px;border-radius:11px;font-size:12.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--ink);cursor:pointer;transition:.18s;white-space:nowrap}
+.h-pill-nav a:hover,.h-pill-nav .h-mega:hover .h-mega-trigger,.h-pill-nav .h-mega.open .h-mega-trigger{background:#fff0f1;color:var(--red)}
+.h-pill-nav .h-mega-trigger svg{transition:transform .2s}
+.h-pill-nav .h-mega:hover .h-mega-trigger svg,.h-pill-nav .h-mega.open .h-mega-trigger svg{transform:rotate(180deg)}
+/* Track order — pushed to the right edge of the nav bar. */
+.h-navpill .h-nav-track{margin-left:auto;display:inline-flex;align-items:center;gap:8px;padding:11px 16px;border-radius:11px;font-size:12.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--ink);white-space:nowrap;transition:.18s}
+.h-navpill .h-nav-track svg{color:var(--red);transition:.18s}
+.h-navpill .h-nav-track:hover{background:#fff0f1;color:var(--red)}
+
+/* Shared action controls (row 1) */
+.h-pill-icon{position:relative;display:grid;place-items:center;width:46px;height:46px;border-radius:14px;color:var(--ink);border:1px solid rgba(11,13,18,.08);background:rgba(255,255,255,.7);cursor:pointer;transition:.18s}
+.h-pill-icon:hover{background:#fff;border-color:var(--red);color:var(--red)}
+.h-pill-icon svg{width:20px;height:20px;stroke-width:1.8}
+.h-pill-icon .h-badge{position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;font-size:9.5px;font-weight:800;min-width:18px;height:18px;padding:0 4px;border-radius:999px;display:grid;place-items:center;border:2px solid #fff}
+.h-pill-cta{display:inline-flex;align-items:center;background:var(--red);color:#fff;border-radius:14px;padding:14px 24px;font-size:12.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;transition:.2s;box-shadow:0 12px 26px -10px rgba(227,6,19,.55);margin-left:4px}
+.h-pill-cta:hover{background:var(--red-2,#b8050f);transform:translateY(-1px)}
+.h-pill-user{display:flex;align-items:center;gap:8px;border:1px solid rgba(11,13,18,.1);border-radius:14px;padding:6px 14px 6px 6px;background:rgba(255,255,255,.85);cursor:pointer;transition:.18s;margin-left:4px}
+.h-pill-user:hover{border-color:var(--red);background:#fff}
+.h-pill-avatar{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--red-soft,#ffe3e6);color:var(--red);font-size:14px;font-weight:800}
+.h-pill-user-name{font-size:13.5px;font-weight:700;color:var(--ink);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .h-mega{position:static}
-.h-mega-panel{position:absolute;top:100%;left:0;right:0;background:#fff;color:var(--ink);display:none;z-index:60;border-top:3px solid var(--red);box-shadow:0 30px 60px -20px rgba(0,0,0,.35)}
-.h-mega:hover .h-mega-panel{display:block}
-.mp-inner{max-width:1320px;margin:0 auto;padding:0;display:grid;grid-template-columns:280px 1fr;min-height:520px;position:relative;background:#fff}
+/* Panel = transparent wrapper with a 12px hover bridge; the visible rounded
+   card is .mp-inner. Positioned against .h-pill (nearest positioned ancestor)
+   so the dropdown spans the pill's full width. */
+.h-mega-panel{position:absolute;top:100%;left:0;right:0;padding-top:12px;background:transparent;color:var(--ink);display:none;z-index:60}
+/* Visibility is driven by the JS-set .open class (MegaShell), not :hover, so
+   the panel survives scrolling while the pointer stays put. */
+.h-mega.open .h-mega-panel{display:block}
+.mp-inner{margin:0;padding:0;display:grid;grid-template-columns:280px 1fr;min-height:520px;position:relative;background:#fff;border-radius:22px;overflow:hidden;border-top:3px solid var(--red);box-shadow:0 46px 90px -26px rgba(11,13,18,.4)}
 .mp-side{background:#fff;border-right:1px solid #eef0f4;display:flex;flex-direction:column;padding:14px 0}
 .mp-row{position:static}
 .mp-row > a.mp-link{display:flex;align-items:center;justify-content:space-between;padding:14px 22px;font-size:14px;font-weight:600;color:var(--ink);text-transform:none;letter-spacing:0;background:#fff;border-left:3px solid transparent;cursor:pointer}
@@ -433,15 +620,29 @@ a{color:inherit;text-decoration:none}
 .mp-col h5{margin:0 0 14px;font-size:13px;letter-spacing:.04em;text-transform:none;color:var(--ink);font-weight:800;padding-bottom:8px;border-bottom:1px solid #eef0f4}
 .mp-col ul{list-style:none;padding:0;margin:0;display:grid;gap:10px}
 .mp-col ul a{padding:0;font-size:13.5px;font-weight:500;text-transform:none;letter-spacing:0;color:#3a3f4a;background:transparent !important;display:block}
-.mp-col ul a:hover{color:var(--red);text-decoration:underline}
+.mp-col ul a:hover{color:var(--red)}
 .mp-promo{grid-column:span 2;background:linear-gradient(135deg,var(--red),#99000b);color:#fff;border-radius:12px;padding:22px;display:flex;flex-direction:column;justify-content:flex-end;min-height:200px;position:relative;overflow:hidden}
 .mp-promo span{font-size:10px;letter-spacing:.22em;color:#fff;opacity:.85;font-weight:800;text-transform:uppercase}
 .mp-promo h4{font-family:var(--font-head),sans-serif;font-size:34px;margin:8px 0 6px;letter-spacing:.04em;line-height:.95;color:#fff}
 .mp-promo p{font-size:13px;color:#fff;opacity:.92;margin:0 0 12px}
 .mp-promo a.btn-mini{display:inline-flex;align-items:center;gap:6px;background:#fff;color:var(--ink);padding:8px 14px;border-radius:999px;font-size:12px;font-weight:800;width:max-content;text-transform:uppercase;letter-spacing:.04em}
 
+/* ---------- SCROLL REVEAL (lightweight — opacity + transform only) ---------- */
+.reveal{opacity:0;transform:translateY(26px);transition:opacity .7s cubic-bezier(.16,1,.3,1),transform .7s cubic-bezier(.16,1,.3,1)}
+.reveal.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){
+  .reveal,.reveal.in{opacity:1;transform:none;transition:none}
+}
+
 /* ---------- HERO ---------- */
 .h-hero{position:relative;background:linear-gradient(135deg,#fff5f5 0%,#ffe9ec 55%,#ffd9de 100%);color:var(--ink);overflow:hidden;padding:70px 0 90px;border-bottom:1px solid #f1d6da}
+/* Desktop: pull the hero up so its gradient sits BEHIND the transparent
+   header (the topbar + logo/search + nav rows), then pad the content back
+   down so the headline clears the header. --chrome-h ≈ full header height. */
+@media (min-width:1024px){
+  :root{--chrome-h:224px}
+  .h-hero{margin-top:calc(-1 * var(--chrome-h));padding-top:calc(var(--chrome-h) + 44px)}
+}
 .h-hero::before{content:"";position:absolute;inset:0;background:
   radial-gradient(900px 500px at 85% 30%, rgba(227,6,19,.18), transparent 60%),
   radial-gradient(700px 400px at 10% 90%, rgba(227,6,19,.06), transparent 60%);}
@@ -449,59 +650,79 @@ a{color:inherit;text-decoration:none}
   linear-gradient(rgba(11,13,18,.05) 1px,transparent 1px),
   linear-gradient(90deg,rgba(11,13,18,.05) 1px,transparent 1px);
   background-size:46px 46px;mask-image:radial-gradient(ellipse at center,#000 30%,transparent 80%)}
-.h-hero-in{position:relative;display:grid;grid-template-columns:1.15fr 1fr;gap:60px;align-items:center;max-width:1320px;margin:0 auto;padding:0 22px;z-index:2}
+.h-hero-in{position:relative;display:grid;grid-template-columns:1.15fr 1fr;gap:60px;align-items:start;max-width:1320px;margin:0 auto;padding:0 22px;z-index:2}
 .h-eyebrow{display:inline-flex;align-items:center;gap:10px;padding:7px 14px;background:#fff;border:1px solid rgba(227,6,19,.3);border-radius:999px;font-size:11.5px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--red);box-shadow:0 4px 14px rgba(227,6,19,.08)}
 .h-eyebrow::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 14px var(--red)}
 .h-hero h1{font-family:var(--font-head),sans-serif;font-size:clamp(48px,7vw,96px);line-height:.92;letter-spacing:.01em;margin:18px 0 18px;font-weight:400;color:var(--ink)}
 .h-hero h1 em{font-style:normal;background:linear-gradient(180deg,#ff2a3a,#99000b);-webkit-background-clip:text;background-clip:text;color:transparent}
+/* Rotating emphasis word (framer-motion). Own line, fixed height so the
+   slide-in/out words don't shift the layout; overflow clips the off-screen
+   words. Same red gradient as the static <em>. */
+.h-rotate{position:relative;display:block;height:1.15em;overflow:hidden;margin-top:4px}
+.h-rotate-word{position:absolute;left:0;top:0;line-height:1.15;white-space:nowrap;font-style:normal;background:linear-gradient(180deg,#ff2a3a,#99000b);-webkit-background-clip:text;background-clip:text;color:transparent}
 .h-hero p.lead{font-size:17px;line-height:1.6;color:#4a4f5c;max-width:520px;margin:0 0 30px}
 .h-hero-actions{display:flex;gap:12px;flex-wrap:wrap}
 .btn-red{background:var(--red);color:#fff;padding:16px 28px;border-radius:12px;font-weight:800;font-size:13px;letter-spacing:.1em;text-transform:uppercase;box-shadow:var(--red-glow);transition:.2s;display:inline-flex;align-items:center;gap:8px}
 .btn-red:hover{transform:translateY(-2px);background:var(--red-2)}
 .btn-ghost{padding:16px 26px;border-radius:12px;font-weight:800;font-size:13px;letter-spacing:.1em;text-transform:uppercase;border:1.5px solid rgba(11,13,18,.2);color:var(--ink);transition:.2s;background:rgba(255,255,255,.5)}
 .btn-ghost:hover{border-color:var(--ink);background:#fff}
-.h-stats{display:flex;gap:28px;margin-top:42px;padding-top:28px;border-top:1px solid rgba(11,13,18,.1)}
-.h-stat b{display:block;font-family:var(--font-head),sans-serif;font-size:30px;color:var(--ink);letter-spacing:.02em}
-.h-stat span{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#6b7280;font-weight:700}
 
-/* ---------- PARTS FINDER (redesigned) ---------- */
-.h-finder{position:relative;background:#fff;border-radius:24px;padding:0;overflow:hidden;color:var(--ink);box-shadow:0 40px 90px -30px rgba(227,6,19,.35),0 8px 24px -12px rgba(11,13,18,.12);border:1px solid rgba(227,6,19,.12)}
-.h-finder::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#ff2a3a,var(--red) 40%,#99000b);z-index:2}
-.h-finder::after{content:"";position:absolute;top:-120px;right:-120px;width:320px;height:320px;border-radius:50%;background:radial-gradient(circle,rgba(227,6,19,.14),transparent 70%);pointer-events:none}
-.h-finder-head{padding:26px 30px 4px;position:relative;z-index:1}
-.h-finder-badge{display:inline-flex;align-items:center;gap:8px;font-size:10.5px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--red);background:rgba(227,6,19,.08);padding:6px 12px;border-radius:999px;margin-bottom:12px}
+/* ---------- PARTS FINDER (premium restyle) ---------- */
+/* Finder slides in from the right into place on load (CSS-only, GPU-cheap). */
+@keyframes h-finder-in{from{opacity:0;transform:translateX(56px)}to{opacity:1;transform:none}}
+.h-finder{position:relative;background:linear-gradient(180deg,#ffffff 0%,#fff7f8 100%);border-radius:26px;padding:0;overflow:hidden;color:var(--ink);box-shadow:0 50px 100px -34px rgba(227,6,19,.42),0 12px 30px -16px rgba(11,13,18,.16);border:1px solid rgba(227,6,19,.14);animation:h-finder-in .75s cubic-bezier(.16,1,.3,1) .15s both}
+@media (prefers-reduced-motion:reduce){.h-finder{animation:none}}
+.h-finder::after{content:"";position:absolute;top:-140px;right:-130px;width:340px;height:340px;border-radius:50%;background:radial-gradient(circle,rgba(227,6,19,.13),transparent 70%);pointer-events:none}
+/* Header on a soft red-tinted panel, divided from the fields below; centred. */
+.h-finder-head{padding:22px 30px 15px;position:relative;z-index:1;text-align:center;background:linear-gradient(180deg,rgba(227,6,19,.055),rgba(227,6,19,0));border-bottom:1px solid rgba(227,6,19,.07)}
+.h-finder-badge{display:inline-flex;align-items:center;gap:8px;font-size:10.5px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:var(--red);background:#fff;border:1px solid rgba(227,6,19,.2);padding:6px 13px;border-radius:999px;margin-bottom:14px;box-shadow:0 4px 12px rgba(227,6,19,.1)}
 .h-finder-badge::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--red);box-shadow:0 0 10px var(--red)}
-.h-finder h3{font-family:var(--font-head),sans-serif;font-size:34px;letter-spacing:.03em;margin:0 0 6px;color:var(--ink);line-height:1}
-.h-finder .sub{font-size:13.5px;color:var(--muted);margin:0 0 4px;line-height:1.5}
-.h-finder-body{padding:22px 30px 28px;position:relative;z-index:1}
-.h-finder-steps{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;margin:0 0 20px;position:relative}
-.h-finder-steps::before{content:"";position:absolute;top:14px;left:14%;right:14%;height:2px;background:linear-gradient(90deg,var(--red),rgba(227,6,19,.25))}
-.h-finder-step{display:flex;flex-direction:column;align-items:center;gap:6px;position:relative;z-index:1}
-.h-finder-step .dot{width:30px;height:30px;border-radius:50%;background:#fff;border:2px solid var(--red);color:var(--red);display:grid;place-items:center;font-weight:900;font-size:13px;box-shadow:0 4px 12px rgba(227,6,19,.25)}
-.h-finder-step.done .dot,.h-finder-step:first-child .dot{background:var(--red);color:#fff}
-.h-finder-step span{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink);font-weight:800}
+.h-finder h3{font-family:var(--font-head),sans-serif;font-size:33px;letter-spacing:.03em;margin:0 0 7px;color:var(--ink);line-height:1}
+.h-finder .sub{font-size:13.5px;color:var(--muted);margin:0;line-height:1.5}
+.h-finder-body{padding:18px 30px 22px;position:relative;z-index:1}
+/* Stepper: gradient rail with gradient-filled active/done dots, greyed pending. */
+.h-finder-steps{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;margin:0 0 18px;position:relative}
+.h-finder-steps::before{content:"";position:absolute;top:15px;left:16%;right:16%;height:3px;border-radius:3px;background:linear-gradient(90deg,var(--red),rgba(227,6,19,.18))}
+.h-finder-step{display:flex;flex-direction:column;align-items:center;gap:7px;position:relative;z-index:1}
+.h-finder-step .dot{width:32px;height:32px;border-radius:50%;background:#fff;border:2px solid #e7d6d8;color:#c6b0b3;display:grid;place-items:center;font-weight:900;font-size:13px;transition:.25s}
+.h-finder-step:first-child .dot,.h-finder-step.done .dot{background:linear-gradient(135deg,#ff2a3a,var(--red));border-color:var(--red);color:#fff;box-shadow:0 6px 16px rgba(227,6,19,.38)}
+.h-finder-step span{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink);font-weight:800}
 .h-finder-fields{display:grid;gap:12px}
 .h-finder-field{position:relative}
-.h-finder-field label{position:absolute;top:-8px;left:14px;background:#fff;padding:0 6px;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--red);font-weight:800;z-index:1}
-.h-finder-field select{width:100%;background:#fff;border:1.5px solid #e6e8ee;color:var(--ink);padding:17px 44px 17px 16px;border-radius:12px;font-size:14.5px;font-weight:700;font-family:inherit;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23e30613' stroke-width='3'><polyline points='6 9 12 15 18 9'/></svg>");background-repeat:no-repeat;background-position:right 16px center;transition:.2s}
-.h-finder-field select:hover{border-color:rgba(227,6,19,.4)}
+.h-finder-field label{position:absolute;top:-8px;left:14px;background:#fff;padding:0 7px;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--red);font-weight:800;z-index:1;border-radius:4px}
+.h-finder-field select{width:100%;background:#fdfdff;border:1.5px solid #ebedf3;color:var(--ink);padding:15px 48px 15px 18px;border-radius:14px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23e30613' stroke-width='3'><polyline points='6 9 12 15 18 9'/></svg>");background-repeat:no-repeat;background-position:right 18px center;transition:.2s;box-shadow:0 1px 2px rgba(11,13,18,.03)}
+.h-finder-field select:hover:not(:disabled){border-color:rgba(227,6,19,.45);background-color:#fff}
 .h-finder-field select:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 4px rgba(227,6,19,.12)}
+.h-finder-field select:disabled{opacity:.6;cursor:not-allowed;background-color:#f5f5f8;color:var(--muted)}
 .h-finder-grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.h-finder-cta{width:100%;margin-top:16px;background:linear-gradient(135deg,#ff2a3a,var(--red) 50%,#b8050f);color:#fff;border:0;padding:19px;border-radius:14px;font-weight:900;font-size:13.5px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;box-shadow:0 16px 32px -12px rgba(227,6,19,.55);transition:.2s;display:flex;align-items:center;justify-content:center;gap:12px;position:relative;overflow:hidden}
-.h-finder-cta::before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,.25),transparent 70%);transform:translateX(-100%);transition:.6s}
-.h-finder-cta:hover{transform:translateY(-2px);box-shadow:0 22px 40px -12px rgba(227,6,19,.7)}
+.h-finder-cta{width:100%;margin-top:16px;background:linear-gradient(135deg,#ff2a3a,var(--red) 50%,#b8050f);color:#fff;border:0;padding:17px;border-radius:15px;font-weight:900;font-size:14px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;box-shadow:0 18px 36px -14px rgba(227,6,19,.6);transition:.2s;display:flex;align-items:center;justify-content:center;gap:12px;position:relative;overflow:hidden}
+.h-finder-cta::before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,.28),transparent 70%);transform:translateX(-100%);transition:.6s}
+.h-finder-cta:hover{transform:translateY(-2px);box-shadow:0 26px 48px -14px rgba(227,6,19,.72)}
 .h-finder-cta:hover::before{transform:translateX(100%)}
-.h-finder-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:16px;padding-top:16px;border-top:1px dashed #eef0f4;font-size:11.5px;color:var(--muted);flex-wrap:wrap}
-.h-finder-foot .trust{display:inline-flex;align-items:center;gap:6px;font-weight:700}
-.h-finder-foot .trust::before{content:"✓";display:grid;place-items:center;width:16px;height:16px;border-radius:50%;background:#0a8a36;color:#fff;font-size:10px;font-weight:900}
-.h-finder-foot a{color:var(--red);font-weight:800;text-transform:uppercase;letter-spacing:.08em;font-size:11px}
+.h-finder-cta svg{transition:.25s}
+.h-finder-cta:hover svg{transform:translateX(3px)}
+.h-finder-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid #f1e6e8;font-size:11.5px;color:var(--muted);flex-wrap:wrap}
+.h-finder-foot .trust{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:var(--ink)}
+.h-finder-foot .trust::before{content:"✓";display:grid;place-items:center;width:17px;height:17px;border-radius:50%;background:#0a8a36;color:#fff;font-size:10px;font-weight:900}
+.h-finder-foot a{color:var(--red);font-weight:800;text-transform:uppercase;letter-spacing:.08em;font-size:11px;transition:.15s}
+.h-finder-foot a:hover{color:#99000b}
 
-/* ---------- BRAND STRIP ---------- */
-.h-brandstrip{background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-.h-brandstrip-in{display:flex;align-items:center;justify-content:space-between;gap:30px;padding:24px 22px;max-width:1320px;margin:0 auto;flex-wrap:wrap}
-.h-brandstrip span.label{font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);font-weight:800;border-right:1px solid var(--line);padding-right:24px}
-.h-brandstrip img{height:36px;width:auto;opacity:.55;filter:grayscale(100%);transition:.25s}
-.h-brandstrip img:hover{opacity:1;filter:grayscale(0)}
+/* ---------- TRUST + STATS STRIP ---------- */
+/* Standalone red strip that sits in the gap below the hero: five cells, each
+   pairing a headline figure (was the hero .h-stats) with a trust cue. The
+   wrapper is transparent and only supplies the gap + side gutters; the inner
+   grid IS the rounded, red-gradient band. */
+.h-trust{background:transparent;padding:60px 22px 8px}
+.h-trust-in{display:grid;grid-template-columns:repeat(5,1fr);align-items:stretch;max-width:1320px;margin:0 auto;padding:0;background:linear-gradient(135deg,#ff2a3a 0%,var(--red) 48%,#a80510 100%);border-radius:20px;box-shadow:0 30px 60px -26px rgba(227,6,19,.6);overflow:hidden;position:relative}
+.h-trust-in::before{content:"";position:absolute;top:-70%;right:-4%;width:360px;height:360px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.15),transparent 68%);pointer-events:none}
+.h-trust-item{display:flex;align-items:center;gap:14px;padding:24px 22px;position:relative;z-index:1;transition:.2s;color:#fff}
+.h-trust-item + .h-trust-item::before{content:"";position:absolute;left:0;top:50%;transform:translateY(-50%);height:46px;width:1px;background:rgba(255,255,255,.2)}
+.h-trust-item:hover{background:rgba(255,255,255,.09)}
+.h-trust-ico{display:grid;place-items:center;flex-shrink:0;width:46px;height:46px;border-radius:14px;background:rgba(255,255,255,.16);color:#fff;transition:.22s}
+.h-trust-item:hover .h-trust-ico{background:#fff;color:var(--red);transform:translateY(-2px);box-shadow:0 12px 22px -8px rgba(0,0,0,.28)}
+.h-trust-text{display:flex;flex-direction:column;min-width:0}
+.h-trust-text b{font-family:var(--font-head),sans-serif;font-size:25px;line-height:1;color:#fff;letter-spacing:.02em}
+.h-trust-text span{margin-top:6px;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.82);font-weight:800;white-space:nowrap}
 
 /* ---------- SECTIONS ---------- */
 .h-section{padding:80px 0;background:#fff}
@@ -518,25 +739,49 @@ a{color:inherit;text-decoration:none}
 
 /* CATEGORY GRID */
 .h-cat-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;grid-template-rows:240px 240px;gap:18px}
-.h-cat{position:relative;border-radius:18px;overflow:hidden;background:#fff;color:var(--ink);display:flex;flex-direction:column;transition:.3s;border:1px solid var(--line)}
-.h-cat:hover{transform:translateY(-4px);box-shadow:0 24px 50px -20px rgba(0,0,0,.18);border-color:var(--red)}
-.h-cat img{width:100%;height:65%;object-fit:contain;background:#fff;padding:14px;transition:.4s}
-.h-cat:hover img{transform:scale(1.04)}
-.h-cat .h-cat-body{padding:14px 18px 18px;background:#fff;border-top:1px solid var(--line)}
-.h-cat .h-cat-eyebrow{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--red);font-weight:800;margin-bottom:6px}
-.h-cat h3{font-family:var(--font-head),sans-serif;font-size:26px;margin:0;letter-spacing:.04em;line-height:1;color:var(--ink)}
-.h-cat .h-cat-count{display:inline-block;margin-top:8px;font-size:12px;color:var(--muted);padding:4px 10px;background:var(--soft);border-radius:999px}
+/* Consistent, compact cards regardless of how many categories exist —
+   auto-fill keeps each tile ~250px instead of stretching a few of them wide. */
+.h-cat-grid2{display:grid;gap:18px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+@media (max-width:560px){.h-cat-grid2{grid-template-columns:repeat(2,1fr);gap:12px}}
+
+.h-cat{position:relative;border-radius:16px;overflow:hidden;background:#fff;color:var(--ink);display:flex;flex-direction:column;transition:.28s cubic-bezier(.2,.7,.3,1);border:1px solid var(--line);box-shadow:0 2px 10px -6px rgba(11,13,18,.1)}
+.h-cat:hover{transform:translateY(-5px);box-shadow:0 24px 46px -22px rgba(227,6,19,.32);border-color:rgba(227,6,19,.5)}
+/* Count pill floats on the media area. */
+.h-cat-count{position:absolute;top:11px;left:11px;z-index:2;font-size:9.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--red);background:#fff;border:1px solid rgba(227,6,19,.2);padding:4px 9px;border-radius:999px;box-shadow:0 4px 12px rgba(227,6,19,.14)}
+/* Media: product image, or a themed icon chip on a soft red wash. max-* +
+   auto sizing (not width/height:100%) guarantees the WHOLE image previews. */
+.h-cat-media{height:160px;display:grid;place-items:center;background:linear-gradient(160deg,#ffffff,#fff4f5);transition:.3s;overflow:hidden}
+.h-cat:hover .h-cat-media{background:linear-gradient(160deg,#fff4f5,#ffe4e7)}
+/* Image rendered as a background (background-size:contain) so the WHOLE
+   product always previews — cannot crop, regardless of image aspect ratio.
+   background-origin:content-box + padding gives breathing room around it. */
+.h-cat-photo{width:100%;height:100%;padding:18px;box-sizing:border-box;background-position:center;background-repeat:no-repeat;background-size:contain;background-origin:content-box;transition:.35s}
+.h-cat:hover .h-cat-photo{transform:scale(1.04)}
+.h-cat-ico{display:grid;place-items:center;width:64px;height:64px;border-radius:18px;background:#fff;border:1px solid rgba(227,6,19,.14);color:var(--red);box-shadow:0 10px 24px -12px rgba(227,6,19,.4);transition:.3s}
+.h-cat-ico svg{width:31px;height:31px}
+.h-cat:hover .h-cat-ico{transform:translateY(-3px) scale(1.05);background:linear-gradient(135deg,#ff2a3a,var(--red));border-color:transparent;color:#fff;box-shadow:0 16px 30px -12px rgba(227,6,19,.6)}
+/* Body: category name + a "Shop →" hint that slides in on hover. */
+.h-cat-body{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 15px;background:#fff;border-top:1px solid var(--line)}
+.h-cat-body h3{font-family:var(--font-head),sans-serif;font-size:18px;margin:0;letter-spacing:.04em;line-height:1;color:var(--ink);transition:.2s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.h-cat:hover .h-cat-body h3{color:var(--red)}
+.h-cat-go{display:inline-flex;align-items:center;gap:4px;flex-shrink:0;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--red);opacity:0;transform:translateX(-6px);transition:.25s}
+.h-cat:hover .h-cat-go{opacity:1;transform:translateX(0)}
 .h-cat.h-feature{grid-row:span 2}
 .h-cat.h-feature h3{font-size:48px}
 
 /* BIKES & BRANDS GRID */
-.h-tiles{display:grid;grid-template-columns:repeat(6,1fr);gap:16px}
-.h-tile{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px 16px;text-align:center;transition:.2s;display:flex;flex-direction:column;align-items:center;gap:10px}
-.h-tile:hover{border-color:var(--red);transform:translateY(-4px);box-shadow:0 20px 40px -20px rgba(227,6,19,.3)}
-.h-tile .h-tile-img{width:78px;height:78px;border-radius:14px;background:#f5f6f9;display:grid;place-items:center;overflow:hidden;padding:10px}
-.h-tile .h-tile-img img{max-width:100%;max-height:100%;object-fit:contain}
-.h-tile .h-tile-name{font-weight:800;font-size:14px;letter-spacing:.02em}
-.h-tile .h-tile-sub{font-size:11px;color:var(--muted);font-weight:600}
+/* Brand ("shop by bike") tiles — clean white logo plate (no grey box) so
+   uploaded logos sit crisply; auto-fill keeps tiles a consistent size. */
+.h-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(172px,1fr));gap:16px}
+.h-tile{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px 16px 18px;text-align:center;transition:.26s cubic-bezier(.2,.7,.3,1);display:flex;flex-direction:column;align-items:center;gap:12px;box-shadow:0 2px 10px -6px rgba(11,13,18,.1)}
+.h-tile:hover{border-color:rgba(227,6,19,.5);transform:translateY(-5px);box-shadow:0 24px 46px -22px rgba(227,6,19,.3)}
+/* No inner plate — the logo sits large and clean directly on the tile. */
+.h-tile .h-tile-img{width:100%;height:108px;display:grid;place-items:center;overflow:hidden;padding:4px 6px;transition:.26s}
+.h-tile .h-tile-img img{max-width:100%;max-height:100%;object-fit:contain;transition:.26s}
+.h-tile:hover .h-tile-img img{transform:scale(1.05)}
+.h-tile .h-tile-name{font-weight:800;font-size:15px;letter-spacing:.02em;color:var(--ink);transition:.2s}
+.h-tile:hover .h-tile-name{color:var(--red)}
+.h-tile .h-tile-sub{font-size:10.5px;color:var(--muted);font-weight:700;letter-spacing:.08em;text-transform:uppercase}
 
 /* PRODUCT GRID */
 .h-pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:22px}
@@ -586,14 +831,30 @@ a{color:inherit;text-decoration:none}
 .h-trade-card .h-perk .h-perk-i{width:42px;height:42px;border-radius:10px;background:rgba(227,6,19,.15);color:#ff8a92;display:grid;place-items:center;flex-shrink:0;font-size:18px}
 
 /* FOOTER */
-.h-footer{background:#1a0306;color:#f0d4d7;padding:70px 0 24px;border-top:4px solid var(--red)}
-.h-footer-grid{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:50px;margin-bottom:50px}
-.h-footer h5{font-family:var(--font-head),sans-serif;font-size:18px;letter-spacing:.08em;color:#fff;margin:0 0 18px;text-transform:uppercase}
-.h-footer a{display:block;color:#8f95a6;font-size:14px;padding:5px 0;transition:.15s}
-.h-footer a:hover{color:#fff;padding-left:4px}
-.h-foot-bottom{padding-top:24px;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:#8f95a6;gap:16px;flex-wrap:wrap}
-.h-pay{display:flex;gap:12px}
-.h-pay span{padding:6px 12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:6px;font-weight:800;font-size:11px;letter-spacing:.1em}
+.h-footer{position:relative;background:linear-gradient(180deg,#1a0306 0%,#12060a 100%);color:#f0d4d7;padding:0 0 22px;border-top:4px solid var(--red)}
+/* Main grid — compact */
+.h-footer-grid{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:40px;padding:40px 0 26px}
+.h-footer h5{font-family:var(--font-head),sans-serif;font-size:15px;letter-spacing:.09em;color:#fff;margin:0 0 14px;text-transform:uppercase}
+.h-footer-col a{display:block;color:#a38f92;font-size:13.5px;padding:5px 0;transition:.15s;width:fit-content}
+.h-footer-col a:hover{color:#fff;transform:translateX(3px)}
+/* Brand + contact column */
+.h-footer-brand .h-logo{display:inline-block}
+.h-footer-desc{font-size:13.5px;line-height:1.6;color:#a38f92;margin:14px 0 16px;max-width:330px}
+.h-footer-contact{list-style:none;margin:0 0 16px;padding:0;display:flex;flex-direction:column;gap:9px}
+.h-footer-contact li{display:flex;align-items:center;flex-wrap:wrap;gap:9px;font-size:13px;color:#c9b6b9}
+.h-footer-contact li svg{width:16px;height:16px;flex-shrink:0;color:#ff5a68}
+.h-footer-contact .sep{color:#5c4a4d}
+.h-footer-contact a{color:#c9b6b9;transition:.15s}
+.h-footer-contact a:hover{color:#fff}
+.h-footer-social{display:flex;gap:9px}
+.h-footer-social a{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#c9b6b9;transition:.2s}
+.h-footer-social a:hover{background:var(--red);border-color:var(--red);color:#fff;transform:translateY(-2px)}
+.h-footer-social svg{width:17px;height:17px}
+/* Bottom bar */
+.h-foot-bottom{padding-top:18px;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:#8f7a7d;gap:16px;flex-wrap:wrap}
+.h-foot-legal{display:flex;gap:20px}
+.h-foot-legal a{color:#8f7a7d;transition:.15s}
+.h-foot-legal a:hover{color:#fff}
 
 /* MOBILE */
 @media (max-width:1100px){
@@ -604,7 +865,8 @@ a{color:inherit;text-decoration:none}
   .h-trade-in,.h-hero-in{grid-template-columns:1fr;gap:36px}
   .h-trade{padding:50px 30px}
   .h-trade h2{font-size:46px}
-  .h-footer-grid{grid-template-columns:1fr 1fr;gap:30px}
+  .h-footer-grid{grid-template-columns:repeat(3,1fr);gap:32px}
+  .h-footer-brand{grid-column:1 / -1;max-width:560px}
 }
 /* Storefront chrome switches to the mobile bottom-bar + slide-in menu below
    the lg breakpoint (matches MobileBottomBar's lg:hidden and the body's
@@ -613,6 +875,9 @@ a{color:inherit;text-decoration:none}
    handled by the bottom bar and the slide-in menu instead. */
 @media (max-width:1023px){
   .h-strip,.h-nav,.h-actions,.h-search-wrap{display:none}
+  /* The tall mobile header (big logo) must scroll away, not stick — sticky
+     works again now that overflow-x is clip. */
+  .h-header{position:static}
   /* Centred stack: click-to-call on top, then a large logo. Search is dropped
      (it lives in the bottom bar). order:-1 lifts the number above the logo
      without changing DOM order (keeps desktop's grid layout untouched). */
@@ -621,6 +886,11 @@ a{color:inherit;text-decoration:none}
   .h-phone-mobile{order:-1;display:inline-flex;align-items:center;gap:8px;font-family:var(--font-head),sans-serif;font-size:21px;font-weight:800;letter-spacing:.03em;color:var(--ink)}
   .h-phone-mobile svg{width:17px;height:17px;stroke-width:2.4;color:var(--red)}
   .h-phone-mobile:active{color:var(--red)}
+  /* Trust/stats strip: 3-up on tablet, dividers off once rows wrap. */
+  .h-trust-in{grid-template-columns:repeat(3,1fr)}
+  .h-trust-item + .h-trust-item::before{display:none}
+  .h-trust-item{padding:16px 14px;gap:11px}
+  .h-trust-text b{font-size:22px}
 }
 @media (max-width:760px){
   .h-hero{padding:20px 0 50px}
@@ -631,7 +901,8 @@ a{color:inherit;text-decoration:none}
   .h-finder-body{padding:18px 20px 22px}
   .h-finder h3{font-size:28px}
   .h-hero h1{font-size:48px}
-  .h-stats{gap:16px}
+  .h-trust-in{grid-template-columns:repeat(2,1fr)}
+  .h-trust-text span{white-space:normal}
   .h-section{padding:50px 0}
   .h-sec-head h2{font-size:36px}
   .h-tiles{grid-template-columns:repeat(2,1fr)}
@@ -645,15 +916,10 @@ a{color:inherit;text-decoration:none}
   .h-finder{padding:22px}
   .h-trade h2{font-size:36px}
   .h-trade ul{grid-template-columns:1fr}
-  .h-footer{padding:50px 0 90px}
-  .h-footer-grid{grid-template-columns:1fr}
-  /* Stack the trust cues in a single left-aligned column so every icon lines
-     up vertically. width:max-content + auto margins keeps the block centred
-     on the page while the items themselves stay left-aligned (a plain
-     justify-content:center centred each row independently, so the icons
-     landed at different x positions per row). */
-  .h-brandstrip-in{flex-direction:column;align-items:flex-start;gap:18px;width:max-content;max-width:100%;margin:0 auto}
-  .h-brandstrip span.label{display:none}
+  .h-footer{padding:0 0 90px}
+  .h-footer-grid{grid-template-columns:1fr;gap:28px;padding:34px 0 26px}
+  .h-footer-brand{grid-column:auto;max-width:none}
+  .h-foot-bottom{flex-direction:column;align-items:flex-start;gap:14px}
   body{padding-bottom:64px}
 }
 
@@ -716,7 +982,7 @@ a{color:inherit;text-decoration:none}
 .af-pill .af-x{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:999px;background:var(--soft);color:var(--ink);font-size:14px;line-height:1;margin-left:2px}
 .af-pill .af-x:hover{background:var(--red);color:#fff}
 .af-clear{margin-left:auto;background:transparent;border:0;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;padding:8px 10px}
-.af-clear:hover{color:var(--red);text-decoration:underline}
+.af-clear:hover{color:var(--red)}
 .toolbar-secondary{margin-top:0}
 @media (max-width:700px){
   .active-filters{gap:8px}

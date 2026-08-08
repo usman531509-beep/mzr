@@ -393,7 +393,7 @@ export default function CheckoutPage() {
                   {savedAddresses.length > 0 && (
                     <Link
                       href="/account/profile"
-                      className="mb-2 text-[12px] font-semibold text-red hover:underline"
+                      className="mb-2 text-[12px] font-semibold text-red"
                     >
                       Manage saved addresses →
                     </Link>

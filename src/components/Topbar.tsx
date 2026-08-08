@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { getActiveOffers } from "@/lib/offers-cache";
 import { SITE_PHONE, SITE_PHONE_TEL } from "@/lib/site";
 
@@ -29,13 +28,9 @@ export async function Topbar() {
           )}
         </div>
         <div className="hidden items-center gap-2 md:flex">
-          <Link href="/trade-account" className="!text-red font-semibold hover:underline">
-            Apply for trade pricing →
-          </Link>
-          <span aria-hidden>&nbsp;|&nbsp;</span>
-          <Link href="/track" className="!text-muted-foreground hover:underline">Track order</Link>
-          <span aria-hidden>&nbsp;|&nbsp;</span>
-          <a href={`tel:${SITE_PHONE_TEL}`} className="!text-muted-foreground hover:underline">📞 {SITE_PHONE}</a>
+          {/* Trade pricing lives in the nav (Trade Account) and Track order
+              moved into the nav bar — the strip keeps just the phone. */}
+          <a href={`tel:${SITE_PHONE_TEL}`} className="!text-ink font-semibold">📞 {SITE_PHONE}</a>
         </div>
       </div>
     </div>

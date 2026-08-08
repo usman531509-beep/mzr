@@ -161,7 +161,7 @@ export function NavSearch() {
               <button
                 type="button"
                 onClick={submitAll}
-                className="mt-1 inline-flex items-center gap-1 text-[12.5px] font-bold text-red hover:underline"
+                className="mt-1 inline-flex items-center gap-1 text-[12.5px] font-bold text-red"
               >
                 Browse all products <ArrowRight className="h-3 w-3" />
               </button>

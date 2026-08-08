@@ -186,7 +186,7 @@ export default async function ProductsPage({
   };
 
   return (
-    <div className="bg-background text-foreground">
+    <div className="h-pagebg text-foreground">
       <div className="mx-auto max-w-site px-[var(--gutter)] py-6 lg:py-8">
         <Breadcrumbs
           className="mb-3"

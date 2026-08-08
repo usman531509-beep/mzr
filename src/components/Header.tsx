@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
@@ -11,7 +12,10 @@ import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { LayoutDashboard, LogOut, Phone, ShoppingBag, Truck, User as UserIcon } from "lucide-react";
+import {
+  ChevronDown, Heart, LayoutDashboard, LogOut, Phone,
+  ShoppingBag, ShoppingCart, Truck, User as UserIcon,
+} from "lucide-react";
 import type { NavCategoryNode } from "@/lib/nav-cache";
 import { SITE_PHONE, SITE_PHONE_TEL } from "@/lib/site";
 
@@ -20,11 +24,16 @@ type NavProductBrand = { name: string; slug: string };
 type NavModel = { id: string; name: string; brandId: string };
 
 // ---------------------------------------------------------------------------
-// Storefront header — reference design (engine-aid-hub):
-//   · white header row: logo / search / icon actions
-//   · red nav bar underneath with CSS-hover mega menus (.h-mega / .mp-*)
-// All data comes from the cached nav payload; all interactive logic (cart,
-// wishlist, session, search) is preserved from the previous header.
+// Storefront header.
+// Desktop: standalone logo + floating rounded "pill" navbar (reference:
+//   DataLens-style) — nav links with CSS-hover mega menus in the middle,
+//   icon actions (search / wishlist / basket) + a single account CTA on the
+//   right. The big inline search bar is replaced by the global SearchOverlay
+//   (search icon or Cmd+K) so the pill stays slim.
+// Mobile (<lg): compact header with centred click-to-call + large logo; all
+//   other actions live in the bottom bar and slide-in menu.
+// All data comes from the cached nav payload; cart, wishlist, session and
+// search behaviour is unchanged.
 // ---------------------------------------------------------------------------
 
 export function Header({
@@ -48,10 +57,14 @@ export function Header({
   const role = session?.user?.role;
   const hasAdminPanel = role === "ADMIN" || role === "MANAGER" || role === "STAFF";
 
+  const displayName = session?.user?.name || session?.user?.email || "Account";
+  const initial = displayName.trim()[0]?.toUpperCase() || "?";
+  const firstName = displayName.split(/[\s@]/)[0];
+
   return (
     <>
-      {/* ---------- White header row ---------- */}
-      <header className="h-header">
+      {/* ---------- Mobile header: click-to-call + large centred logo ------- */}
+      <header className="h-header lg:hidden">
         <div className="h-header-in">
           <Link href="/" className="h-logo" aria-label="MZR Spare home">
             <Image
@@ -63,31 +76,51 @@ export function Header({
               className="h-[72px] w-auto"
             />
           </Link>
-
-          {/* Mobile-only click-to-call. On desktop the number lives in the top
-              utility strip; on mobile the strip is hidden, so surface it here.
-              Search is intentionally omitted on mobile — it's in the bottom bar. */}
           <a href={`tel:${SITE_PHONE_TEL}`} className="h-phone-mobile" aria-label={`Call ${SITE_PHONE}`}>
             <Phone />
             {SITE_PHONE}
           </a>
+        </div>
+      </header>
 
-          <div className="h-search-wrap">
+      {/* ---------- Desktop header (transparent, sits over the hero bg) ------
+          Row 1: big logo · full search input · account actions
+          Row 2: sticky nav bar with mega menus */}
+      <div className="h-float">
+        <div className="h-float-main">
+          <Link href="/" className="h-float-logo" aria-label="MZR Spare home">
+            <Image
+              src="/logo.png"
+              alt="MZR Spare — Motorbike Parts Specialist"
+              width={617}
+              height={405}
+              priority
+              className="h-[104px] w-auto"
+            />
+          </Link>
+
+          {/* Full, typeable search with live autocomplete. */}
+          <div className="h-float-search">
             <NavSearch />
           </div>
 
-          <div className="h-actions">
-            <Link className="h-act" href="/track">
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0v10l-8 4m8-14l-8 4m0 10V11m0 10l-8-4V7m8 4L4 7" /></svg>
-              Track
-            </Link>
+          <div className="h-float-actions">
+            <button type="button" className="h-pill-icon" onClick={openWishlist} aria-label="Open wishlist">
+              <Heart />
+              {wishlistCount > 0 && <span className="h-badge">{wishlistCount > 99 ? "99" : wishlistCount}</span>}
+            </button>
+            <button type="button" className="h-pill-icon" onClick={openCart} aria-label="Open basket">
+              <ShoppingCart />
+              {cartCount > 0 && <span className="h-badge">{cartCount > 99 ? "99" : cartCount}</span>}
+            </button>
 
             {session?.user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button type="button" className="h-act" aria-label={hasAdminPanel ? "Admin menu" : "Account menu"}>
-                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                    {hasAdminPanel ? role!.charAt(0) + role!.slice(1).toLowerCase() : "Account"}
+                  <button type="button" className="h-pill-user" aria-label="Account menu">
+                    <span className="h-pill-avatar">{initial}</span>
+                    <span className="h-pill-user-name">{firstName}</span>
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
@@ -95,9 +128,7 @@ export function Header({
                     <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
                       {hasAdminPanel ? `Signed in as ${role!.toLowerCase()}` : "Signed in"}
                     </span>
-                    <span className="truncate text-sm font-medium normal-case">
-                      {session.user.name ?? session.user.email}
-                    </span>
+                    <span className="truncate text-sm font-medium normal-case">{displayName}</span>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {hasAdminPanel ? (
@@ -140,40 +171,29 @@ export function Header({
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Link className="h-act" href="/login">
-                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                Account
-              </Link>
+              <Link href="/login" className="h-pill-cta">Login / Register</Link>
             )}
-
-            <button type="button" className="h-act" onClick={openWishlist} aria-label="Open wishlist">
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
-              Wishlist
-              {wishlistCount > 0 && <span className="h-badge">{wishlistCount > 99 ? "99" : wishlistCount}</span>}
-            </button>
-
-            <button type="button" className="h-act" onClick={openCart} aria-label="Open basket">
-              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-              Basket
-              {cartCount > 0 && <span className="h-badge">{cartCount > 99 ? "99" : cartCount}</span>}
-            </button>
           </div>
         </div>
-      </header>
 
-      {/* ---------- Red nav bar with mega menus ---------- */}
-      <nav className="h-nav">
-        <div className="h-nav-in">
-          {tree.length > 0 && <CategoriesMega tree={tree} />}
-          {brands.length > 0 && <BikesMega brands={brands} models={models} />}
-          {productBrands.length > 0 && <BrandsMega productBrands={productBrands} />}
-          <Link href="/products">All Products</Link>
-          {hasAdminPanel && <Link href="/admin">Admin</Link>}
-          {session?.user && !hasAdminPanel && <Link href="/account">My Account</Link>}
-          <Link href="/trade-account">Trade Account</Link>
-          {!session?.user && <Link href="/login" className="h-cta">Login / Register</Link>}
+        {/* Sticky nav bar — links scroll under it while the logo/search row
+            scrolls away. Mega panels anchor to this full-width pill. */}
+        <div className="h-navwrap">
+          <div className="h-pill h-navpill">
+            <nav className="h-pill-nav" aria-label="Primary">
+              {tree.length > 0 && <CategoriesMega tree={tree} />}
+              {brands.length > 0 && <BikesMega brands={brands} models={models} />}
+              {productBrands.length > 0 && <BrandsMega productBrands={productBrands} />}
+              <Link href="/products">All Products</Link>
+              <Link href="/trade-account">Trade Account</Link>
+            </nav>
+            <Link href="/track" className="h-nav-track">
+              <Truck className="h-[16px] w-[16px]" />
+              Track order
+            </Link>
+          </div>
         </div>
-      </nav>
+      </div>
     </>
   );
 }
@@ -194,10 +214,70 @@ function Caret() {
 }
 
 function MegaShell({ label, rows }: { label: string; rows: { label: string; href: string; cols: PaneCol[]; promo?: React.ReactNode }[] }) {
+  // JS-controlled open state instead of pure CSS :hover — a hover-only panel
+  // vanishes mid-scroll: until the floating bar sticks, scrolling shifts it up
+  // under the stationary pointer, the pointer slips off the trigger and
+  // :hover/mouseleave close the panel. So:
+  //   · mouseenter opens, mouseleave closes after a short grace delay
+  //   · a leave that happens right after a scroll event is treated as
+  //     scroll-induced: the panel stays open, and we only close on the next
+  //     real mouse move that lands outside the mega.
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastScroll = useRef(0);
+  const moveHandler = useRef<((e: MouseEvent) => void) | null>(null);
+
+  useEffect(() => {
+    const onScroll = () => { lastScroll.current = Date.now(); };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (closeTimer.current) clearTimeout(closeTimer.current);
+      if (moveHandler.current) window.removeEventListener("mousemove", moveHandler.current);
+    };
+  }, []);
+
+  const clearPending = () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    if (moveHandler.current) {
+      window.removeEventListener("mousemove", moveHandler.current);
+      moveHandler.current = null;
+    }
+  };
+  const enter = () => {
+    clearPending();
+    setOpen(true);
+  };
+  const leave = () => {
+    clearPending();
+    closeTimer.current = setTimeout(() => {
+      if (Date.now() - lastScroll.current < 300) {
+        // Scroll-induced leave — keep the panel open; close on the next real
+        // pointer move unless it lands back inside this mega.
+        const onMove = (e: MouseEvent) => {
+          window.removeEventListener("mousemove", onMove);
+          moveHandler.current = null;
+          if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+        };
+        moveHandler.current = onMove;
+        window.addEventListener("mousemove", onMove);
+      } else {
+        setOpen(false);
+      }
+    }, 160);
+  };
+
   return (
-    <div className="h-mega">
+    <div
+      ref={rootRef}
+      className={`h-mega${open ? " open" : ""}`}
+      onMouseEnter={enter}
+      onMouseLeave={leave}
+    >
       <span className="h-mega-trigger">{label} <Caret /></span>
-      <div className="h-mega-panel">
+      {/* Clicking any link inside closes the panel immediately. */}
+      <div className="h-mega-panel" onClick={() => setOpen(false)}>
         <div className="mp-inner">
           <aside className="mp-side">
             {rows.map((row) => (

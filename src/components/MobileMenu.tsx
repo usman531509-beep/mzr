@@ -4,10 +4,36 @@ import { useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import {
-  Briefcase, ChevronRight, Heart, Package, ShoppingBag, Sparkles, Truck, User,
+  Bike, Briefcase, ChevronRight, CircleDot, Cog, Disc, Filter, Flame, Heart,
+  Lightbulb, Package, ShoppingBag, Sparkles, Truck, User, Wind, Wrench, Zap,
   type LucideIcon,
 } from "lucide-react";
 import type { NavCategoryNode } from "@/lib/nav-cache";
+
+// Keyword → icon so each top-level category shows a meaningful glyph instead of
+// a repeated emoji (mirrors the home CategoriesGrid).
+const CAT_ICONS: Array<{ re: RegExp; Icon: LucideIcon }> = [
+  { re: /brake|disc|pad|caliper|rotor|shoe/i, Icon: Disc },
+  { re: /tyre|tire|wheel|rim/i, Icon: CircleDot },
+  { re: /exhaust|muffler|pipe/i, Icon: Wind },
+  { re: /clutch|cluch|gear|transmission|cvt|belt|variator|chain|sprocket|engine|piston|cylinder|crank|cam|gasket/i, Icon: Cog },
+  { re: /electric|wiring|ecu|ignition|starter|batter/i, Icon: Zap },
+  { re: /light|lamp|bulb|indicator/i, Icon: Lightbulb },
+  { re: /filter|oil|fluid|lube|coolant/i, Icon: Filter },
+  { re: /suspension|fork|shock|body|fairing|panel|seat|accessor|kit|tool|helmet|jacket|glove/i, Icon: Wrench },
+  { re: /performance|tune|sport|race/i, Icon: Flame },
+];
+function catIcon(name: string, slug: string): LucideIcon {
+  const h = `${name} ${slug}`;
+  for (const { re, Icon } of CAT_ICONS) if (re.test(h)) return Icon;
+  return Package;
+}
+function shortcutIcon(label: string): LucideIcon {
+  const l = label.toLowerCase();
+  if (l.includes("deal")) return Flame;
+  if (l.includes("new")) return Sparkles;
+  return Package;
+}
 import { useOverlays } from "@/lib/overlays-store";
 import { useCart } from "@/lib/cart-store";
 import { useWishlist } from "@/lib/wishlist-store";
@@ -138,16 +164,19 @@ export function MobileMenu({
 
             {shortcuts.length > 0 && (
               <div className="mb-3 grid grid-cols-2 gap-2">
-                {shortcuts.map((s) => (
-                  <Link
-                    key={s.label}
-                    href={s.href}
-                    onClick={onClose}
-                    className="flex items-center gap-2 rounded-lg border border-line bg-soft px-3.5 py-3 font-head text-sm font-bold uppercase tracking-wider text-ink transition hover:border-red hover:text-red"
-                  >
-                    <span className="text-lg">{s.icon}</span> {s.label}
-                  </Link>
-                ))}
+                {shortcuts.map((s) => {
+                  const Icon = shortcutIcon(s.label);
+                  return (
+                    <Link
+                      key={s.label}
+                      href={s.href}
+                      onClick={onClose}
+                      className="flex items-center gap-2.5 rounded-xl border border-line bg-soft px-4 py-3.5 font-head text-sm font-bold uppercase tracking-wide text-ink transition hover:border-red hover:text-red"
+                    >
+                      <Icon className="h-4 w-4 text-red" /> {s.label}
+                    </Link>
+                  );
+                })}
               </div>
             )}
 
@@ -189,7 +218,7 @@ export function MobileMenu({
 
             {/* Bike-brand group — Honda, Yamaha, etc. */}
             {brands.length > 0 && (
-              <CollapsibleSection title="By bike" icon="🏍️">
+              <CollapsibleSection title="By bike" Icon={Bike}>
                 <ul className="space-y-0.5 pl-3">
                   {brands.map((b) => (
                     <li key={b.slug}>
@@ -209,7 +238,7 @@ export function MobileMenu({
 
             {/* Part-manufacturer group — Brembo, NGK, EBC, etc. */}
             {productBrands.length > 0 && (
-              <CollapsibleSection title="By brand" icon="🛠️">
+              <CollapsibleSection title="By brand" Icon={Wrench}>
                 <ul className="space-y-0.5 pl-3">
                   {productBrands.map((b) => (
                     <li key={b.slug}>
@@ -247,6 +276,7 @@ function CategoryRow({
   const [open, setOpen] = useState(false);
   const hasChildren = node.children.length > 0;
   const isTop = depth === 0;
+  const Icon = catIcon(node.name, node.slug ?? "");
 
   return (
     <li className={isTop ? "border-b border-line" : ""}>
@@ -263,8 +293,10 @@ function CategoryRow({
         >
           {isTop ? (
             <>
-              <span className="w-7 text-center text-lg">📦</span>
-              <span className="font-head text-[18px] font-extrabold uppercase tracking-wide">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-soft text-red">
+                <Icon className="h-[18px] w-[18px]" strokeWidth={1.8} />
+              </span>
+              <span className="font-head text-[17px] font-extrabold uppercase tracking-wide">
                 {node.name}
               </span>
             </>
@@ -339,8 +371,8 @@ function ActionTile({
 }
 
 function CollapsibleSection({
-  title, icon, children,
-}: { title: string; icon: string; children: React.ReactNode }) {
+  title, Icon, children,
+}: { title: string; Icon: LucideIcon; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="border-b border-line">
@@ -350,8 +382,10 @@ function CollapsibleSection({
         className="flex w-full items-center justify-between py-4"
       >
         <span className="flex items-center gap-2.5">
-          <span className="w-7 text-center text-lg">{icon}</span>
-          <span className="font-head text-[18px] font-extrabold uppercase tracking-wide text-ink">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-soft text-red">
+            <Icon className="h-[18px] w-[18px]" strokeWidth={1.8} />
+          </span>
+          <span className="font-head text-[17px] font-extrabold uppercase tracking-wide text-ink">
             {title}
           </span>
         </span>

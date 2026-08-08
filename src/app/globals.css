@@ -44,7 +44,7 @@ html, body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
-body { line-height: 1.5; overflow-x: hidden; }
+body { line-height: 1.5; overflow-x: clip; }
 
 ::selection { background: #ffe3e6; color: #0b0d12; }
 

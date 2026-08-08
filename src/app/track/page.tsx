@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { AuthShell } from "@/components/AuthShell";
 import { TrackClient } from "./client";
 
 export const dynamic = "force-dynamic";
@@ -28,25 +30,23 @@ export default async function TrackPage({ searchParams }: { searchParams: SP }) 
     : null;
 
   return (
-    <div className="container">
-      <div className="auth">
-        <h1>Track your order</h1>
-        <p className="sub">
-          Pick the courier you were given, enter your tracking number, and we&apos;ll send you to their tracking page.
-        </p>
+    <AuthShell>
+      <h1>Track your order</h1>
+      <p className="sub">
+        Pick your courier, enter your tracking number, and we&apos;ll take you
+        straight to their tracking page.
+      </p>
 
-        <TrackClient
-          couriers={couriers}
-          initialCourierId={initial?.id ?? ""}
-          initialNumber={numberParam}
-        />
+      <TrackClient
+        couriers={couriers}
+        initialCourierId={initial?.id ?? ""}
+        initialNumber={numberParam}
+      />
 
-        <div className="hr" />
-        <p className="muted center" style={{ fontSize: 13, margin: 0 }}>
-          You can also find tracking links on your{" "}
-          <a href="/account/orders">My orders</a> page.
-        </p>
-      </div>
-    </div>
+      <p className="h-auth-alt">
+        You can also find tracking links on your{" "}
+        <Link href="/account/orders">My orders</Link> page.
+      </p>
+    </AuthShell>
   );
 }

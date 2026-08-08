@@ -107,7 +107,7 @@ export function TrackClient({
             href={finalUrl || selected.trackingUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex shrink-0 items-center gap-1 text-red hover:underline"
+            className="inline-flex shrink-0 items-center gap-1 text-red"
           >
             Open <ExternalLink className="h-3 w-3" />
           </a>
