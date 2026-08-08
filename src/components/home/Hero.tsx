@@ -65,6 +65,36 @@ export function Hero({ brands, models }: { brands: Brand[]; models: Model[] }) {
 
   return (
     <section className="h-hero">
+      {/* Decorative background — red swoosh ribbons behind the content.
+          Hexagon mesh comes from .h-hero::after (theme.css). */}
+      <div className="h-hero-art" aria-hidden="true">
+        <svg className="h-hero-swoosh" viewBox="0 0 1200 640" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="hsw-a" x1="0%" y1="100%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#ff3a48" />
+              <stop offset="55%" stopColor="#e30613" />
+              <stop offset="100%" stopColor="#8a050f" />
+            </linearGradient>
+            <linearGradient id="hsw-b" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#c30611" />
+              <stop offset="100%" stopColor="#5f0208" />
+            </linearGradient>
+          </defs>
+          <path d="M-60,600 C350,585 640,560 900,380 C1080,250 1200,190 1340,90 L1340,720 L-60,760 Z" fill="url(#hsw-a)" opacity="0.92" />
+          <path d="M-60,660 C350,640 640,620 900,440 C1080,320 1200,260 1340,160 L1340,780 L-60,820 Z" fill="url(#hsw-b)" opacity="0.82" />
+          <path d="M-40,585 C360,565 650,545 900,375 C1080,250 1200,195 1340,100" fill="none" stroke="#ffffff" strokeOpacity="0.16" strokeWidth="9" />
+        </svg>
+      </div>
+
+      {/* Floating shock-absorber — centred in the gap between copy and finder. */}
+      <img
+        src="/shock-removebg-preview.png"
+        alt=""
+        aria-hidden="true"
+        className="h-hero-shock"
+        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+      />
+
       <div className="h-hero-in">
         {/* LEFT — headline, lead copy, actions and stats */}
         <div>

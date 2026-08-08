@@ -89,18 +89,20 @@ export function Header({
           Row 1: big logo · full search input · account actions
           Row 2: sticky nav bar with mega menus */}
       <div className="h-float">
-        <div className="h-float-main">
-          <Link href="/" className="h-float-logo" aria-label="MZR Spare home">
-            <Image
-              src="/logo.png"
-              alt="MZR Spare — Motorbike Parts Specialist"
-              width={617}
-              height={405}
-              priority
-              className="h-[104px] w-auto"
-            />
-          </Link>
+        {/* Logo OUTSIDE the box — larger, to the left. */}
+        <Link href="/" className="h-float-logo" aria-label="MZR Spare home">
+          <Image
+            src="/logo.png"
+            alt="MZR Spare — Motorbike Parts Specialist"
+            width={617}
+            height={405}
+            priority
+            className="h-[144px] w-auto"
+          />
+        </Link>
 
+        <div className="h-float-box">
+          <div className="h-float-main">
           {/* Full, typeable search with live autocomplete. */}
           <div className="h-float-search">
             <NavSearch />
@@ -188,13 +190,13 @@ export function Header({
               {brands.length > 0 && <BikesMega brands={brands} models={models} />}
               {productBrands.length > 0 && <BrandsMega productBrands={productBrands} />}
               <Link href="/products">All Products</Link>
-              <Link href="/trade-account">Request trade account</Link>
             </nav>
             <Link href="/track" className="h-nav-track">
               <Truck className="h-[16px] w-[16px]" />
               Track order
             </Link>
           </div>
+        </div>
         </div>
       </div>
     </>
