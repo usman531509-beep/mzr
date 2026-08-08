@@ -185,7 +185,7 @@ export function Header({
               {brands.length > 0 && <BikesMega brands={brands} models={models} />}
               {productBrands.length > 0 && <BrandsMega productBrands={productBrands} />}
               <Link href="/products">All Products</Link>
-              <Link href="/trade-account">Trade Account</Link>
+              <Link href="/trade-account">Request trade account</Link>
             </nav>
             <Link href="/track" className="h-nav-track">
               <Truck className="h-[16px] w-[16px]" />
