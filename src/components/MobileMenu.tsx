@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import {
   Bike, Briefcase, ChevronRight, CircleDot, Cog, Disc, Filter, Flame, Heart,
-  Lightbulb, Package, ShoppingBag, Sparkles, Truck, User, Wind, Wrench, Zap,
+  Home, Lightbulb, Package, ShoppingBag, Sparkles, Truck, User, Wind, Wrench, Zap,
   type LucideIcon,
 } from "lucide-react";
 import type { NavCategoryNode } from "@/lib/nav-cache";
@@ -42,6 +42,7 @@ import { useWishlist } from "@/lib/wishlist-store";
 // into the shortcuts-grid format (which is just Best deals / New in).
 // Surfaced here so mobile users have parity with the desktop header.
 const NAV_LINKS: Array<{ Icon: LucideIcon; label: string; href: string }> = [
+  { Icon: Home,      label: "Home",         href: "/" },
   { Icon: Package,   label: "All products", href: "/products" },
   { Icon: Sparkles,  label: "New in",       href: "/products?sort=new" },
   { Icon: Briefcase, label: "Trade account", href: "/trade-account" },

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ShieldCheck, Truck } from "lucide-react";
+import { ArrowLeft, ShieldCheck, Truck } from "lucide-react";
 
 // Full-screen split-screen shell for the auth / utility pages (login, register,
 // track). Left: MZR brand + selling points. Right: the page's own form, passed
@@ -49,7 +49,12 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
 
       {/* RIGHT — the page's form */}
       <main className="h-auth2-form">
-        <div className="h-auth2-form-in">{children}</div>
+        <div className="h-auth2-form-in">
+          <Link href="/" className="h-auth2-back">
+            <ArrowLeft /> Back to home
+          </Link>
+          {children}
+        </div>
       </main>
     </div>
   );

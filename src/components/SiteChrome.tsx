@@ -14,7 +14,7 @@ const HIDE_ALL = ["/pay/", "/admin"];
 
 // Split-screen auth/utility pages (AuthShell): hide the top header/footer, but
 // KEEP the bottom slot (mobile nav + overlays) so users can still navigate.
-const HIDE_CHROME = ["/login", "/register", "/track"];
+const HIDE_CHROME = ["/login", "/register", "/track", "/forgot-password", "/reset-password"];
 
 // Portal-area routes. Used by the Footer wrap so account/trader users don't
 // see the storefront footer stitched under their dashboard.

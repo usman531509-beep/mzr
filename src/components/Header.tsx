@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { useSession, signOut } from "next-auth/react";
 import { useCart } from "@/lib/cart-store";
@@ -48,6 +49,7 @@ export function Header({
   models?: NavModel[];
 }) {
   const { data: session } = useSession();
+  const pathname = usePathname();
   const items = useCart((s) => s.items);
   const cartCount = items.reduce((s, i) => s + i.quantity, 0);
   const wishlistCount = useWishlist((s) => s.items.length);
@@ -181,6 +183,7 @@ export function Header({
         <div className="h-navwrap">
           <div className="h-pill h-navpill">
             <nav className="h-pill-nav" aria-label="Primary">
+              <Link href="/" className={pathname === "/" ? "active" : undefined}>Home</Link>
               {tree.length > 0 && <CategoriesMega tree={tree} />}
               {brands.length > 0 && <BikesMega brands={brands} models={models} />}
               {productBrands.length > 0 && <BrandsMega productBrands={productBrands} />}
@@ -199,8 +202,10 @@ export function Header({
 }
 
 // ---------------------------------------------------------------------------
-// Mega menus — markup mirrors the reference (.h-mega / .mp-side / .mp-pane);
-// visibility is pure CSS (:hover) from theme.css, no JS state needed.
+// Mega menus — markup mirrors the reference (.h-mega / .mp-side / .mp-pane).
+// The panel opens on CLICK (JS `open` state), and closes on outside click or
+// Escape. Inside the open panel, hovering a category row still previews its
+// sub-categories in the right pane.
 // ---------------------------------------------------------------------------
 
 type PaneCol = { heading: string; headingHref?: string; items: { label: string; href: string }[] };
@@ -224,58 +229,32 @@ function MegaShell({ label, rows }: { label: string; rows: { label: string; href
   //     real mouse move that lands outside the mega.
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastScroll = useRef(0);
-  const moveHandler = useRef<((e: MouseEvent) => void) | null>(null);
 
+  // Open on click; close on an outside click or the Escape key.
   useEffect(() => {
-    const onScroll = () => { lastScroll.current = Date.now(); };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      if (closeTimer.current) clearTimeout(closeTimer.current);
-      if (moveHandler.current) window.removeEventListener("mousemove", moveHandler.current);
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
     };
-  }, []);
-
-  const clearPending = () => {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-    if (moveHandler.current) {
-      window.removeEventListener("mousemove", moveHandler.current);
-      moveHandler.current = null;
-    }
-  };
-  const enter = () => {
-    clearPending();
-    setOpen(true);
-  };
-  const leave = () => {
-    clearPending();
-    closeTimer.current = setTimeout(() => {
-      if (Date.now() - lastScroll.current < 300) {
-        // Scroll-induced leave — keep the panel open; close on the next real
-        // pointer move unless it lands back inside this mega.
-        const onMove = (e: MouseEvent) => {
-          window.removeEventListener("mousemove", onMove);
-          moveHandler.current = null;
-          if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
-        };
-        moveHandler.current = onMove;
-        window.addEventListener("mousemove", onMove);
-      } else {
-        setOpen(false);
-      }
-    }, 160);
-  };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    window.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
   return (
-    <div
-      ref={rootRef}
-      className={`h-mega${open ? " open" : ""}`}
-      onMouseEnter={enter}
-      onMouseLeave={leave}
-    >
-      <span className="h-mega-trigger">{label} <Caret /></span>
+    <div ref={rootRef} className={`h-mega${open ? " open" : ""}`}>
+      <button
+        type="button"
+        className="h-mega-trigger"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        {label} <Caret />
+      </button>
       {/* Clicking any link inside closes the panel immediately. */}
       <div className="h-mega-panel" onClick={() => setOpen(false)}>
         <div className="mp-inner">
@@ -315,7 +294,7 @@ function chunkInto<T>(arr: T[], size: number): T[][] {
 function CategoriesMega({ tree }: { tree: NavCategoryNode[] }) {
   const catHref = (n: NavCategoryNode) => `/products?category=${n.path}`;
 
-  const rows = tree.slice(0, 10).map((top) => {
+  const rows = tree.map((top) => {
     const withKids = top.children.filter((c) => c.children.length > 0);
     const leaves = top.children.filter((c) => c.children.length === 0);
 
@@ -352,9 +331,9 @@ function CategoriesMega({ tree }: { tree: NavCategoryNode[] }) {
 
 /** Bike brands as side rows; that brand's models fill the pane. */
 function BikesMega({ brands, models }: { brands: NavBrand[]; models: NavModel[] }) {
-  const rows = brands.slice(0, 12).map((b) => {
+  const rows = brands.map((b) => {
     const own = models.filter((m) => m.brandId === b.id);
-    const chunks = chunkInto(own.slice(0, 24), 6);
+    const chunks = chunkInto(own, 6);
     const cols: PaneCol[] =
       chunks.length > 0
         ? chunks.map((chunk, i) => ({
@@ -378,7 +357,7 @@ function BrandsMega({ productBrands }: { productBrands: NavProductBrand[] }) {
   const href = (b: NavProductBrand) => `/products?productBrand=${b.slug}`;
   const groups = chunkInto(productBrands, 16);
 
-  const rows = groups.slice(0, 8).map((group) => {
+  const rows = groups.map((group) => {
     const first = group[0].name.charAt(0).toUpperCase();
     const last = group[group.length - 1].name.charAt(0).toUpperCase();
     const label = groups.length === 1 ? "All Brands" : first === last ? first : `${first} – ${last}`;
