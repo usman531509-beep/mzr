@@ -370,7 +370,10 @@ function CategoriesMega({ tree }: { tree: NavCategoryNode[] }) {
 function BikesMega({ brands, models }: { brands: NavBrand[]; models: NavModel[] }) {
   const rows = brands.map((b) => {
     const own = models.filter((m) => m.brandId === b.id);
-    const chunks = chunkInto(own, 6);
+    // Fill a full column top-to-bottom before wrapping to the next one — the
+    // panel is tall, so a small chunk (e.g. 6) wrapped far too early and left
+    // most of the vertical space empty. ~16 fills the column height first.
+    const chunks = chunkInto(own, 16);
     const cols: PaneCol[] =
       chunks.length > 0
         ? chunks.map((chunk, i) => ({
