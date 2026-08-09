@@ -953,15 +953,20 @@ a{color:inherit;text-decoration:none}
   .h-trust-text b{font-size:22px}
 }
 @media (max-width:760px){
-  /* Mobile hero = ONLY the finder card, sitting straight under the logo so the
-     whole finder is visible on load without scrolling. The marketing headline/
-     lead/buttons are dropped on phones (they live in the bottom bar + menu).
-     Background (flat pink + shared hexagon mesh) is set in the max-width:1023
-     block so header + hero read as one continuous surface. */
-  .h-hero{padding:6px 0 34px}
-  .h-hero-in{padding:0 14px;display:flex;flex-direction:column;gap:0}
-  .h-hero-in > div:first-child{display:none}
+  /* Mobile hero: finder card FIRST (so it's fully visible on load), then the
+     marketing headline/lead/buttons below it. Background (flat pink + shared
+     hexagon mesh) is set in the max-width:1023 block so header + hero read as
+     one continuous surface. */
+  .h-hero{padding:6px 0 40px}
+  .h-hero-in{padding:0 14px;display:flex;flex-direction:column;gap:30px}
   .h-finder{order:1}
+  /* Text block second, centred on phones. */
+  .h-hero-in > div:first-child{order:2;text-align:center}
+  .h-hero p.lead{margin-left:auto;margin-right:auto}
+  .h-hero-actions{justify-content:center}
+  /* Centre the rotating word too — span full width + text-align (not transform,
+     which framer-motion drives for the slide). */
+  .h-rotate-word{right:0;text-align:center}
   /* Compact card so it clears the fold on common phone heights. */
   .h-finder .sub{display:none}
   .h-finder-head{padding:15px 20px 10px}
