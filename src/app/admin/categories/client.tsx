@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  ChevronLeft, ChevronRight, FolderPlus, Image as ImageIcon, Pencil, Plus, RotateCcw, Search, Trash2, X,
+  ChevronLeft, ChevronRight, FolderPlus, Image as ImageIcon, PackagePlus, Pencil, Plus, RotateCcw, Search, Trash2, X,
 } from "lucide-react";
 
 import { confirmAction } from "@/lib/confirm-store";
@@ -17,6 +17,9 @@ import {
 } from "@/components/ui/dialog";
 import type { CategoryTreeNode } from "@/lib/category-tree";
 import { ImageUpload } from "@/components/admin/ImageUpload";
+import {
+  PartDialog, type Brand, type ProductBrand, type Category, type BikeModel,
+} from "@/components/admin/PartDialog";
 
 type EditState = {
   id: string | "__new";
@@ -43,16 +46,23 @@ type DeletedCategoryRow = {
 };
 
 export function CategoriesClient({
-  initial, deleted,
+  initial, deleted, brands, productBrands, categories, models,
 }: {
   initial: CategoryTreeNode[];
   deleted: DeletedCategoryRow[];
+  brands: Brand[];
+  productBrands: ProductBrand[];
+  categories: Category[];
+  models: BikeModel[];
 }) {
   const router = useRouter();
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<EditState | null>(null);
   const [busy, setBusy] = useState(false);
+  // Category id whose "Add a new part" dialog is open (null = closed). Opens the
+  // shared PartDialog inline with this category pre-selected.
+  const [addProductCatId, setAddProductCatId] = useState<string | null>(null);
   // Toggle between the live tree explorer and the flat soft-delete bin. Kept
   // client-side because both lists come pre-loaded from the server.
   const [view, setView] = useState<"live" | "deleted">("live");
@@ -103,6 +113,12 @@ export function CategoriesClient({
 
   const startCreate = (parentId: string | null) => {
     setEditing({ id: "__new", name: "", description: "", imageUrl: null, parentId, sortOrder: 0 });
+  };
+  // Open the shared "Add a new part" dialog inline, pre-selected on this
+  // category, so the admin adds products straight into it without picking it
+  // manually or leaving the page. Only leaf categories can hold products.
+  const addProductTo = (categoryId: string) => {
+    setAddProductCatId(categoryId);
   };
   const startEdit = (node: CategoryTreeNode) => {
     setEditing({
@@ -415,16 +431,34 @@ export function CategoriesClient({
                 </>
               )}
             </div>
-            {canAddChild && (
-              <button
-                type="button"
-                className="btn-red !px-3.5 !py-2 !text-[11px]"
-                onClick={() => startCreate(currentId)}
-              >
-                <Plus className="h-3.5 w-3.5" />
-                {currentId ? "Add sub-category" : "New top-level"}
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {/* Products live on leaf categories only — offer "Add product"
+                  once the current category has no sub-categories. */}
+              {current && current.children.length === 0 && (
+                <button
+                  type="button"
+                  className="btn-red !px-3.5 !py-2 !text-[11px]"
+                  onClick={() => addProductTo(current.id)}
+                >
+                  <PackagePlus className="h-3.5 w-3.5" />
+                  Add product
+                </button>
+              )}
+              {canAddChild && (
+                <button
+                  type="button"
+                  className={
+                    current && current.children.length === 0
+                      ? "inline-flex items-center gap-1.5 rounded-md border border-border bg-white px-3.5 py-2 text-[11px] font-semibold text-foreground transition hover:bg-muted"
+                      : "btn-red !px-3.5 !py-2 !text-[11px]"
+                  }
+                  onClick={() => startCreate(currentId)}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  {currentId ? "Add sub-category" : "New top-level"}
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="table-wrap">
@@ -445,6 +479,7 @@ export function CategoriesClient({
                       onOpen={() => setCurrentId(node.id)}
                       onEdit={() => startEdit(node)}
                       onDelete={() => del(node)}
+                      onAddProduct={() => addProductTo(node.id)}
                     />
                   ))}
                 </ul>
@@ -506,17 +541,31 @@ export function CategoriesClient({
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Shared "Add a new part" dialog, opened inline from a category with that
+          category pre-selected. Refreshing the tree updates product counts. */}
+      <PartDialog
+        open={!!addProductCatId}
+        onOpenChange={(v) => { if (!v) setAddProductCatId(null); }}
+        brands={brands}
+        productBrands={productBrands}
+        categories={categories}
+        models={models}
+        defaultCategoryId={addProductCatId ?? undefined}
+        onSaved={() => router.refresh()}
+      />
     </div>
   );
 }
 
 function RowItem({
-  node, onOpen, onEdit, onDelete,
+  node, onOpen, onEdit, onDelete, onAddProduct,
 }: {
   node: CategoryTreeNode;
   onOpen: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onAddProduct: () => void;
 }) {
   const hasChildren = node.children.length > 0;
   return (
@@ -551,6 +600,16 @@ function RowItem({
         )}
       </button>
       <div className="flex shrink-0 items-center gap-0.5 opacity-60 transition group-hover:opacity-100">
+        {/* Products attach to leaf categories only. */}
+        {!hasChildren && (
+          <Button
+            variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-red"
+            onClick={(e) => { e.stopPropagation(); onAddProduct(); }}
+            title="Add product to this category"
+          >
+            <PackagePlus className="h-3.5 w-3.5" />
+          </Button>
+        )}
         <Button
           variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground"
           onClick={(e) => { e.stopPropagation(); onEdit(); }}

@@ -10,7 +10,7 @@ export default async function AdminCategories() {
   // parent is either null or still live. A sub-category that was wiped along
   // with its parent shouldn't appear as a separate restore handle, since
   // restoring the parent brings the whole subtree back in one go.
-  const [tree, deletedRows] = await Promise.all([
+  const [tree, deletedRows, brands, productBrands, categoriesFlat, models] = await Promise.all([
     loadTree(),
     prisma.category.findMany({
       where: { deletedAt: { not: null } },
@@ -20,6 +20,21 @@ export default async function AdminCategories() {
         parentId: true, deletedAt: true,
         parent: { select: { deletedAt: true } },
       },
+    }),
+    // Everything the shared "Add a new part" dialog needs to open inline here.
+    prisma.brand.findMany({ orderBy: { name: "asc" } }),
+    prisma.productBrand.findMany({ orderBy: { name: "asc" } }),
+    prisma.category.findMany({
+      where: { deletedAt: null },
+      orderBy: [{ depth: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
+      select: {
+        id: true, name: true, slug: true, parentId: true, path: true,
+        _count: { select: { children: { where: { deletedAt: null } } } },
+      },
+    }),
+    prisma.bikeModel.findMany({
+      orderBy: [{ brandId: "asc" }, { name: "asc" }],
+      include: { brand: true },
     }),
   ]);
 
@@ -84,6 +99,17 @@ export default async function AdminCategories() {
         deletedAt: d.deletedAt!.toISOString(),
         cascadeSubCount: subCountByRoot.get(d.id) ?? 0,
         cascadeProductCount: prodCountByRoot.get(d.id) ?? 0,
+      }))}
+      brands={brands.map((b) => ({ id: b.id, name: b.name }))}
+      productBrands={productBrands.map((b) => ({ id: b.id, name: b.name }))}
+      categories={categoriesFlat.map((c) => ({
+        id: c.id, name: c.name, slug: c.slug,
+        parentId: c.parentId, path: c.path, childCount: c._count.children,
+      }))}
+      models={models.map((m) => ({
+        id: m.id, name: m.name, brandId: m.brandId,
+        yearStart: m.yearStart, yearEnd: m.yearEnd,
+        brand: { name: m.brand.name },
       }))}
     />
   );

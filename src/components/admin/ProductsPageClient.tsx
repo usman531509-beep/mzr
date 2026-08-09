@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -27,6 +27,7 @@ import type { DashboardProduct } from "@/components/admin/DashboardClient";
 
 export function ProductsPageClient({
   view, deletedCount, products, brands, productBrands, categories, models, pagination,
+  addToCategoryId,
 }: {
   // "live" is the default: active + inactive products. "deleted" loads the
   // soft-delete bin with a Restore action. Switching tabs causes a server
@@ -39,10 +40,31 @@ export function ProductsPageClient({
   categories: Category[];
   models: BikeModel[];
   pagination: { page: number; pageSize: number; total: number };
+  // Set when the admin arrives from the Categories page via "Add product":
+  // auto-opens the dialog with this category pre-selected.
+  addToCategoryId?: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<DashboardProduct | undefined>();
+  // Pre-selected category for a brand-new part (empty = none). Set when opening
+  // from the Categories page; cleared for a plain "New part".
+  const [newCategoryId, setNewCategoryId] = useState("");
+
+  // Auto-open the "add part" dialog with the category pre-filled when we land
+  // here from Categories → Add product. Strip the query param afterwards (via
+  // history, so no re-render) so a manual refresh doesn't re-open the dialog.
+  useEffect(() => {
+    if (!addToCategoryId) return;
+    if (!categories.some((c) => c.id === addToCategoryId)) return;
+    setEditing(undefined);
+    setNewCategoryId(addToCategoryId);
+    setOpen(true);
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", "/admin/products");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addToCategoryId]);
   const [q, setQ] = useState("");
   const [activeView, setActiveView] = useState<"active" | "inactive">("active");
   const isDeletedView = view === "deleted";
@@ -269,7 +291,7 @@ export function ProductsPageClient({
           <button
             type="button"
             className="btn-red !px-4 !py-2.5"
-            onClick={() => { setEditing(undefined); setOpen(true); }}
+            onClick={() => { setEditing(undefined); setNewCategoryId(""); setOpen(true); }}
           >
             <Plus className="h-3.5 w-3.5" /> New part
           </button>
@@ -561,6 +583,7 @@ export function ProductsPageClient({
         productBrands={productBrands}
         categories={categories}
         models={models}
+        defaultCategoryId={editing ? undefined : (newCategoryId || undefined)}
         existing={editing && {
           id: editing.id,
           name: editing.name,

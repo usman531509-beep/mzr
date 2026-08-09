@@ -80,6 +80,15 @@ export default async function ProductsPage({
         { name: { contains: q, mode: "insensitive" } },
         { oemNumber: { contains: q, mode: "insensitive" } },
         { sku: { contains: q, mode: "insensitive" } },
+        { description: { contains: q, mode: "insensitive" } },
+        { brand: { name: { contains: q, mode: "insensitive" } } },
+        { category: { name: { contains: q, mode: "insensitive" } } },
+        // Fitment: parts that fit a bike whose model name or make matches, so
+        // "PCX 125" / "Honda" surfaces compatible parts even if unnamed.
+        { compatibilities: { some: { bikeModel: { OR: [
+          { name: { contains: q, mode: "insensitive" } },
+          { brand: { name: { contains: q, mode: "insensitive" } } },
+        ] } } } },
       ],
     });
   }

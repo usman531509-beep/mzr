@@ -14,11 +14,11 @@ import {
   DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
-  ChevronDown, Heart, LayoutDashboard, LogOut, Phone,
+  ChevronDown, Heart, LayoutDashboard, LogOut, Mail, Phone,
   ShoppingBag, ShoppingCart, Truck, User as UserIcon,
 } from "lucide-react";
 import type { NavCategoryNode } from "@/lib/nav-cache";
-import { SITE_PHONE, SITE_PHONE_TEL } from "@/lib/site";
+import { SITE_EMAIL, SITE_PHONE, SITE_PHONE_TEL } from "@/lib/site";
 
 type NavBrand = { id?: string; name: string; slug: string };
 type NavProductBrand = { name: string; slug: string };
@@ -65,8 +65,19 @@ export function Header({
 
   return (
     <>
-      {/* ---------- Mobile header: click-to-call + large centred logo ------- */}
+      {/* ---------- Mobile header: contact strip + large centred logo ------- */}
       <header className="h-header lg:hidden">
+        {/* Black contact bar with a red swoosh — email (left) + phone (right). */}
+        <div className="h-mobstrip">
+          <a href={`mailto:${SITE_EMAIL}`} aria-label={`Email ${SITE_EMAIL}`}>
+            <span className="ic"><Mail /></span>
+            <span className="t">{SITE_EMAIL}</span>
+          </a>
+          <a href={`tel:${SITE_PHONE_TEL}`} className="phone-link" aria-label={`Call ${SITE_PHONE}`}>
+            <span className="ic"><Phone /></span>
+            <span className="t phone">{SITE_PHONE}</span>
+          </a>
+        </div>
         <div className="h-header-in">
           <Link href="/" className="h-logo" aria-label="MZR Spare home">
             <Image
@@ -78,10 +89,6 @@ export function Header({
               className="h-[72px] w-auto"
             />
           </Link>
-          <a href={`tel:${SITE_PHONE_TEL}`} className="h-phone-mobile" aria-label={`Call ${SITE_PHONE}`}>
-            <Phone />
-            {SITE_PHONE}
-          </a>
         </div>
       </header>
 

@@ -55,10 +55,16 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
     }),
   ]);
 
+  // `?addTo=<categoryId>` — set when the admin clicks "Add product" from the
+  // Categories page. The client auto-opens the part dialog with this category
+  // pre-selected so they never pick it manually.
+  const addToCategoryId = typeof sp.addTo === "string" ? sp.addTo : undefined;
+
   return (
     <ProductsPageClient
       view={view}
       deletedCount={deletedCount}
+      addToCategoryId={addToCategoryId}
       pagination={{ page, pageSize, total }}
       products={products.map((p) => ({
         id: p.id,

@@ -16,11 +16,13 @@ export function ProductTabs({
   fitments: Fitment[];
 }) {
   const tabs = [
-    { key: "description", label: "Description" },
     ...(fitments.length > 0 ? [{ key: "fitment", label: "Fitment" }] : []),
+    { key: "description", label: "Description" },
     { key: "delivery", label: "Delivery & returns" },
   ];
-  const [active, setActive] = useState("description");
+  // Default to Fitment (buyers care most about "does it fit my bike?") when
+  // this part has any fitments; otherwise fall back to Description.
+  const [active, setActive] = useState(fitments.length > 0 ? "fitment" : "description");
 
   return (
     <div className="mt-9">

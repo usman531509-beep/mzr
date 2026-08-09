@@ -150,7 +150,10 @@ export function PartDialog({
   const [compats, setCompats] = useState<Compat[]>([]);
   const [uploading, setUploading] = useState(false);
 
-  const defaultBrandIds = brands[0] ? [brands[0].id] : [];
+  // No bike brand ticked by default — the admin must consciously pick which
+  // makes the part fits (the form rejects a save with none, with a clear
+  // "Pick at least one bike brand" message).
+  const defaultBrandIds: string[] = [];
 
   const form = useForm<PartFormValues>({
     resolver: zodResolver(schema) as never,

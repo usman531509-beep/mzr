@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 // GET /api/search?q=<query>&limit=<n>
-//   Searches active products by: name, oemNumber, sku, brand.name, category.name.
+//   Searches active products by: name, oemNumber, sku, brand.name, category.name,
+//   description, and fitment (the bike models/makes a part fits — so "PCX 125"
+//   or "Honda" surfaces parts that fit that bike even if the name doesn't say so).
 //   Case-insensitive substring match. Returns shape tuned for the search dropdown.
 
 export async function GET(req: Request) {
@@ -18,11 +20,17 @@ export async function GET(req: Request) {
     active: true,
     deletedAt: null,
     OR: [
-      { name:      { contains: q, mode: "insensitive" as const } },
-      { oemNumber: { contains: q, mode: "insensitive" as const } },
-      { sku:       { contains: q, mode: "insensitive" as const } },
+      { name:        { contains: q, mode: "insensitive" as const } },
+      { oemNumber:   { contains: q, mode: "insensitive" as const } },
+      { sku:         { contains: q, mode: "insensitive" as const } },
+      { description: { contains: q, mode: "insensitive" as const } },
       { brand:    { name: { contains: q, mode: "insensitive" as const } } },
       { category: { name: { contains: q, mode: "insensitive" as const } } },
+      // Fitment: parts that fit a bike whose model name or make matches.
+      { compatibilities: { some: { bikeModel: { OR: [
+        { name:  { contains: q, mode: "insensitive" as const } },
+        { brand: { name: { contains: q, mode: "insensitive" as const } } },
+      ] } } } },
     ],
   };
 

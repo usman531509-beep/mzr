@@ -11,6 +11,9 @@
   --soft:#f7f7f8; --ok:#0a8a3a; --warn:#b8860b; --bad:#c0392b;
   --shadow:0 2px 6px rgba(0,0,0,.05); --shadow-lg:0 10px 30px rgba(0,0,0,.08);
   --r:10px;
+  /* Hexagon mesh (same as the hero .h-hero::after) — reused as a tiling
+     background so header + hero can share one continuous texture on mobile. */
+  --hex-svg:url("data:image/svg+xml,%3Csvg width='28' height='49' viewBox='0 0 28 49' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%230b0d12' stroke-opacity='0.06' stroke-width='1'%3E%3Cpath d='M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5z'/%3E%3Cpath d='M13.99 40.75L1 33.25M13.99 40.75V49M13.99 40.75L27 33.25M13.99 9.25V1M13.99 9.25L1 16.75M13.99 9.25L27 16.75'/%3E%3C/g%3E%3C/svg%3E");
 }
 *{box-sizing:border-box}
 /* overflow-x:clip (not hidden) — clips sideways overflow WITHOUT creating a
@@ -342,11 +345,11 @@ table.t tr:hover td{background:#fafbfc}
 /* Product detail */
 .pdp{display:grid;grid-template-columns:1.1fr .9fr;gap:36px}
 @media (max-width:900px){.pdp{grid-template-columns:1fr}}
-.pdp-gallery{background:var(--soft);border-radius:var(--r);aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;font-size:120px;color:var(--muted)}
+.pdp-gallery{background:var(--soft);border:1px solid var(--line);border-radius:var(--r);aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;font-size:120px;color:var(--muted)}
 .thumbs{display:flex;gap:8px;margin-top:10px}
 .thumb{width:70px;height:70px;background:var(--soft);border-radius:6px;border:2px solid var(--line);cursor:pointer}
 .thumb.on{border-color:var(--red)}
-.pdp h1{margin:0 0 6px;font-size:26px}
+.pdp h1{margin:0 0 8px;font-size:25px;line-height:1.22;font-weight:800;overflow-wrap:anywhere;word-break:break-word}
 .pdp .meta{color:var(--muted);font-size:13px;margin-bottom:14px}
 .pdp .price-big{font-size:34px;font-weight:900;color:var(--red);margin:14px 0}
 .pdp .price-big .old{font-size:18px;color:var(--muted);text-decoration:line-through;font-weight:500;margin-right:10px}
@@ -531,6 +534,19 @@ a{color:inherit;text-decoration:none}
 .h-strip-in{display:flex;justify-content:space-between;align-items:center;padding:6px 22px;max-width:1320px;margin:0 auto;gap:16px;flex-wrap:wrap}
 .h-strip a{color:#fff;font-weight:600}
 .h-strip .red-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin-right:8px;box-shadow:0 0 10px var(--red)}
+
+/* ---------- MOBILE CONTACT BAR ---------- */
+/* Black bar with a red swoosh, email (left) + phone (right). Lives only inside
+   the lg:hidden mobile header, so it never shows on desktop. */
+.h-mobstrip{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 15px;background:linear-gradient(90deg,#0b0d12,#181b22);overflow:hidden}
+.h-mobstrip::after{content:"";position:absolute;top:0;bottom:0;right:0;width:56%;background:linear-gradient(115deg,#ff2a3a,var(--red) 55%,#a3040d);clip-path:polygon(24% 0,100% 0,100% 100%,0 100%)}
+.h-mobstrip a{position:relative;z-index:1;display:inline-flex;align-items:center;gap:8px;color:#fff;font-weight:700;min-width:0}
+.h-mobstrip .ic{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--red);color:#fff;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+.h-mobstrip .ic svg{width:14px;height:14px;stroke-width:2.4}
+.h-mobstrip .t{font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.h-mobstrip .t.phone{font-family:var(--font-head),sans-serif;font-size:16px;letter-spacing:.03em}
+/* Phone sits over the red swoosh — white icon circle for contrast. */
+.h-mobstrip .phone-link .ic{background:#fff;color:var(--red)}
 
 /* ---------- HEADER ---------- */
 .h-header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:50;backdrop-filter:saturate(180%) blur(8px)}
@@ -914,13 +930,19 @@ a{color:inherit;text-decoration:none}
 @media (max-width:1023px){
   .h-strip,.h-nav,.h-actions,.h-search-wrap{display:none}
   /* The tall mobile header (big logo) must scroll away, not stick — sticky
-     works again now that overflow-x is clip. */
-  .h-header{position:static}
+     works again now that overflow-x is clip. Themed with the hero gradient (no
+     white block behind the logo) + no divider so it blends into the hero. */
+  /* Same flat pink + hexagon mesh as the hero below → logo sits on one
+     continuous background (no separate "box"). The hero offsets its hexagon by
+     the header height so the mesh lines up seamlessly across the boundary. */
+  .h-header{position:static;background:#ffe9ec var(--hex-svg) 0 0/34px 60px repeat;border-bottom:0;backdrop-filter:none}
+  .h-hero{background:#ffe9ec var(--hex-svg) 0 -207px/34px 60px repeat}
+  .h-hero::before,.h-hero::after{display:none}
   /* Centred stack: click-to-call on top, then a large logo. Search is dropped
      (it lives in the bottom bar). order:-1 lifts the number above the logo
      without changing DOM order (keeps desktop's grid layout untouched). */
-  .h-header-in{grid-template-columns:1fr;justify-items:center;gap:10px;padding:12px 16px 16px;max-width:none}
-  .h-logo img{height:180px}
+  .h-header-in{grid-template-columns:1fr;justify-items:center;gap:6px;padding:8px 16px 10px;max-width:none}
+  .h-logo img{height:140px}
   .h-phone-mobile{order:-1;display:inline-flex;align-items:center;gap:8px;font-family:var(--font-head),sans-serif;font-size:21px;font-weight:800;letter-spacing:.03em;color:var(--ink)}
   .h-phone-mobile svg{width:17px;height:17px;stroke-width:2.4;color:var(--red)}
   .h-phone-mobile:active{color:var(--red)}
@@ -931,13 +953,23 @@ a{color:inherit;text-decoration:none}
   .h-trust-text b{font-size:22px}
 }
 @media (max-width:760px){
-  .h-hero{padding:20px 0 50px}
-  .h-hero-in{padding:0 14px;display:flex;flex-direction:column;gap:26px}
-  .h-hero-in > div:first-child{order:2}
+  /* Mobile hero = ONLY the finder card, sitting straight under the logo so the
+     whole finder is visible on load without scrolling. The marketing headline/
+     lead/buttons are dropped on phones (they live in the bottom bar + menu).
+     Background (flat pink + shared hexagon mesh) is set in the max-width:1023
+     block so header + hero read as one continuous surface. */
+  .h-hero{padding:6px 0 34px}
+  .h-hero-in{padding:0 14px;display:flex;flex-direction:column;gap:0}
+  .h-hero-in > div:first-child{display:none}
   .h-finder{order:1}
-  .h-finder-head{padding:22px 20px 4px}
-  .h-finder-body{padding:18px 20px 22px}
-  .h-finder h3{font-size:28px}
+  /* Compact card so it clears the fold on common phone heights. */
+  .h-finder .sub{display:none}
+  .h-finder-head{padding:15px 20px 10px}
+  .h-finder-body{padding:13px 20px 16px}
+  .h-finder-steps{margin:0 0 13px}
+  .h-finder-fields{gap:10px}
+  .h-finder-cta{padding:15px;margin-top:12px}
+  .h-finder h3{font-size:25px}
   .h-hero h1{font-size:48px}
   .h-trust-in{grid-template-columns:repeat(2,1fr)}
   .h-trust-text span{white-space:normal}
@@ -951,7 +983,8 @@ a{color:inherit;text-decoration:none}
      stack them so the price sits above a full-width Add button. */
   .h-pcard .h-pcard-foot{flex-direction:column;align-items:stretch;gap:10px}
   .h-pcard .h-add{width:100%;padding:11px 14px}
-  .h-finder{padding:22px}
+  /* No outer padding — the head/body carry their own; keeps the card compact. */
+  .h-finder{padding:0}
   .h-trade h2{font-size:36px}
   .h-trade ul{grid-template-columns:1fr}
   .h-footer{padding:0 0 90px}
