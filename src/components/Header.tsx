@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
@@ -22,7 +22,7 @@ import { SITE_PHONE, SITE_PHONE_TEL } from "@/lib/site";
 
 type NavBrand = { id?: string; name: string; slug: string };
 type NavProductBrand = { name: string; slug: string };
-type NavModel = { id: string; name: string; brandId: string };
+type NavModel = { id: string; name: string; brandId: string; yearStart: number; yearEnd: number };
 
 // ---------------------------------------------------------------------------
 // Storefront header.
@@ -220,6 +220,13 @@ function Caret() {
   );
 }
 
+// useLayoutEffect on the client (positions the panel before paint → no flash),
+// but useEffect on the server to avoid React's SSR warning.
+const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
+// Gap between the mega panel and the viewport edges (≈6mm at 96dpi).
+const MEGA_EDGE_GAP = 22;
+
 function MegaShell({ label, rows }: { label: string; rows: { label: string; href: string; cols: PaneCol[]; promo?: React.ReactNode }[] }) {
   // JS-controlled open state instead of pure CSS :hover — a hover-only panel
   // vanishes mid-scroll: until the floating bar sticks, scrolling shifts it up
@@ -231,6 +238,34 @@ function MegaShell({ label, rows }: { label: string; rows: { label: string; href
   //     real mouse move that lands outside the mega.
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // Break the panel out of the 1320px header container so it opens from ~6mm
+  // off the viewport's left edge and spans nearly full width — the same on
+  // every screen size. The panel is position:absolute vs. its nearest
+  // positioned ancestor (the nav pill, which is offset by the logo and capped
+  // at 1320px), so we translate the desired viewport gap into a left/width
+  // relative to that ancestor. Vertical (top:100%) stays in CSS so it keeps
+  // tracking the nav on scroll; only the horizontal needs recomputing, and
+  // only on resize.
+  useIsoLayoutEffect(() => {
+    if (!open) return;
+    const position = () => {
+      const panel = panelRef.current;
+      if (!panel) return;
+      const anchor = panel.offsetParent as HTMLElement | null;
+      const anchorLeft = anchor ? anchor.getBoundingClientRect().left : 0;
+      // clientWidth excludes the vertical scrollbar so the panel never causes a
+      // horizontal overflow on pages that scroll.
+      const vw = document.documentElement.clientWidth;
+      panel.style.left = `${MEGA_EDGE_GAP - anchorLeft}px`;
+      panel.style.right = "auto";
+      panel.style.width = `${Math.max(0, vw - MEGA_EDGE_GAP * 2)}px`;
+    };
+    position();
+    window.addEventListener("resize", position);
+    return () => window.removeEventListener("resize", position);
+  }, [open]);
 
   // Open on click; close on an outside click or the Escape key.
   useEffect(() => {
@@ -258,7 +293,7 @@ function MegaShell({ label, rows }: { label: string; rows: { label: string; href
         {label} <Caret />
       </button>
       {/* Clicking any link inside closes the panel immediately. */}
-      <div className="h-mega-panel" onClick={() => setOpen(false)}>
+      <div ref={panelRef} className="h-mega-panel" onClick={() => setOpen(false)}>
         <div className="mp-inner">
           <aside className="mp-side">
             {rows.map((row) => (
@@ -341,7 +376,12 @@ function BikesMega({ brands, models }: { brands: NavBrand[]; models: NavModel[] 
         ? chunks.map((chunk, i) => ({
             heading: i === 0 ? `${b.name} models` : "",
             items: chunk.map((m) => ({
-              label: m.name,
+              // Include the fitment year range so same-named variants (e.g. two
+              // "PCX 125" rows for different years) are distinguishable.
+              label:
+                m.yearStart === m.yearEnd
+                  ? `${m.name} (${m.yearStart})`
+                  : `${m.name} (${m.yearStart}–${m.yearEnd})`,
               href: `/products?brand=${b.slug}&model=${m.id}`,
             })),
           }))

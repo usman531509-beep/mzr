@@ -89,51 +89,75 @@ export async function POST(req: Request) {
   }
   const primaryBrandId = requestedBrandIds[0];
 
-  const product = await prisma.$transaction(async (tx) => {
-    const created = await tx.product.create({
-      data: {
-        name: d.name,
-        slug,
-        description: d.description,
-        price: d.price,
-        costPrice: d.costPrice ?? null,
-        stock: d.stock,
-        images: d.images,
-        brandId: primaryBrandId,
-        // M2M: connect every ticked brand. Includes the primary so the
-        // relation stays a clean superset of {brandId}.
-        brands: { connect: requestedBrandIds.map((bid) => ({ id: bid })) },
-        productBrandId: d.productBrandId || null,
-        categoryId: d.categoryId,
-        featured: d.featured ?? false,
-        demanding: d.demanding ?? false,
-        active: d.active ?? true,
-        sku: d.sku || null,
-        oemNumber: d.oemNumber || null,
-        compatibilities: {
-          create: d.compatibilities.map((c) => ({
-            bikeModelId: c.bikeModelId,
-            yearFrom: c.yearFrom,
-            yearTo: c.yearTo,
-          })),
-        },
-      },
-    });
-    if (d.stock > 0) {
-      await tx.stockLayer.create({
+  let product;
+  try {
+    product = await prisma.$transaction(async (tx) => {
+      const created = await tx.product.create({
         data: {
-          productId: created.id,
-          source: "INITIAL",
-          unitCost: d.costPrice ?? 0,
-          unitRetail: d.price,
-          qtyReceived: d.stock,
-          qtyRemaining: d.stock,
-          notes: "Initial stock at product creation",
+          name: d.name,
+          slug,
+          description: d.description,
+          price: d.price,
+          costPrice: d.costPrice ?? null,
+          stock: d.stock,
+          images: d.images,
+          brandId: primaryBrandId,
+          // M2M: connect every ticked brand. Includes the primary so the
+          // relation stays a clean superset of {brandId}.
+          brands: { connect: requestedBrandIds.map((bid) => ({ id: bid })) },
+          productBrandId: d.productBrandId || null,
+          categoryId: d.categoryId,
+          featured: d.featured ?? false,
+          demanding: d.demanding ?? false,
+          active: d.active ?? true,
+          sku: d.sku || null,
+          oemNumber: d.oemNumber || null,
+          compatibilities: {
+            create: d.compatibilities.map((c) => ({
+              bikeModelId: c.bikeModelId,
+              yearFrom: c.yearFrom,
+              yearTo: c.yearTo,
+            })),
+          },
         },
       });
-    }
-    return created;
-  });
+      if (d.stock > 0) {
+        await tx.stockLayer.create({
+          data: {
+            productId: created.id,
+            source: "INITIAL",
+            unitCost: d.costPrice ?? 0,
+            unitRetail: d.price,
+            qtyReceived: d.stock,
+            qtyRemaining: d.stock,
+            notes: "Initial stock at product creation",
+          },
+        });
+      }
+      return created;
+    });
+  } catch (err) {
+    // Surface the real reason instead of an opaque 500 — a bad FK (brand,
+    // category, bike model, product brand) or constraint failure lands here.
+    // eslint-disable-next-line no-console
+    console.error("[POST /api/admin/products] create failed:", err);
+    const e = err as { code?: string; meta?: { target?: string[] | string } };
+    const code = e?.code;
+    const target = Array.isArray(e?.meta?.target)
+      ? e.meta!.target.join(", ")
+      : e?.meta?.target;
+    const message =
+      code === "P2002"
+        ? target?.includes("sku")
+          ? "That SKU is already used by another product — SKUs must be unique."
+          : `A product with this ${target ?? "value"} already exists.`
+        : code === "P2003"
+          ? "One of the selected values (brand, category or bike model) no longer exists — refresh and try again."
+          : err instanceof Error
+            ? err.message
+            : "Could not create the product.";
+    return NextResponse.json({ error: message, code }, { status: 400 });
+  }
   revalidatePath("/");
   revalidatePath("/products");
   if (product.slug) revalidatePath(`/products/${product.slug}`);

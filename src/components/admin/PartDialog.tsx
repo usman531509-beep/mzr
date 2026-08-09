@@ -16,9 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -74,6 +72,47 @@ const schema = z.object({
   demanding: z.boolean().default(false),
   active: z.boolean().default(true),
 });
+
+// Human-readable labels for API field errors so the toast names the actual
+// problem field instead of a raw key.
+const FIELD_LABELS: Record<string, string> = {
+  name: "Name",
+  description: "Description",
+  price: "Retail price",
+  costPrice: "Cost price",
+  stock: "Stock",
+  sku: "SKU",
+  oemNumber: "OEM number",
+  brandIds: "Bike brand",
+  brandId: "Bike brand",
+  productBrandId: "Part brand",
+  categoryId: "Category",
+  images: "Images",
+  compatibilities: "Bike fitment",
+};
+
+// Turn any /api/admin/products error response into a clear, specific message.
+// Handles three shapes: a plain string (DB/business errors), a zod flatten
+// ({ formErrors, fieldErrors }) from server-side validation, and an unknown
+// fallback.
+function apiErrorMessage(data: unknown): string {
+  const err = (data as { error?: unknown })?.error;
+  if (typeof err === "string" && err.trim()) return err;
+  if (err && typeof err === "object") {
+    const flat = err as { formErrors?: string[]; fieldErrors?: Record<string, string[]> };
+    const parts: string[] = [];
+    if (Array.isArray(flat.formErrors)) parts.push(...flat.formErrors.filter(Boolean));
+    if (flat.fieldErrors && typeof flat.fieldErrors === "object") {
+      for (const [key, msgs] of Object.entries(flat.fieldErrors)) {
+        if (Array.isArray(msgs) && msgs.length) {
+          parts.push(`${FIELD_LABELS[key] ?? key}: ${msgs[0]}`);
+        }
+      }
+    }
+    if (parts.length) return parts.join(" · ");
+  }
+  return "Save failed — please check the highlighted fields and try again.";
+}
 
 export type PartDialogProps = {
   open: boolean;
@@ -225,13 +264,23 @@ export function PartDialog({
     });
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
-      toast.error(typeof d.error === "string" ? d.error : "Save failed");
+      toast.error(apiErrorMessage(d));
       return;
     }
     toast.success(existing ? "Part updated" : "Part created");
     onOpenChange(false);
     onSaved?.();
     router.refresh();
+  }, (errors) => {
+    // Client-side (zod) validation failed — surface the specific fields so
+    // clicking save on an invalid form isn't a silent no-op.
+    const parts = Object.entries(errors)
+      .map(([key, e]) => {
+        const msg = (e as { message?: string })?.message;
+        return msg ? `${FIELD_LABELS[key] ?? key}: ${msg}` : FIELD_LABELS[key] ?? key;
+      })
+      .filter(Boolean);
+    toast.error(parts.length ? parts.join(" · ") : "Please fill in the required fields.");
   });
 
   return (
@@ -362,16 +411,17 @@ export function PartDialog({
                   control={form.control}
                   name="productBrandId"
                   render={({ field }) => (
-                    <Select
-                      value={field.value || "__none"}
-                      onValueChange={(v) => field.onChange(v === "__none" ? "" : v)}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Select product brand" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none">— None —</SelectItem>
-                        {productBrands.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <Combobox
+                      value={field.value || ""}
+                      onChange={(v) => field.onChange(v)}
+                      placeholder="Select product brand"
+                      searchPlaceholder="Search brands…"
+                      emptyText="No brands found."
+                      options={[
+                        { value: "", label: "— None —" },
+                        ...productBrands.map((b) => ({ value: b.id, label: b.name })),
+                      ]}
+                    />
                   )}
                 />
                 <p className="text-[11px] text-muted-foreground">Brembo, NGK, EBC…</p>
@@ -504,24 +554,22 @@ export function PartDialog({
                   const m = models.find((m) => m.id === c.bikeModelId) ?? models[0];
                   return (
                     <div key={i} className={cn("grid items-center gap-2", "grid-cols-[1fr_90px_90px_36px]")}>
-                      <Select
+                      <Combobox
                         value={c.bikeModelId}
-                        onValueChange={(v) => {
+                        onChange={(v) => {
                           const next = [...compats];
                           const newM = models.find((mm) => mm.id === v)!;
                           next[i] = { bikeModelId: newM.id, yearFrom: newM.yearStart, yearTo: newM.yearEnd };
                           setCompats(next);
                         }}
-                      >
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {models.map((mm) => (
-                            <SelectItem key={mm.id} value={mm.id}>
-                              {mm.brand.name} {mm.name} ({mm.yearStart}–{mm.yearEnd})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        placeholder="Select bike model"
+                        searchPlaceholder="Search models…"
+                        emptyText="No models found."
+                        options={models.map((mm) => ({
+                          value: mm.id,
+                          label: `${mm.brand.name} ${mm.name} (${mm.yearStart}–${mm.yearEnd})`,
+                        }))}
+                      />
                       <Input
                         type="number"
                         min={m.yearStart}

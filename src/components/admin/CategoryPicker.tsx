@@ -2,9 +2,7 @@
 
 import { useMemo, useEffect, useState } from "react";
 import { ChevronRight } from "lucide-react";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+import { Combobox, type ComboOption } from "@/components/ui/combobox";
 
 export type PickerCategory = {
   id: string;
@@ -14,11 +12,12 @@ export type PickerCategory = {
   childCount: number;
 };
 
-// Drill-down picker for hierarchical categories. Renders one Select per
-// level: the first lists top-level rows, each subsequent level appears once
-// the user picks a parent. Only leaves (rows with no children) can be the
-// final selection — the form value is set the moment the user lands on a
-// leaf. Picking a non-leaf clears the value until the chain bottoms out.
+// Drill-down picker for hierarchical categories. Renders one searchable
+// combobox per level: the first lists top-level rows, each subsequent level
+// appears once the user picks a parent. Only leaves (rows with no children)
+// can be the final selection — the form value is set the moment the user
+// lands on a leaf. Picking a non-leaf clears the value until the chain
+// bottoms out. Each level is type-to-filter + scrollable.
 export function CategoryPicker({
   categories,
   value,
@@ -44,11 +43,9 @@ export function CategoryPicker({
     return m;
   }, [categories]);
 
-  // The chain (root → … → leaf) is *derived* synchronously from the external
-  // `value`. Using useMemo here (rather than useState + useEffect) means the
-  // chain is already correct on the very first render after the parent
-  // form.reset fires in edit mode — no race where the Selects briefly paint
-  // empty and then never refresh.
+  // The chain (root → … → leaf) is derived synchronously from the external
+  // `value` so it's already correct on the first render after form.reset in
+  // edit mode — no race where the pickers briefly paint empty.
   const externalChain = useMemo<string[]>(() => {
     if (!value) return [];
     const target = byId.get(value);
@@ -62,15 +59,10 @@ export function CategoryPicker({
     return path;
   }, [value, byId]);
 
-  // Local "in-progress" chain. Used while the customer is mid-drilldown on a
-  // non-leaf (which clears the external `value` until they hit a leaf), so
-  // the dropdowns keep showing their parent picks.
-  //
-  // We only reset the draft when the external value transitions to a NEW
-  // non-empty id (e.g. the parent form opens a different product for edit
-  // and calls form.reset). We do NOT reset when value goes to empty —
-  // that's the user picking a non-leaf, where the draft is the only thing
-  // remembering their partial selection.
+  // Local "in-progress" chain, used while mid-drilldown on a non-leaf (which
+  // clears the external `value` until a leaf is hit) so the pickers keep
+  // showing their parent picks. Reset only when a NEW non-empty value comes
+  // in (parent form opens a different product), never when value goes empty.
   const [draftChain, setDraftChain] = useState<string[] | null>(null);
   useEffect(() => {
     if (value) setDraftChain(null);
@@ -81,7 +73,6 @@ export function CategoryPicker({
     const next = chain.slice(0, idx);
     if (id) next[idx] = id;
     setDraftChain(next);
-    // Emit value only when the selection is a leaf (no children).
     const picked = id ? byId.get(id) : undefined;
     if (picked && picked.childCount === 0) {
       onChange(picked.id);
@@ -90,8 +81,7 @@ export function CategoryPicker({
     }
   };
 
-  // Build the list of dropdowns to render. Always show level 0; show each
-  // subsequent level whose parent is already picked.
+  // Always show level 0; show each subsequent level whose parent is picked.
   const levels: { parentId: string | null; pickedId: string }[] = [];
   levels.push({ parentId: null, pickedId: chain[0] ?? "" });
   for (let i = 0; i < chain.length; i++) {
@@ -105,30 +95,26 @@ export function CategoryPicker({
     <div className="space-y-1.5">
       <div className="flex flex-wrap items-center gap-1.5">
         {levels.map((lvl, idx) => {
-          const options = childrenOf.get(lvl.parentId) ?? [];
-          if (options.length === 0) return null;
+          const source = childrenOf.get(lvl.parentId) ?? [];
+          if (source.length === 0) return null;
+          const options: ComboOption[] = source.map((c) => ({
+            value: c.id,
+            label: c.name,
+            hint: c.childCount > 0 ? "▸" : undefined,
+          }));
           return (
             <div key={`${lvl.parentId ?? "root"}-${idx}`} className="flex items-center gap-1.5">
-              {idx > 0 && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-              <Select
+              {idx > 0 && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+              <Combobox
+                options={options}
                 value={lvl.pickedId}
-                onValueChange={(v) => setLevel(idx, v)}
+                onChange={(v) => setLevel(idx, v)}
                 disabled={disabled}
-              >
-                <SelectTrigger className="h-9 min-w-[160px]">
-                  <SelectValue placeholder={idx === 0 ? emptyLabel : "Choose…"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {options.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                      {c.childCount > 0 && (
-                        <span className="ml-1 text-[10px] text-muted-foreground">▸</span>
-                      )}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder={idx === 0 ? emptyLabel : "Choose…"}
+                searchPlaceholder="Search…"
+                emptyText="No categories found."
+                className="h-9 min-w-[180px]"
+              />
             </div>
           );
         })}

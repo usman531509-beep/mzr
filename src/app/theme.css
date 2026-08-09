@@ -528,7 +528,7 @@ a{color:inherit;text-decoration:none}
   /* On desktop the strip floats over the hero gradient — subtle divider only. */
   .h-strip-in{border-bottom:1px solid rgba(11,13,18,.06)}
 }
-.h-strip-in{display:flex;justify-content:space-between;align-items:center;padding:6px 22px;max-width:1600px;margin:0 auto;gap:16px;flex-wrap:wrap}
+.h-strip-in{display:flex;justify-content:space-between;align-items:center;padding:6px 22px;max-width:1320px;margin:0 auto;gap:16px;flex-wrap:wrap}
 .h-strip a{color:#fff;font-weight:600}
 .h-strip .red-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--red);margin-right:8px;box-shadow:0 0 10px var(--red)}
 
@@ -567,13 +567,15 @@ a{color:inherit;text-decoration:none}
 /* Desktop: search row + nav row share ONE rounded glass box (no overflow:hidden
    so the search autocomplete + mega dropdowns can escape below it). */
 /* Logo (left, larger) OUTSIDE the box; the search + nav rows share the box. */
-@media (min-width:1024px){.h-float{display:flex;flex-direction:row;align-items:center;gap:22px;position:relative;z-index:60;width:100%;max-width:1600px;margin:0 auto}}
+@media (min-width:1024px){.h-float{display:flex;flex-direction:row;align-items:center;gap:22px;position:relative;z-index:60;width:100%;max-width:1320px;margin:0 auto;padding:0 22px}}
 .h-float-box{flex:1;min-width:0;display:flex;flex-direction:column;background:transparent}
 /* z-index above the nav bar so the search autocomplete dropdown overlays it. */
-/* All three header rows share a 1364px box with 22px gutters → a 1320px
-   content area. Logo/login, top-strip text and the nav bar all align to the
-   same left/right edges, and the nav bar keeps its full (wider) width. */
-.h-float-main{position:relative;z-index:60;display:flex;align-items:center;gap:20px;width:100%;padding:8px 18px 6px}
+/* All header rows (top strip, logo/search, nav bar) share the SAME 1320px
+   max-width + 22px side gutters as the hero content (.h-hero-in) below, so the
+   logo aligns with the headline on the left and the actions align with the
+   finder card on the right. The 22px lives on .h-float itself; the inner rows
+   carry no horizontal padding so their edges land exactly on the gutters. */
+.h-float-main{position:relative;z-index:60;display:flex;align-items:center;gap:20px;width:100%;padding:8px 0 6px}
 .h-float-logo{flex-shrink:0;display:block;filter:drop-shadow(0 8px 18px rgba(11,13,18,.16))}
 /* Search — left-aligned, capped so its right edge lines up with the last nav
    tab; actions float to the far right. */
@@ -584,7 +586,7 @@ a{color:inherit;text-decoration:none}
 
 /* Sticky nav bar — same 1320 container as the logo/search row so the pill's
    left/right edges line up exactly with the logo and the login button. */
-.h-navwrap{position:relative;z-index:50;width:100%;padding:0 18px 6px}
+.h-navwrap{position:relative;z-index:50;width:100%;padding:0 0 6px}
 /* Transparent nav row (floats on the hero gradient). */
 .h-navpill{position:relative;display:flex;align-items:center;gap:14px;padding:4px 0 2px}
 .h-pill-nav{display:flex;align-items:center;gap:2px;min-width:0}
@@ -611,8 +613,10 @@ a{color:inherit;text-decoration:none}
 .h-pill-user-name{font-size:13.5px;font-weight:700;color:var(--ink);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .h-mega{position:static}
 /* Panel = transparent wrapper with a 12px hover bridge; the visible rounded
-   card is .mp-inner. Positioned against .h-pill (nearest positioned ancestor)
-   so the dropdown spans the pill's full width. */
+   card is .mp-inner. top:100% (CSS) keeps it below the nav and tracking scroll;
+   MegaShell sets left/width inline on open so it breaks out of the 1320px
+   header container and spans ~full viewport width (≈22px gap each side). The
+   left:0;right:0 here is only the pre-JS fallback. */
 .h-mega-panel{position:absolute;top:100%;left:0;right:0;padding-top:12px;background:transparent;color:var(--ink);display:none;z-index:60}
 /* Visibility is driven by the JS-set .open class (MegaShell), not :hover, so
    the panel survives scrolling while the pointer stays put. */
@@ -625,6 +629,12 @@ a{color:inherit;text-decoration:none}
 .mp-side::-webkit-scrollbar{width:8px}
 .mp-side::-webkit-scrollbar-thumb{background:rgba(11,13,18,.16);border-radius:8px}
 .mp-side::-webkit-scrollbar-thumb:hover{background:rgba(11,13,18,.28)}
+/* Searchable Combobox list — always show a thin scrollbar so it's obvious the
+   list scrolls (it lives inside a Dialog whose scroll-lock hides native cues). */
+.combobox-scroll{scrollbar-width:thin;scrollbar-color:rgba(11,13,18,.24) transparent}
+.combobox-scroll::-webkit-scrollbar{width:8px}
+.combobox-scroll::-webkit-scrollbar-thumb{background:rgba(11,13,18,.22);border-radius:8px}
+.combobox-scroll::-webkit-scrollbar-thumb:hover{background:rgba(11,13,18,.36)}
 .mp-row{position:static}
 .mp-row > a.mp-link{display:flex;align-items:center;justify-content:space-between;padding:14px 22px;font-size:14px;font-weight:600;color:var(--ink);text-transform:none;letter-spacing:0;background:#fff;border-left:3px solid transparent;cursor:pointer}
 .mp-row > a.mp-link::after{content:"›";color:#9aa0aa;font-size:18px;font-weight:400}

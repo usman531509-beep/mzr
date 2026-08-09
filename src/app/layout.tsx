@@ -50,7 +50,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const { brands, productBrands, models, tree } = nav;
   const navBrands = brands.map((b: { id: string; name: string; slug: string }) => ({ id: b.id, name: b.name, slug: b.slug }));
   const navProductBrands = productBrands.map((b: { name: string; slug: string }) => ({ name: b.name, slug: b.slug }));
-  const navModels = models.map((m: { id: string; name: string; brandId: string }) => ({ id: m.id, name: m.name, brandId: m.brandId }));
+  const navModels = models.map((m: { id: string; name: string; brandId: string; yearStart: number; yearEnd: number }) => ({ id: m.id, name: m.name, brandId: m.brandId, yearStart: m.yearStart, yearEnd: m.yearEnd }));
 
   return (
     <html lang="en" className={`${body.variable} ${head.variable} ${monoUi.variable}`}>

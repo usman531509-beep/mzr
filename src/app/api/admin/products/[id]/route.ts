@@ -113,7 +113,9 @@ export async function PATCH(
     updateData.brandId = brandIds[0];
   }
 
-  const product = await prisma.$transaction(async (tx) => {
+  let product;
+  try {
+    product = await prisma.$transaction(async (tx) => {
     const updated = await tx.product.update({
       where: { id },
       data: {
@@ -156,7 +158,29 @@ export async function PATCH(
       }
     }
     return updated;
-  });
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[PATCH /api/admin/products/${id}] update failed:`, err);
+    const e = err as { code?: string; meta?: { target?: string[] | string } };
+    const code = e?.code;
+    const target = Array.isArray(e?.meta?.target)
+      ? e.meta!.target.join(", ")
+      : e?.meta?.target;
+    const message =
+      code === "P2002"
+        ? target?.includes("sku")
+          ? "That SKU is already used by another product — SKUs must be unique."
+          : `A product with this ${target ?? "value"} already exists.`
+        : code === "P2003"
+          ? "One of the selected values (brand, category or bike model) no longer exists — refresh and try again."
+          : code === "P2025"
+            ? "This product no longer exists."
+            : err instanceof Error
+              ? err.message
+              : "Could not update the product.";
+    return NextResponse.json({ error: message, code }, { status: 400 });
+  }
   revalidatePath("/");
   revalidatePath("/products");
   if (product.slug) revalidatePath(`/products/${product.slug}`);
