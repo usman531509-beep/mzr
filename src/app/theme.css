@@ -171,8 +171,11 @@ section.block.alt{background:var(--soft)}
 /* Content pages (e.g. /products) — hero pink backdrop instead of flat white.
    On desktop the gradient pulls up behind the transparent header like the hero;
    white cards (filters, product tiles) sit on top and pop. */
-.h-pagebg{position:relative;background:linear-gradient(135deg,#fff5f5 0%,#ffe9ec 55%,#ffd9de 100%);min-height:100vh}
-.h-pagebg::before{content:"";position:absolute;top:0;left:0;right:0;height:600px;background:radial-gradient(820px 380px at 82% 10%,rgba(227,6,19,.12),transparent 62%);pointer-events:none;z-index:0}
+/* Products + category listing background — flat light grey (same as the
+   "shop by bike" brand-tile section, .h-section.alt) so white product cards
+   sit cleanly on it. */
+.h-pagebg{position:relative;background:#f5f6f9;min-height:100vh}
+.h-pagebg::before{content:none}
 .h-pagebg > *{position:relative;z-index:1}
 @media (min-width:1024px){.h-pagebg{margin-top:calc(-1 * var(--chrome-h));padding-top:var(--chrome-h)}}
 
@@ -186,10 +189,8 @@ section.block.alt{background:var(--soft)}
    Full-viewport two-column layout (AuthShell). No storefront chrome. */
 .h-auth2{min-height:100vh;min-height:100dvh;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);background:#fff}
 /* LEFT — brand / selling points on a soft red wash. */
-.h-auth2-brand{position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;gap:clamp(24px,3vw,34px);padding:clamp(36px,4.5vw,60px);background:linear-gradient(160deg,#fff5f5 0%,#ffeaec 55%,#ffe0e3 100%);border-right:1px solid #f1d6da}
-.h-auth2-brand::after{content:"";position:absolute;inset:0;pointer-events:none;background:
-  radial-gradient(620px 420px at 82% 8%,rgba(227,6,19,.13),transparent 60%),
-  radial-gradient(500px 360px at 6% 96%,rgba(227,6,19,.06),transparent 60%)}
+.h-auth2-brand{position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;gap:clamp(24px,3vw,34px);padding:clamp(36px,4.5vw,60px);background:#f5f6f9;border-right:1px solid #e6e8ee}
+.h-auth2-brand::after{content:none}
 .h-auth2-brand > *{position:relative;z-index:1}
 .h-auth2-logo img{height:clamp(96px,9vw,140px);width:auto;filter:drop-shadow(0 6px 14px rgba(11,13,18,.12))}
 .h-auth2-brand-mid{display:flex;flex-direction:column;gap:16px}
@@ -206,7 +207,7 @@ section.block.alt{background:var(--soft)}
 .h-auth2-proof p{margin:0;font-size:13px;color:#5c5f68}
 .h-auth2-proof b{color:var(--ink)}
 /* RIGHT — form column. */
-.h-auth2-form{display:flex;align-items:center;justify-content:center;min-width:0;padding:clamp(36px,4vw,56px) clamp(24px,3.5vw,44px);background:#fff}
+.h-auth2-form{display:flex;align-items:center;justify-content:center;min-width:0;padding:clamp(36px,4vw,56px) clamp(24px,3.5vw,44px);background:#f5f6f9}
 .h-auth2-form-in{width:100%;min-width:0;max-width:424px}
 .h-auth2-back{display:inline-flex;align-items:center;gap:6px;margin-bottom:20px;font-size:13px;font-weight:700;color:var(--muted);transition:.15s}
 .h-auth2-back:hover{color:var(--red)}
@@ -221,7 +222,7 @@ section.block.alt{background:var(--soft)}
 .h-field-row .h-field-label{margin-bottom:0}
 .h-inp{position:relative;display:flex;align-items:center}
 .h-inp > svg.lead{position:absolute;left:15px;width:17px;height:17px;color:#9aa0aa;pointer-events:none}
-.h-inp input{width:100%;height:52px;border:1px solid #e6e8ee;background:#f7f8fa;border-radius:12px;padding:0 46px;font-size:14.5px;font-family:inherit;color:var(--ink);transition:.18s}
+.h-inp input{width:100%;height:52px;border:1px solid #e6e8ee;background:#fff;border-radius:12px;padding:0 46px;font-size:14.5px;font-family:inherit;color:var(--ink);transition:.18s}
 .h-inp input::placeholder{color:#9aa0aa}
 .h-inp input:focus{outline:none;border-color:var(--red);background:#fff;box-shadow:0 0 0 4px rgba(227,6,19,.1)}
 .h-inp .eye{position:absolute;right:12px;display:grid;place-items:center;width:32px;height:32px;color:#9aa0aa;background:none;border:0;cursor:pointer;border-radius:8px}
