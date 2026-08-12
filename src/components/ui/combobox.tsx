@@ -32,14 +32,19 @@ export function Combobox({
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
 
-  // A Radix Dialog's scroll-lock (react-remove-scroll) attaches a `wheel`
-  // handler on `document` (bubble phase) that preventDefaults every scroll
-  // outside the dialog's own subtree — and this popover is portaled OUTSIDE
-  // it. We bind our own `wheel` listener on the list node so it runs first
-  // (bubble, element-level), scroll it ourselves, then stopPropagation so the
-  // document lock never sees the event. Using a ref *callback* (not useEffect)
-  // guarantees the listener attaches the instant the node mounts — no race
-  // with the Radix portal. React 19 runs the returned cleanup on unmount.
+  // A Radix Dialog's scroll-lock (react-remove-scroll) attaches `wheel` and
+  // `touchmove` handlers on `document` (bubble phase, non-passive) that
+  // preventDefault every scroll outside the dialog's own subtree — and this
+  // popover is portaled OUTSIDE it. Since those handlers are bubble-phase (not
+  // capture), an element-level listener on the list runs FIRST, so:
+  //   · wheel (desktop): scroll the list ourselves + preventDefault (no double
+  //     scroll) + stopPropagation so the lock never blocks it.
+  //   · touchmove (mobile): just stopPropagation — the event never reaches the
+  //     lock, so the browser scrolls the list natively (with momentum). We must
+  //     NOT preventDefault here or we'd kill the native touch scroll.
+  // A ref *callback* (not useEffect) guarantees the listeners attach the instant
+  // the node mounts — no race with the Radix portal. React 19 runs the returned
+  // cleanup on unmount.
   const bindScroll = useCallback((node: HTMLDivElement | null) => {
     if (!node) return;
     const onWheel = (e: WheelEvent) => {
@@ -48,8 +53,16 @@ export function Combobox({
       e.preventDefault();
       e.stopPropagation();
     };
+    const onTouchMove = (e: TouchEvent) => {
+      if (node.scrollHeight <= node.clientHeight) return;
+      e.stopPropagation();
+    };
     node.addEventListener("wheel", onWheel, { passive: false });
-    return () => node.removeEventListener("wheel", onWheel);
+    node.addEventListener("touchmove", onTouchMove, { passive: true });
+    return () => {
+      node.removeEventListener("wheel", onWheel);
+      node.removeEventListener("touchmove", onTouchMove);
+    };
   }, []);
 
   const selected = options.find((o) => o.value === value);
