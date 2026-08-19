@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  ChevronLeft, ChevronRight, FolderPlus, Image as ImageIcon, PackagePlus, Pencil, Plus, RotateCcw, Search, Trash2, X,
+  ChevronLeft, ChevronRight, FolderPlus, Image as ImageIcon, Loader2, Package, PackagePlus, Pencil, Plus, RotateCcw, Search, Trash2, X,
 } from "lucide-react";
 
 import { confirmAction } from "@/lib/confirm-store";
@@ -20,6 +20,7 @@ import { ImageUpload } from "@/components/admin/ImageUpload";
 import {
   PartDialog, type Brand, type ProductBrand, type Category, type BikeModel,
 } from "@/components/admin/PartDialog";
+import type { DashboardProduct } from "@/components/admin/DashboardClient";
 
 type EditState = {
   id: string | "__new";
@@ -63,6 +64,11 @@ export function CategoriesClient({
   // Category id whose "Add a new part" dialog is open (null = closed). Opens the
   // shared PartDialog inline with this category pre-selected.
   const [addProductCatId, setAddProductCatId] = useState<string | null>(null);
+  // Product being edited inline (undefined = not editing).
+  const [editingProduct, setEditingProduct] = useState<DashboardProduct | undefined>();
+  // Products of the currently-open leaf category, loaded on demand.
+  const [catProducts, setCatProducts] = useState<DashboardProduct[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
   // Toggle between the live tree explorer and the flat soft-delete bin. Kept
   // client-side because both lists come pre-loaded from the server.
   const [view, setView] = useState<"live" | "deleted">("live");
@@ -110,6 +116,48 @@ export function CategoriesClient({
     walk(initial);
     return all;
   }, [initial, q]);
+
+  // Load the products in the open leaf category on demand — leaves are the only
+  // categories that hold products.
+  const fetchCatProducts = useCallback(async (catId: string) => {
+    setLoadingProducts(true);
+    try {
+      const res = await fetch(`/api/admin/products/list?categoryId=${catId}`);
+      const data = await res.json().catch(() => ({ products: [] }));
+      setCatProducts(res.ok && Array.isArray(data.products) ? data.products : []);
+    } catch {
+      setCatProducts([]);
+    } finally {
+      setLoadingProducts(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const node = currentId ? byId.get(currentId) : null;
+    if (node && node.children.length === 0) fetchCatProducts(node.id);
+    else setCatProducts([]);
+  }, [currentId, byId, fetchCatProducts]);
+
+  const reloadCatProducts = () => {
+    const node = currentId ? byId.get(currentId) : null;
+    if (node && node.children.length === 0) fetchCatProducts(node.id);
+  };
+
+  const delProduct = async (p: DashboardProduct) => {
+    const ok = await confirmAction({
+      title: `Delete "${p.name}"?`,
+      description: "The product moves to the Deleted tab in Products. It disappears from the storefront but order history is kept — you can restore it there.",
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
+    const res = await fetch(`/api/admin/products/${p.id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({} as { error?: string }));
+    if (!res.ok) { toast.error(data.error ?? "Failed to delete"); return; }
+    toast.success("Product moved to the Deleted tab");
+    reloadCatProducts();
+    router.refresh();
+  };
 
   const startCreate = (parentId: string | null) => {
     setEditing({ id: "__new", name: "", description: "", imageUrl: null, parentId, sortOrder: 0 });
@@ -463,7 +511,30 @@ export function CategoriesClient({
 
           <div className="table-wrap">
             <div>
-              {visible.length === 0 ? (
+              {current && current.children.length === 0 ? (
+                // Leaf category → manage its products inline (add + edit).
+                loadingProducts ? (
+                  <div className="flex items-center justify-center gap-2 p-10 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Loading products…
+                  </div>
+                ) : catProducts.length === 0 ? (
+                  <div className="flex flex-col items-center gap-2 p-10 text-center text-sm text-muted-foreground">
+                    <Package className="h-7 w-7" />
+                    No products in this category yet. Use <b>Add product</b> above to add one.
+                  </div>
+                ) : (
+                  <ul className="divide-y divide-border">
+                    {catProducts.map((p) => (
+                      <ProductRow
+                        key={p.id}
+                        product={p}
+                        onEdit={() => { setAddProductCatId(null); setEditingProduct(p); }}
+                        onDelete={() => delProduct(p)}
+                      />
+                    ))}
+                  </ul>
+                )
+              ) : visible.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 p-10 text-center text-sm text-muted-foreground">
                   <FolderPlus className="h-7 w-7" />
                   {current
@@ -542,17 +613,36 @@ export function CategoriesClient({
         </DialogContent>
       </Dialog>
 
-      {/* Shared "Add a new part" dialog, opened inline from a category with that
-          category pre-selected. Refreshing the tree updates product counts. */}
+      {/* Shared part dialog, opened inline from a category — ADD (with the
+          category pre-selected) or EDIT an existing product in place. Reloading
+          the list + tree keeps rows and product counts current. */}
       <PartDialog
-        open={!!addProductCatId}
-        onOpenChange={(v) => { if (!v) setAddProductCatId(null); }}
+        open={!!addProductCatId || !!editingProduct}
+        onOpenChange={(v) => { if (!v) { setAddProductCatId(null); setEditingProduct(undefined); } }}
         brands={brands}
         productBrands={productBrands}
         categories={categories}
         models={models}
         defaultCategoryId={addProductCatId ?? undefined}
-        onSaved={() => router.refresh()}
+        existing={editingProduct && {
+          id: editingProduct.id,
+          name: editingProduct.name,
+          description: editingProduct.description,
+          price: Number(editingProduct.price),
+          costPrice: editingProduct.costPrice == null ? null : Number(editingProduct.costPrice),
+          stock: editingProduct.stock,
+          sku: editingProduct.sku,
+          oemNumber: editingProduct.oemNumber,
+          brandIds: editingProduct.brandIds,
+          productBrandId: editingProduct.productBrandId,
+          categoryId: editingProduct.categoryId,
+          featured: editingProduct.featured,
+          demanding: editingProduct.demanding,
+          active: editingProduct.active,
+          images: editingProduct.images,
+          compatibilities: editingProduct.compatibilities,
+        }}
+        onSaved={() => { reloadCatProducts(); router.refresh(); }}
       />
     </div>
   );
@@ -622,6 +712,70 @@ function RowItem({
           className="h-7 w-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
           title="Delete"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </li>
+  );
+}
+
+// A single product row inside a leaf category — click/Edit opens the shared
+// PartDialog; Delete soft-deletes it.
+function ProductRow({
+  product, onEdit, onDelete,
+}: {
+  product: DashboardProduct;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const price = Number(product.price);
+  return (
+    <li className="group flex items-center gap-3 px-4 py-2.5 transition hover:bg-muted/40">
+      <button
+        type="button"
+        onClick={onEdit}
+        className="flex flex-1 items-center gap-3 text-left"
+      >
+        {product.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={product.image}
+            alt=""
+            className="h-10 w-10 shrink-0 rounded border border-border bg-white object-contain p-0.5"
+          />
+        ) : (
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-dashed border-border text-muted-foreground">
+            <Package className="h-4 w-4" />
+          </span>
+        )}
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2">
+            <span className="truncate text-sm font-medium">{product.name}</span>
+            {!product.active && (
+              <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">Inactive</span>
+            )}
+          </span>
+          <span className="block truncate text-[11px] text-muted-foreground">
+            {Number.isFinite(price) ? `£${price.toFixed(2)}` : product.price}
+            {" · "}{product.stock} in stock
+            {product.sku ? ` · ${product.sku}` : ""}
+          </span>
+        </span>
+      </button>
+      <div className="flex shrink-0 items-center gap-0.5 opacity-60 transition group-hover:opacity-100">
+        <Button
+          variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground"
+          onClick={(e) => { e.stopPropagation(); onEdit(); }}
+          title="Edit product"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          variant="ghost" size="icon"
+          className="h-7 w-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          title="Delete product"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
