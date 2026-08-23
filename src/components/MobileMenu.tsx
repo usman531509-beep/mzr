@@ -9,6 +9,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { NavCategoryNode } from "@/lib/nav-cache";
+import { cn } from "@/lib/utils";
 
 // Keyword → icon so each top-level category shows a meaningful glyph instead of
 // a repeated emoji (mirrors the home CategoriesGrid).
@@ -141,7 +142,7 @@ export function MobileMenu({
                   onClick={onClose}
                   className="flex items-center justify-between gap-3 rounded-md border border-line bg-white px-4 py-3 transition hover:border-red hover:bg-soft"
                 >
-                  <span className="font-head text-[15px] font-bold uppercase tracking-wide text-ink">
+                  <span className="text-[12px] font-semibold text-ink">
                     {n.name}
                   </span>
                   <span className="truncate font-mono text-[11px] text-muted-foreground">
@@ -172,7 +173,7 @@ export function MobileMenu({
                       key={s.label}
                       href={s.href}
                       onClick={onClose}
-                      className="flex items-center gap-2.5 rounded-xl border border-line bg-soft px-4 py-3.5 font-head text-sm font-bold uppercase tracking-wide text-ink transition hover:border-red hover:text-red"
+                      className="flex items-center gap-2.5 rounded-xl border border-line bg-soft px-4 py-3.5 text-[12px] font-semibold text-ink transition hover:border-red hover:text-red"
                     >
                       <Icon className="h-4 w-4 text-red" /> {s.label}
                     </Link>
@@ -195,7 +196,7 @@ export function MobileMenu({
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-line bg-soft text-red">
                     <Icon className="h-3.5 w-3.5" />
                   </span>
-                  <span className="font-head text-[14px] font-bold uppercase tracking-wide">
+                  <span className="text-[12px] font-semibold">
                     {label}
                   </span>
                   <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
@@ -226,7 +227,7 @@ export function MobileMenu({
                       <Link
                         href={`/products?brand=${b.slug}`}
                         onClick={onClose}
-                        className="flex items-center gap-2 py-2.5 text-[15px] text-ink/75 transition hover:translate-x-1 hover:text-red"
+                        className="flex items-center gap-2 py-2.5 text-[12px] text-ink/75 transition hover:translate-x-1 hover:text-red"
                       >
                         <span className="h-1.5 w-1.5 rounded-full bg-ink/20" />
                         {b.name}
@@ -246,7 +247,7 @@ export function MobileMenu({
                       <Link
                         href={`/products?productBrand=${b.slug}`}
                         onClick={onClose}
-                        className="flex items-center gap-2 py-2.5 text-[15px] text-ink/75 transition hover:translate-x-1 hover:text-red"
+                        className="flex items-center gap-2 py-2.5 text-[12px] text-ink/75 transition hover:translate-x-1 hover:text-red"
                       >
                         <span className="h-1.5 w-1.5 rounded-full bg-ink/20" />
                         {b.name}
@@ -285,44 +286,39 @@ function CategoryRow({
         <Link
           href={`/products?category=${node.path}`}
           onClick={onNavigate}
-          className={
-            isTop
-              ? "flex flex-1 items-center gap-2.5 py-4 text-ink"
-              : "flex flex-1 items-center gap-2 py-3 text-ink/75 transition hover:translate-x-1 hover:text-red"
-          }
-          style={{ paddingLeft: depth * 16 }}
+          className={cn(
+            "flex min-w-0 flex-1 items-center gap-2.5 text-ink transition hover:text-red",
+            isTop ? "py-3.5" : "py-2.5",
+          )}
         >
           {isTop ? (
-            <>
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-soft text-red">
-                <Icon className="h-[18px] w-[18px]" strokeWidth={1.8} />
-              </span>
-              <span className="font-head text-[17px] font-extrabold uppercase tracking-wide">
-                {node.name}
-              </span>
-            </>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-soft text-red">
+              <Icon className="h-[18px] w-[18px]" strokeWidth={1.8} />
+            </span>
           ) : (
-            <>
-              <span className="h-1.5 w-1.5 rounded-full bg-ink/20" />
-              <span className="text-[15px]">{node.name}</span>
-            </>
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-red/50" />
           )}
+          <span className={cn("truncate text-[12px]", isTop ? "font-semibold" : "font-medium")}>
+            {node.name}
+          </span>
         </Link>
         {hasChildren && (
           <button
             type="button"
             onClick={() => setOpen((o) => !o)}
-            className="flex w-12 shrink-0 items-center justify-center text-muted-foreground transition hover:text-red"
+            className="flex w-10 shrink-0 items-center justify-center text-muted-foreground transition hover:text-red"
             aria-label={open ? "Collapse" : "Expand"}
           >
             <ChevronRight
-              className={`h-4 w-4 transition-transform ${open ? "rotate-90" : ""}`}
+              className={cn("h-4 w-4 transition-transform", open && "rotate-90")}
             />
           </button>
         )}
       </div>
       {hasChildren && open && (
-        <ul className="pb-1">
+        // Nested groups get a left guide-line + consistent indent so the tree
+        // reads cleanly at every depth.
+        <ul className={cn("mb-1 border-l border-line/70 pl-3", isTop ? "ml-[18px]" : "ml-2.5")}>
           {node.children.map((child) => (
             <CategoryRow
               key={child.id}
@@ -359,7 +355,7 @@ function ActionTile({
           </span>
         )}
       </span>
-      <span className="text-[11px] font-semibold text-ink">{label}</span>
+      <span className="text-[12px] font-semibold text-ink">{label}</span>
     </>
   );
   const cls =
@@ -386,7 +382,7 @@ function CollapsibleSection({
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-soft text-red">
             <Icon className="h-[18px] w-[18px]" strokeWidth={1.8} />
           </span>
-          <span className="font-head text-[17px] font-extrabold uppercase tracking-wide text-ink">
+          <span className="text-[12px] font-semibold text-ink">
             {title}
           </span>
         </span>

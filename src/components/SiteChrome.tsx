@@ -10,7 +10,8 @@ import { usePathname } from "next/navigation";
 // Fully standalone pages — NOTHING renders (no header/footer/mobile bar):
 //  · /pay/<token> — customer payment link
 //  · /admin       — self-contained admin console
-const HIDE_ALL = ["/pay/", "/admin"];
+//  · /account     — self-contained customer portal (same app-shell as admin)
+const HIDE_ALL = ["/pay/", "/admin", "/account"];
 
 // Split-screen auth/utility pages (AuthShell): hide the top header/footer, but
 // KEEP the bottom slot (mobile nav + overlays) so users can still navigate.

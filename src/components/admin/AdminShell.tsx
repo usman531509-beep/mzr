@@ -2,6 +2,7 @@
 
 import { Fragment, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
@@ -210,10 +211,9 @@ export function AdminShell({
       {/* Mobile drawer — same dark treatment as the desktop rail */}
       <Sheet open={mobOpen} onOpenChange={setMobOpen}>
         <SheetContent side="left" className="flex w-[260px] flex-col border-line bg-white p-0 text-ink">
-          <SheetHeader className="shrink-0 px-4 py-5">
-            <SheetTitle className="text-left text-lg font-black text-ink">
-              MZR<span className="text-red">·SPARE</span> <span className="font-semibold text-muted-foreground">Admin</span>
-            </SheetTitle>
+          <SheetHeader className="shrink-0 flex-row items-center gap-2 space-y-0 px-4 py-2.5 text-left">
+            <Image src="/logo.png" alt="MZR Spare" width={617} height={405} className="h-16 w-auto shrink-0" />
+            <SheetTitle className="text-base font-semibold text-muted-foreground">Admin</SheetTitle>
           </SheetHeader>
           <Separator className="bg-line" />
           <SidebarNav collapsed={false} pathname={pathname} nav={filteredNav} onNavigate={() => setMobOpen(false)} />
@@ -383,17 +383,18 @@ function HeaderUserMenu({ user, role }: { user: User; role?: string }) {
 
 function SidebarHeader({ collapsed }: { collapsed: boolean }) {
   return (
-    <div className={cn("flex h-16 shrink-0 items-center border-b border-line px-[18px]", collapsed && "justify-center px-2")}>
-      {collapsed ? (
-        <span className="text-lg font-black text-ink">M<span className="text-red">·</span></span>
-      ) : (
-        <div className="leading-tight">
-          <div className="text-[15px] font-black tracking-wide text-ink">
-            MZR<span className="text-red">·SPARE</span> <span className="font-semibold text-muted-foreground">Admin</span>
-          </div>
-          <div className="text-[10px] text-muted-foreground">Parts management</div>
-        </div>
-      )}
+    <div className={cn("flex h-[68px] shrink-0 items-center gap-2 border-b border-line px-[18px]", collapsed && "justify-center px-2")}>
+      <Link href="/admin" aria-label="Admin dashboard" className="flex min-w-0 items-center gap-2">
+        <Image
+          src="/logo.png"
+          alt="MZR Spare"
+          width={617}
+          height={405}
+          priority
+          className={cn("w-auto shrink-0", collapsed ? "h-8" : "h-16")}
+        />
+        {!collapsed && <span className="truncate text-base font-semibold text-muted-foreground">Admin</span>}
+      </Link>
     </div>
   );
 }
