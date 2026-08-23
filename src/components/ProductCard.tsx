@@ -64,11 +64,12 @@ export function ProductCard({ p }: { p: ProductCardData }) {
       <div className="h-pcard-img">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={img} alt={p.name} className="!object-contain bg-white p-2" />
-        <div className="h-pcard-tags">
-          <span>{p.category?.name ?? "Uncategorised"}</span>
-          {hasTrade && <span className="alt">Trade −{p.tradePrice!.percent}%</span>}
-          {p.stock <= 0 && <span className="alt">Sold out</span>}
-        </div>
+        {(hasTrade || p.stock <= 0) && (
+          <div className="h-pcard-tags">
+            {hasTrade && <span className="alt">Trade −{p.tradePrice!.percent}%</span>}
+            {p.stock <= 0 && <span className="alt">Sold out</span>}
+          </div>
+        )}
         <WishlistButton
           className="absolute right-3 top-3 z-[2] h-9 w-9 border-0 bg-white shadow-[0_4px_10px_rgba(0,0,0,0.08)]"
           product={{
@@ -83,7 +84,10 @@ export function ProductCard({ p }: { p: ProductCardData }) {
       </div>
 
       <div className="h-pcard-body">
-        <div className="h-pcard-brand">{p.brand.name}</div>
+        <div className="h-pcard-brand">
+          <span>{p.brand.name}</span>
+          {p.category && <span className="h-pcard-cat">{p.category.name}</span>}
+        </div>
         <div className="h-pcard-title">{p.name}</div>
         {(p.oemNumber || p.sku || fitmentLabel) && (
           <div className="h-pcard-meta space-y-1">

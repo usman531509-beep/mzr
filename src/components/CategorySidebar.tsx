@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NavCategoryNode } from "@/lib/nav-cache";
@@ -51,6 +52,21 @@ export function CategorySidebar({
   const [collapsed, setCollapsed] = useState(false);
   const closeDrawer = () => setDrawerOpen(false);
 
+  // Below lg the sidebar is a slide-in drawer. It's portaled to <body> so its
+  // position:fixed is relative to the VIEWPORT — otherwise a positioned/stacked
+  // ancestor on the products page confines it below the header (the header/logo
+  // ends up painting over it). Desktop keeps the sticky in-grid sidebar.
+  const [mounted, setMounted] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    const mq = window.matchMedia("(max-width: 900px)");
+    const sync = () => setIsMobile(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
   // Lock body scroll while the drawer is open (reference behaviour).
   useEffect(() => {
     document.body.style.overflow = drawerOpen ? "hidden" : "";
@@ -58,6 +74,39 @@ export function CategorySidebar({
       document.body.style.overflow = "";
     };
   }, [drawerOpen]);
+
+  const asideInner = (
+    <>
+      <div className="close-drawer">
+        <button type="button" aria-label="Close filters" onClick={closeDrawer}>
+          ×
+        </button>
+      </div>
+      <div className={cn("cat-tree filter-group", collapsed && "collapsed")}>
+        <h4 onClick={() => setCollapsed((c) => !c)}>Categories</h4>
+        <div className="fg-body">
+          <Link
+            href="/products"
+            onClick={closeDrawer}
+            className={cn("cat-link", !selectedPath && "active")}
+          >
+            All products
+          </Link>
+          {tree.map((node) => (
+            <CategoryRow
+              key={node.id}
+              node={node}
+              depth={0}
+              selectedPath={selectedPath ?? null}
+              openPaths={openPaths}
+              onToggle={toggle}
+              onNavigate={closeDrawer}
+            />
+          ))}
+        </div>
+      </div>
+    </>
+  );
 
   return (
     <>
@@ -69,41 +118,21 @@ export function CategorySidebar({
       >
         ☰ Filters
       </button>
-      <div
-        className={cn("filter-scrim", drawerOpen && "open")}
-        onClick={closeDrawer}
-        aria-hidden="true"
-      />
-      <aside className={cn("sidebar-filters", drawerOpen && "open")}>
-        <div className="close-drawer">
-          <button type="button" aria-label="Close filters" onClick={closeDrawer}>
-            ×
-          </button>
-        </div>
-        <div className={cn("cat-tree filter-group", collapsed && "collapsed")}>
-          <h4 onClick={() => setCollapsed((c) => !c)}>Categories</h4>
-          <div className="fg-body">
-            <Link
-              href="/products"
+      {mounted && isMobile ? (
+        createPortal(
+          <>
+            <div
+              className={cn("filter-scrim", drawerOpen && "open")}
               onClick={closeDrawer}
-              className={cn("cat-link", !selectedPath && "active")}
-            >
-              All products
-            </Link>
-            {tree.map((node) => (
-              <CategoryRow
-                key={node.id}
-                node={node}
-                depth={0}
-                selectedPath={selectedPath ?? null}
-                openPaths={openPaths}
-                onToggle={toggle}
-                onNavigate={closeDrawer}
-              />
-            ))}
-          </div>
-        </div>
-      </aside>
+              aria-hidden="true"
+            />
+            <aside className={cn("sidebar-filters", drawerOpen && "open")}>{asideInner}</aside>
+          </>,
+          document.body,
+        )
+      ) : (
+        <aside className="sidebar-filters">{asideInner}</aside>
+      )}
     </>
   );
 }
