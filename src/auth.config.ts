@@ -41,6 +41,11 @@ export const authConfig = {
           (token as { mustChangePassword?: boolean }).mustChangePassword =
             session.user.mustChangePassword;
         }
+        // Profile edits (name/email) — refresh the token so the change shows
+        // immediately without a re-login. name/email flow through to
+        // session.user via NextAuth's default claim mapping.
+        if (typeof session.user.name === "string") token.name = session.user.name;
+        if (typeof session.user.email === "string") token.email = session.user.email;
       }
       return token;
     },

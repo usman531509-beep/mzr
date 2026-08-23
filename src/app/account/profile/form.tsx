@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 
 type Initial = {
@@ -19,6 +20,7 @@ type Initial = {
 
 export function ProfileForm({ initial }: { initial: Initial }) {
   const router = useRouter();
+  const { update } = useSession();
   const [form, setForm] = useState({
     name: initial.name ?? "",
     phone: initial.phone ?? "",
@@ -45,6 +47,9 @@ export function ProfileForm({ initial }: { initial: Initial }) {
     setBusy(false);
     if (res.ok) {
       toast.success("Details saved");
+      // Refresh the session so the new name shows immediately (header/account
+      // menu) — otherwise the JWT keeps the old name until re-login.
+      await update({ user: { name: form.name } });
       router.refresh();
     } else {
       const d = await res.json().catch(() => ({}));

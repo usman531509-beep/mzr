@@ -53,6 +53,12 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
           <Link href="/" className="h-auth2-back">
             <ArrowLeft /> Back to home
           </Link>
+          {/* Mobile-only logo — the brand panel (which carries the logo on
+              desktop) is hidden below lg, so surface it here instead. */}
+          <Link href="/" className="mb-6 mt-1 flex justify-center lg:hidden" aria-label="MZR Spare home">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="MZR Spare" className="h-28 w-auto" />
+          </Link>
           {children}
         </div>
       </main>
