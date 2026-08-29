@@ -88,7 +88,7 @@ export function BrandsClient({ initial }: { initial: Row[] }) {
         <div>
           <div className="crumb">Admin</div>
           <h1 className="font-head text-3xl font-normal uppercase leading-none tracking-wide">Bike Brands</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manufacturers — used on products and as bike-model parents.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Manufacturers used on products and as bike-model parents.</p>
         </div>
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setName(""); setLogoUrl(null); } }}>
           <DialogTrigger asChild>

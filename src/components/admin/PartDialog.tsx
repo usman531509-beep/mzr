@@ -21,6 +21,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { CategoryPicker, type PickerCategory } from "@/components/admin/CategoryPicker";
+import { removeImageBackground } from "@/lib/remove-bg";
+import { confirmAction } from "@/lib/confirm-store";
+
+const RASTER = /^image\/(png|jpe?g|webp)$/i;
 
 export type Brand = { id: string; name: string };
 export type ProductBrand = { id: string; name: string };
@@ -149,6 +153,8 @@ export function PartDialog({
   const [images, setImages] = useState<string[]>([]);
   const [compats, setCompats] = useState<Compat[]>([]);
   const [uploading, setUploading] = useState(false);
+  // Label shown on the button while working ("Removing background…" → "Uploading…").
+  const [busyLabel, setBusyLabel] = useState("Uploading…");
 
   // No bike brand ticked by default — the admin must consciously pick which
   // makes the part fits (the form rejects a save with none, with a clear
@@ -204,17 +210,52 @@ export function PartDialog({
   const upload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files?.length) return;
+    const list = Array.from(files);
+    if (fileRef.current) fileRef.current.value = ""; // allow re-selecting
+
+    // Ask once (before any loader) whether to remove the background. Only offer
+    // it when there's a raster photo — SVG/vector isn't supported by the model.
+    let wantBg = false;
+    if (list.some((f) => RASTER.test(f.type))) {
+      wantBg = await confirmAction({
+        title: "Remove background?",
+        description:
+          "Remove the image background before uploading? This runs on your device and can take a few seconds. Choose “No” to upload the image(s) as-is.",
+        confirmLabel: "Yes, remove",
+        cancelLabel: "No, upload as-is",
+      });
+    }
+
     setUploading(true);
     try {
-      for (const f of Array.from(files)) {
+      for (const f of list) {
         // Downscale + re-encode in the browser before posting. Phone photos
         // routinely exceed Vercel's 4.5 MB body-size cap on serverless
         // functions, which silently 413s before the server-side sharp
         // compressor ever sees them. Shrinking client-side avoids that AND
         // saves upload time on slow connections.
-        const prepared = await downscaleForUpload(f);
+        const down = await downscaleForUpload(f);
+
+        let prepared: Blob = down;
+        let filename = down.name;
+        if (wantBg && RASTER.test(f.type)) {
+          setBusyLabel("Removing background…");
+          try {
+            // Pass the original — the helper shrinks + cleans edges itself
+            // (avoids a second JPEG re-encode from downscaleForUpload).
+            const cut = await removeImageBackground(f);
+            prepared = cut;
+            filename = f.name.replace(/\.[^.]+$/, "") + ".png";
+          } catch (bgErr) {
+            // eslint-disable-next-line no-console
+            console.error("[PartDialog remove-bg]", bgErr);
+            toast.warning("Couldn't remove the background — uploading the original.");
+          }
+        }
+
+        setBusyLabel("Uploading…");
         const fd = new FormData();
-        fd.append("file", prepared);
+        fd.append("file", prepared, filename);
         const res = await fetch("/api/upload", { method: "POST", body: fd });
         // The body-size limiter (and other infra errors) return non-JSON,
         // which used to surface as "Unexpected token <" in the toast. Read
@@ -503,11 +544,11 @@ export function PartDialog({
             <div className="mb-2 flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-semibold">Images</h3>
-                <p className="text-xs text-muted-foreground">Stored on Supabase Storage in production.</p>
+                <p className="text-xs text-muted-foreground">You&apos;ll be asked to remove the background · stored on Supabase.</p>
               </div>
               <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
-                {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                {uploading ? "Uploading…" : "Upload"}
+                {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin [will-change:transform]" /> : <Upload className="h-3.5 w-3.5" />}
+                {uploading ? busyLabel : "Upload"}
               </Button>
               <input ref={fileRef} type="file" accept="image/*" multiple onChange={upload} className="hidden" />
             </div>

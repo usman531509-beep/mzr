@@ -397,18 +397,14 @@ export function CategoriesClient({
             ) : (
               <ul className="divide-y divide-border">
                 {searchHits.map((n) => (
-                  <li key={n.id}>
-                    <button
-                      type="button"
-                      onClick={() => { setQ(""); setCurrentId(n.id); }}
-                      className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-sm hover:bg-muted/40"
-                    >
-                      <span>{n.name}</span>
-                      <span className="font-mono text-[11px] text-muted-foreground">
-                        /{n.path}
-                      </span>
-                    </button>
-                  </li>
+                  <RowItem
+                    key={n.id}
+                    node={n}
+                    onOpen={() => { setQ(""); setCurrentId(n.id); }}
+                    onEdit={() => startEdit(n)}
+                    onDelete={() => del(n)}
+                    onAddProduct={() => addProductTo(n.id)}
+                  />
                 ))}
               </ul>
             )}

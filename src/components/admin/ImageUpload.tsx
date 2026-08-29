@@ -5,6 +5,10 @@ import { toast } from "sonner";
 import { ImagePlus, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
+import { removeImageBackground } from "@/lib/remove-bg";
+import { confirmAction } from "@/lib/confirm-store";
+
+const RASTER = /^image\/(png|jpe?g|webp)$/i;
 
 // Single-image uploader for admin forms (category images, brand logos, …).
 // Mirrors the product image pipeline: downscale in the browser to dodge
@@ -26,15 +30,45 @@ export function ImageUpload({
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  // Button label while working ("Removing background…" → "Uploading…").
+  const [busyLabel, setBusyLabel] = useState("Uploading…");
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (inputRef.current) inputRef.current.value = ""; // allow re-selecting
+
+    // Ask (before showing any loader) whether to remove the background. Only
+    // offer it for raster photos — SVG/vector isn't supported by the model.
+    let wantBg = false;
+    if (RASTER.test(file.type)) {
+      wantBg = await confirmAction({
+        title: "Remove background?",
+        description:
+          "Remove the image background before uploading? This runs on your device and can take a few seconds. Choose “No” to upload the image as-is.",
+        confirmLabel: "Yes, remove",
+        cancelLabel: "No, upload as-is",
+      });
+    }
+
     setUploading(true);
     try {
-      const prepared = await downscaleForUpload(file);
+      const down = await downscaleForUpload(file);
+      let prepared: Blob = down;
+      let filename = down.name;
+      if (wantBg) {
+        setBusyLabel("Removing background…");
+        try {
+          prepared = await removeImageBackground(file);
+          filename = file.name.replace(/\.[^.]+$/, "") + ".png";
+        } catch (bgErr) {
+          console.error("[ImageUpload remove-bg]", bgErr);
+          toast.warning("Couldn't remove the background — uploading the original.");
+        }
+      }
+      setBusyLabel("Uploading…");
       const fd = new FormData();
-      fd.append("file", prepared);
+      fd.append("file", prepared, filename);
       const res = await fetch("/api/upload", { method: "POST", body: fd });
       const raw = await res.text();
       let parsed: { url?: string; error?: string } = {};
@@ -88,9 +122,9 @@ export function ImageUpload({
               className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted-foreground transition hover:bg-muted/60 hover:text-foreground"
             >
               {uploading
-                ? <Loader2 className="h-5 w-5 animate-spin" />
+                ? <Loader2 className="h-5 w-5 animate-spin [will-change:transform]" />
                 : <ImagePlus className="h-5 w-5" />}
-              <span className="text-[10px] font-medium">{uploading ? "Uploading…" : "Add image"}</span>
+              <span className="text-[10px] font-medium">{uploading ? busyLabel : "Add image"}</span>
             </button>
           )}
         </div>
@@ -103,9 +137,9 @@ export function ImageUpload({
             className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium transition hover:bg-muted disabled:opacity-50"
           >
             {uploading
-              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ? <Loader2 className="h-3.5 w-3.5 animate-spin [will-change:transform]" />
               : <ImagePlus className="h-3.5 w-3.5" />}
-            {value ? "Replace" : "Upload"}
+            {uploading ? busyLabel : value ? "Replace" : "Upload"}
           </button>
           {hint && <p className="text-[11px] leading-snug text-muted-foreground">{hint}</p>}
         </div>
