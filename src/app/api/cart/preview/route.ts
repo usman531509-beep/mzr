@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getFifoRetailBreakdown } from "@/lib/fifo";
+import { getTradeDiscountRules, tradePrice, type TradeContext } from "@/lib/trade-pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -48,28 +49,17 @@ export async function POST(req: Request) {
     select: { id: true, price: true, categoryId: true },
   });
 
-  let discounts = new Map<string, number>();
-  if (target.tradeApproved) {
-    // Orphaned products (categoryId null) can't carry a category discount —
-    // drop them from the lookup set before querying TradeDiscount.
-    const categoryIds = [...new Set(
-      products.map((p) => p.categoryId).filter((id): id is string => id != null),
-    )];
-    if (categoryIds.length > 0) {
-      const rows = await prisma.tradeDiscount.findMany({
-        where: { categoryId: { in: categoryIds } },
-        select: { categoryId: true, percent: true },
-      });
-      discounts = new Map(rows.map((r) => [r.categoryId, r.percent]));
-    }
-  }
+  // Shared resolver: parent-category discounts flow down to leaf products and
+  // the store-wide global baseline applies, exactly like the storefront.
+  const trade: TradeContext = target.tradeApproved
+    ? { isTrader: true, ...(await getTradeDiscountRules()) }
+    : { isTrader: false, discounts: new Map(), globalPercent: 0 };
 
   const lines = await Promise.all(items.map(async (i) => {
     const p = products.find((x) => x.id === i.productId);
     if (!p) {
       return { productId: i.productId, originalPrice: 0, price: 0, percent: 0 };
     }
-    const pct = p.categoryId ? (discounts.get(p.categoryId) ?? 0) : 0;
     const segments = await getFifoRetailBreakdown(prisma, {
       productId: p.id,
       qty: i.quantity,
@@ -81,8 +71,11 @@ export async function POST(req: Request) {
     // becomes a weighted average when the qty spans batches.
     let originalLineTotal = 0;
     let lineTotal = 0;
+    let pct = 0;
     for (const seg of segments) {
-      const segPrice = pct > 0 ? +(seg.unitRetail * (1 - pct / 100)).toFixed(2) : seg.unitRetail;
+      const tp = tradePrice(seg.unitRetail, p.categoryId, trade);
+      pct = tp.percent;
+      const segPrice = tp.percent > 0 ? tp.discounted : seg.unitRetail;
       originalLineTotal += seg.unitRetail * seg.qty;
       lineTotal         += segPrice       * seg.qty;
     }

@@ -3,11 +3,12 @@ import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { CreateOrderForm } from "@/components/admin/CreateOrderForm";
+import { resolveCategoryDiscounts } from "@/lib/trade-pricing";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminCreateOrderPage() {
-  const [users, products, brands, categories, models, tradeRows] = await Promise.all([
+  const [users, products, brands, categories, models, tradeRows, setting] = await Promise.all([
     prisma.user.findMany({
       where: { active: true },
       orderBy: { name: "asc" },
@@ -30,14 +31,18 @@ export default async function AdminCreateOrderPage() {
       },
     }),
     prisma.brand.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    prisma.category.findMany({ where: { deletedAt: null }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.category.findMany({ where: { deletedAt: null }, orderBy: { name: "asc" }, select: { id: true, name: true, parentId: true } }),
     prisma.bikeModel.findMany({
       orderBy: [{ brandId: "asc" }, { name: "asc" }],
       select: { id: true, name: true, brandId: true, yearStart: true, yearEnd: true },
     }),
     prisma.tradeDiscount.findMany({ select: { categoryId: true, percent: true } }),
+    prisma.tradeSetting.findUnique({ where: { id: "global" }, select: { globalPercent: true } }),
   ]);
-  const discountByCategory = Object.fromEntries(tradeRows.map((r) => [r.categoryId, r.percent]));
+  // Expand parent-category discounts down to leaves so the preview matches
+  // what the placed order will actually charge.
+  const discountByCategory = Object.fromEntries(resolveCategoryDiscounts(tradeRows, categories));
+  const globalPercent = setting?.globalPercent ?? 0;
 
   return (
     <div className="space-y-4">
@@ -86,6 +91,7 @@ export default async function AdminCreateOrderPage() {
         categories={categories}
         models={models}
         discountByCategory={discountByCategory}
+        globalPercent={globalPercent}
       />
     </div>
   );

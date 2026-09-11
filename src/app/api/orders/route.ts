@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
-import { getTradeContext, tradePrice } from "@/lib/trade-pricing";
+import { getTradeContext, getTradeDiscountRules, tradePrice } from "@/lib/trade-pricing";
 import { nextOrderNumber } from "@/lib/order-number";
 import { consumeLayersFifo, getFifoRetailBreakdown, refreshProductRetail } from "@/lib/fifo";
 
@@ -56,15 +56,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Customer not found" }, { status: 400 });
     }
     if (target.tradeApproved) {
-      const [rows, setting] = await Promise.all([
-        prisma.tradeDiscount.findMany(),
-        prisma.tradeSetting.findUnique({ where: { id: "global" }, select: { globalPercent: true } }),
-      ]);
-      onBehalfTrade = {
-        isTrader: true,
-        discounts: new Map(rows.map((r) => [r.categoryId, r.percent])),
-        globalPercent: setting?.globalPercent ?? 0,
-      };
+      onBehalfTrade = { isTrader: true, ...(await getTradeDiscountRules()) };
     } else {
       onBehalfTrade = { isTrader: false, discounts: new Map(), globalPercent: 0 };
     }

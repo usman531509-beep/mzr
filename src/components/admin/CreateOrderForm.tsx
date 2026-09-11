@@ -35,7 +35,7 @@ type ProductOpt = {
 type Line = { productId: string; quantity: number };
 
 export function CreateOrderForm({
-  users, products, brands, categories, models, discountByCategory,
+  users, products, brands, categories, models, discountByCategory, globalPercent = 0,
 }: {
   users: UserOpt[];
   products: ProductOpt[];
@@ -43,6 +43,9 @@ export function CreateOrderForm({
   categories: { id: string; name: string }[];
   models: { id: string; name: string; brandId: string; yearStart: number; yearEnd: number }[];
   discountByCategory: Record<string, number>;
+  /** Store-wide baseline discount, applied when a product's category has no
+   *  discount of its own. Mirrors the storefront's tradePrice() priority. */
+  globalPercent?: number;
 }) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
@@ -123,8 +126,12 @@ export function CreateOrderForm({
   const isTrader = !!selectedUser?.tradeApproved;
 
   const priceFor = (p: ProductOpt) => {
-    // Orphaned products (no category) can't carry a category discount.
-    const pct = isTrader && p.categoryId ? (discountByCategory[p.categoryId] ?? 0) : 0;
+    if (!isTrader) return p.price;
+    // Category's own (already inherited from any parent) wins; otherwise the
+    // store-wide global baseline applies. Orphaned products (no category) fall
+    // straight to the global baseline.
+    const own = p.categoryId ? discountByCategory[p.categoryId] : undefined;
+    const pct = own ?? globalPercent;
     return pct > 0 ? +(p.price * (1 - pct / 100)).toFixed(2) : p.price;
   };
 

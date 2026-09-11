@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activity-log";
 import { nextOrderNumber } from "@/lib/order-number";
 import { consumeLayersFifo, getFifoRetailBreakdown, refreshProductRetail } from "@/lib/fifo";
+import { getTradeDiscountRules, tradePrice, type TradeContext } from "@/lib/trade-pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -67,11 +68,12 @@ export async function POST(req: Request) {
   }
 
   // If the customer is trade-approved, apply category discounts authoritatively.
-  let discounts = new Map<string, number>();
-  if (targetUser.tradeApproved && targetUser.active) {
-    const rows = await prisma.tradeDiscount.findMany();
-    discounts = new Map(rows.map((r) => [r.categoryId, r.percent]));
-  }
+  // Uses the shared resolver so parent-category discounts flow to leaf products
+  // and the store-wide global baseline applies just like on the storefront.
+  const trade: TradeContext =
+    targetUser.tradeApproved && targetUser.active
+      ? { isTrader: true, ...(await getTradeDiscountRules()) }
+      : { isTrader: false, discounts: new Map(), globalPercent: 0 };
 
   for (const i of data.items) {
     const p = products.find((x) => x.id === i.productId)!;
@@ -94,10 +96,10 @@ export async function POST(req: Request) {
       qty: i.quantity,
       fallbackRetail: Number(p.price),
     });
-    const pct = p.categoryId ? (discounts.get(p.categoryId) ?? 0) : 0;
     for (const seg of segments) {
       const base = seg.unitRetail;
-      const price = pct > 0 ? +(base * (1 - pct / 100)).toFixed(2) : base;
+      const tp = tradePrice(base, p.categoryId, trade);
+      const price = tp.percent > 0 ? tp.discounted : base;
       total += price * seg.qty;
       orderItemsCreate.push({
         productId: p.id,
