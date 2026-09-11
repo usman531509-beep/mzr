@@ -10,9 +10,12 @@ import { Button } from "@/components/ui/button";
 export function TradeDiscountRow({
   categoryId,
   initial,
+  global = false,
 }: {
-  categoryId: string;
+  categoryId?: string;
   initial: number;
+  /** When true, edits the store-wide baseline discount instead of a category. */
+  global?: boolean;
 }) {
   const router = useRouter();
   const [percent, setPercent] = useState(String(initial || ""));
@@ -31,14 +34,18 @@ export function TradeDiscountRow({
       const res = await fetch(`/api/admin/trade-discounts`, {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ categoryId, percent: n }),
+        body: JSON.stringify(global ? { global: true, percent: n } : { categoryId, percent: n }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         toast.error(data.error ?? "Could not save");
         return;
       }
-      toast.success(n > 0 ? `Discount set to ${n}%` : "Discount removed");
+      toast.success(
+        global
+          ? (n > 0 ? `Global discount set to ${n}%` : "Global discount cleared")
+          : (n > 0 ? `Discount set to ${n}%` : "Discount removed"),
+      );
       startTransition(() => router.refresh());
     } finally {
       setBusy(false);

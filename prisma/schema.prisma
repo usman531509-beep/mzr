@@ -362,6 +362,15 @@ model TradeDiscount {
   updatedAt  DateTime @updatedAt
 }
 
+// Store-wide trade settings (singleton, id = "global"). `globalPercent` is the
+// baseline trade discount applied to EVERY product; a per-category
+// TradeDiscount overrides it for that category.
+model TradeSetting {
+  id            String   @id @default("global")
+  globalPercent Int      @default(0)
+  updatedAt     DateTime @updatedAt
+}
+
 model Wishlist {
   id        String         @id @default(cuid())
   userId    String         @unique

@@ -56,13 +56,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Customer not found" }, { status: 400 });
     }
     if (target.tradeApproved) {
-      const rows = await prisma.tradeDiscount.findMany();
+      const [rows, setting] = await Promise.all([
+        prisma.tradeDiscount.findMany(),
+        prisma.tradeSetting.findUnique({ where: { id: "global" }, select: { globalPercent: true } }),
+      ]);
       onBehalfTrade = {
         isTrader: true,
         discounts: new Map(rows.map((r) => [r.categoryId, r.percent])),
+        globalPercent: setting?.globalPercent ?? 0,
       };
     } else {
-      onBehalfTrade = { isTrader: false, discounts: new Map() };
+      onBehalfTrade = { isTrader: false, discounts: new Map(), globalPercent: 0 };
     }
   }
 

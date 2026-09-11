@@ -12,7 +12,33 @@ export async function PUT(req: Request) {
   if (!session?.user?.id || session.user.role !== "ADMIN") {
     return NextResponse.json({ ok: false }, { status: 403 });
   }
-  const body = (await req.json()) as { categoryId?: string; percent?: number | null };
+  const body = (await req.json()) as { categoryId?: string; percent?: number | null; global?: boolean };
+
+  // Store-wide baseline discount (singleton). 0 is a valid value here (means
+  // "no global discount"), unlike a category where 0 removes its row.
+  if (body.global) {
+    const gp = typeof body.percent === "number" ? Math.round(body.percent) : 0;
+    if (gp < 0 || gp > 100) {
+      return NextResponse.json({ ok: false, error: "Percent must be 0–100" }, { status: 400 });
+    }
+    const prev = await prisma.tradeSetting.findUnique({
+      where: { id: "global" }, select: { globalPercent: true },
+    });
+    await prisma.tradeSetting.upsert({
+      where: { id: "global" },
+      create: { id: "global", globalPercent: gp },
+      update: { globalPercent: gp },
+    });
+    revalidateTag(TRADE_DISCOUNT_CACHE_TAG);
+    await logActivity(session, {
+      action: "discount-set",
+      moduleKey: "trade-discount",
+      target: "Global discount",
+      meta: { changes: { percent: { from: prev?.globalPercent ?? 0, to: gp } } },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
   if (!body.categoryId) {
     return NextResponse.json({ ok: false, error: "categoryId required" }, { status: 400 });
   }
